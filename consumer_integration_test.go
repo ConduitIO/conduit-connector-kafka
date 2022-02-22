@@ -18,6 +18,7 @@ package kafka_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -25,7 +26,6 @@ import (
 
 	kafka "github.com/conduitio/conduit-plugin-kafka"
 	"github.com/conduitio/conduit/pkg/foundation/assert"
-	"github.com/conduitio/conduit/pkg/foundation/cerrors"
 	"github.com/google/uuid"
 	skafka "github.com/segmentio/kafka-go"
 )
@@ -121,7 +121,7 @@ func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Mes
 	case r := <-c:
 		return r.msg, r.pos, r.err // completed normally
 	case <-time.After(timeout):
-		return nil, "", cerrors.New("timed out while waiting for message") // timed out
+		return nil, "", errors.New("timed out while waiting for message") // timed out
 	}
 }
 
@@ -170,7 +170,7 @@ func TestGet_KafkaDown(t *testing.T) {
 	msg, _, err := consumer.Get(context.Background())
 	assert.Nil(t, msg)
 	var cause *net.OpError
-	as := cerrors.As(err, &cause)
+	as := errors.As(err, &cause)
 	assert.True(t, as, "expected net.OpError")
 	assert.Equal(t, "dial", cause.Op)
 	assert.Equal(t, "tcp", cause.Net)

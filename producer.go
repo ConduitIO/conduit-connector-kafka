@@ -18,8 +18,8 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/conduitio/conduit/pkg/foundation/cerrors"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -69,7 +69,7 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	)
 
 	if err != nil {
-		return cerrors.Errorf("message not delivered: %w", err)
+		return fmt.Errorf("message not delivered: %w", err)
 	}
 	return nil
 }

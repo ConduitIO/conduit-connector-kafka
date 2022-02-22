@@ -17,8 +17,8 @@ package kafka
 import (
 	"bytes"
 	"context"
+	"fmt"
 
-	"github.com/conduitio/conduit/pkg/foundation/cerrors"
 	sdk "github.com/conduitio/connector-plugin-sdk"
 	"github.com/segmentio/kafka-go"
 )
@@ -39,7 +39,7 @@ func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
 	sdk.Logger(ctx).Info().Msg("Configuring a Kafka Source...")
 	parsed, err := Parse(cfg)
 	if err != nil {
-		return cerrors.Errorf("config is invalid: %w", err)
+		return fmt.Errorf("config is invalid: %w", err)
 	}
 	s.Config = parsed
 	return nil
@@ -48,13 +48,13 @@ func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
 func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 	client, err := NewConsumer()
 	if err != nil {
-		return cerrors.Errorf("failed to create Kafka client: %w", err)
+		return fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 	s.Consumer = client
 
 	err = s.startFrom(pos)
 	if err != nil {
-		return cerrors.Errorf("couldn't start from position: %w", err)
+		return fmt.Errorf("couldn't start from position: %w", err)
 	}
 
 	return nil
@@ -63,14 +63,14 @@ func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 	message, kafkaPos, err := s.Consumer.Get(ctx)
 	if err != nil {
-		return sdk.Record{}, cerrors.Errorf("failed getting a message %w", err)
+		return sdk.Record{}, fmt.Errorf("failed getting a message %w", err)
 	}
 	if message == nil {
 		return sdk.Record{}, sdk.ErrBackoffRetry
 	}
 	rec, err := toRecord(message, kafkaPos)
 	if err != nil {
-		return sdk.Record{}, cerrors.Errorf("couldn't transform record %w", err)
+		return sdk.Record{}, fmt.Errorf("couldn't transform record %w", err)
 	}
 	s.lastPositionRead = rec.Position
 	return rec, nil
@@ -84,7 +84,7 @@ func (s *Source) startFrom(position sdk.Position) error {
 
 	err := s.Consumer.StartFrom(s.Config, string(position))
 	if err != nil {
-		return cerrors.Errorf("couldn't start from given position %v due to %w", string(position), err)
+		return fmt.Errorf("couldn't start from given position %v due to %w", string(position), err)
 	}
 	s.lastPositionRead = position
 	return nil
