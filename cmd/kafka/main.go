@@ -15,8 +15,8 @@
 package main
 
 import (
-	"github.com/conduitio/conduit/pkg/plugin/sdk"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
+	kafka "github.com/conduitio/conduit-plugin-kafka"
+	sdk "github.com/conduitio/connector-plugin-sdk"
 )
 
 func main() {

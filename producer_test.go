@@ -17,9 +17,9 @@ package kafka_test
 import (
 	"testing"
 
+	kafka "github.com/conduitio/conduit-plugin-kafka"
 	"github.com/conduitio/conduit/pkg/foundation/assert"
 	"github.com/conduitio/conduit/pkg/foundation/cerrors"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
 )
 
 func TestNewProducer_MissingRequired(t *testing.T) {

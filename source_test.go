@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
+	kafka "github.com/conduitio/conduit-plugin-kafka"
+	"github.com/conduitio/conduit-plugin-kafka/mock"
 	"github.com/conduitio/conduit/pkg/foundation/assert"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
-	"github.com/conduitio/conduit/pkg/plugins/kafka/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	skafka "github.com/segmentio/kafka-go"

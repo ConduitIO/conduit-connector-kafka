@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
+	kafka "github.com/conduitio/conduit-plugin-kafka"
 	"github.com/conduitio/conduit/pkg/foundation/assert"
 	"github.com/conduitio/conduit/pkg/foundation/cerrors"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
 	"github.com/google/uuid"
 	skafka "github.com/segmentio/kafka-go"
 )

@@ -19,7 +19,7 @@ import (
 	"context"
 
 	"github.com/conduitio/conduit/pkg/foundation/cerrors"
-	"github.com/conduitio/conduit/pkg/plugin/sdk"
+	sdk "github.com/conduitio/connector-plugin-sdk"
 	"github.com/segmentio/kafka-go"
 )
 
