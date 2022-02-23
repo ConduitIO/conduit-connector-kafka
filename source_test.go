@@ -21,8 +21,8 @@ import (
 	"time"
 
 	kafka "github.com/conduitio/conduit-plugin-kafka"
+	"github.com/conduitio/conduit-plugin-kafka/assert"
 	"github.com/conduitio/conduit-plugin-kafka/mock"
-	"github.com/conduitio/conduit/pkg/foundation/assert"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	skafka "github.com/segmentio/kafka-go"
