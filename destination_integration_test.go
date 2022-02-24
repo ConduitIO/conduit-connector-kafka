@@ -40,7 +40,12 @@ func TestDestination_Write_Simple(t *testing.T) {
 	assert.Ok(t, err)
 
 	err = underTest.Open(context.Background())
-	defer underTest.Teardown(context.Background())
+	defer func(underTest *kafka.Destination, ctx context.Context) {
+		err := underTest.Teardown(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}(&underTest, context.Background())
 	assert.Ok(t, err)
 
 	// act and assert
@@ -57,7 +62,8 @@ func waitForReaderMessage(topic string, timeout time.Duration) (skafka.Message, 
 	reader := newKafkaReader(topic)
 	defer reader.Close()
 
-	withTimeout, _ := context.WithTimeout(context.Background(), timeout)
+	withTimeout, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	return reader.ReadMessage(withTimeout)
 }
 
