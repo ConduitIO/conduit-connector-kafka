@@ -40,11 +40,8 @@ func TestConsumer_Get_FromBeginning(t *testing.T) {
 	sendTestMessages(t, cfg, 1, 6)
 
 	consumer, err := kafka.NewConsumer()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer consumer.Close()
 	assert.Ok(t, err)
+	defer consumer.Close()
 
 	err = consumer.StartFrom(cfg, uuid.NewString())
 	assert.Ok(t, err)
@@ -79,11 +76,8 @@ func TestConsumer_Get_OnlyNew(t *testing.T) {
 	sendTestMessages(t, cfg, 1, 6)
 
 	consumer, err := kafka.NewConsumer()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer consumer.Close()
 	assert.Ok(t, err)
+	defer consumer.Close()
 
 	err = consumer.StartFrom(cfg, uuid.NewString())
 	assert.Ok(t, err)

@@ -42,9 +42,7 @@ func TestDestination_Write_Simple(t *testing.T) {
 	err = underTest.Open(context.Background())
 	defer func(underTest *kafka.Destination, ctx context.Context) {
 		err := underTest.Teardown(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		assert.Ok(t, err)
 	}(&underTest, context.Background())
 	assert.Ok(t, err)
 
