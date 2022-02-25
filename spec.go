@@ -26,7 +26,7 @@ func Specification() sdk.Specification {
 		Summary:     "A Kafka source and destination plugin for Conduit, written in Go.",
 		Description: "",
 		Version:     "v0.1.0",
-		Author:      "Meroxa",
+		Author:      "Meroxa, Inc.",
 		DestinationParams: map[string]sdk.Parameter{
 			"servers": {
 				Default:     "",
