@@ -1,0 +1,5 @@
+# Intellij
+.idea
+
+# Binary built with `make build`
+/conduit-plugin-kafka
