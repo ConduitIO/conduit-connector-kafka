@@ -14,9 +14,9 @@
 
 package kafka
 
-import "github.com/conduitio/conduit/pkg/foundation/cerrors"
+import "errors"
 
 var (
-	ErrServersMissing = cerrors.New("servers missing")
-	ErrTopicMissing   = cerrors.New("topic missing")
+	ErrServersMissing = errors.New("servers missing")
+	ErrTopicMissing   = errors.New("topic missing")
 )

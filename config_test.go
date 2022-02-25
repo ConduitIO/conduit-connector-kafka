@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/conduitio/conduit/pkg/foundation/assert"
+	"github.com/conduitio/conduit-plugin-kafka/assert"
 	"github.com/segmentio/kafka-go"
 )
 

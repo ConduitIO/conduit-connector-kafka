@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build integration
-
 package kafka_test
 
 import (
@@ -22,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/conduitio/conduit/pkg/foundation/assert"
-	"github.com/conduitio/conduit/pkg/plugin/sdk"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
+	kafka "github.com/conduitio/conduit-plugin-kafka"
+	"github.com/conduitio/conduit-plugin-kafka/assert"
+	sdk "github.com/conduitio/connector-plugin-sdk"
 	"github.com/google/uuid"
 	skafka "github.com/segmentio/kafka-go"
 )
@@ -42,7 +40,10 @@ func TestDestination_Write_Simple(t *testing.T) {
 	assert.Ok(t, err)
 
 	err = underTest.Open(context.Background())
-	defer underTest.Teardown(context.Background())
+	defer func(underTest *kafka.Destination, ctx context.Context) {
+		err := underTest.Teardown(ctx)
+		assert.Ok(t, err)
+	}(&underTest, context.Background())
 	assert.Ok(t, err)
 
 	// act and assert
@@ -59,7 +60,8 @@ func waitForReaderMessage(topic string, timeout time.Duration) (skafka.Message, 
 	reader := newKafkaReader(topic)
 	defer reader.Close()
 
-	withTimeout, _ := context.WithTimeout(context.Background(), timeout)
+	withTimeout, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	return reader.ReadMessage(withTimeout)
 }
 

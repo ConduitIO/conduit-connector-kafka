@@ -16,9 +16,9 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/conduitio/conduit/pkg/foundation/cerrors"
-	"github.com/conduitio/conduit/pkg/plugin/sdk"
+	sdk "github.com/conduitio/connector-plugin-sdk"
 )
 
 type Destination struct {
@@ -36,7 +36,7 @@ func (d *Destination) Configure(ctx context.Context, cfg map[string]string) erro
 	sdk.Logger(ctx).Info().Msg("Configuring a Kafka Destination...")
 	parsed, err := Parse(cfg)
 	if err != nil {
-		return cerrors.Errorf("config is invalid: %w", err)
+		return fmt.Errorf("config is invalid: %w", err)
 	}
 	d.Config = parsed
 	return nil
@@ -45,7 +45,7 @@ func (d *Destination) Configure(ctx context.Context, cfg map[string]string) erro
 func (d *Destination) Open(ctx context.Context) error {
 	client, err := NewProducer(d.Config)
 	if err != nil {
-		return cerrors.Errorf("failed to create Kafka client: %w", err)
+		return fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 
 	d.Client = client
@@ -58,7 +58,7 @@ func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
 		record.Payload.Bytes(),
 	)
 	if err != nil {
-		return cerrors.Errorf("message not delivered %w", err)
+		return fmt.Errorf("message not delivered %w", err)
 	}
 	return nil
 }

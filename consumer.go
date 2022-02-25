@@ -18,9 +18,9 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/conduitio/conduit/pkg/foundation/cerrors"
-	"github.com/conduitio/conduit/pkg/plugin/sdk"
+	sdk "github.com/conduitio/connector-plugin-sdk"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -94,7 +94,7 @@ func newReader(cfg Config, groupID string) *kafka.Reader {
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {
 	msg, err := c.reader.FetchMessage(ctx)
 	if err != nil {
-		return nil, "", cerrors.Errorf("couldn't read message: %w", err)
+		return nil, "", fmt.Errorf("couldn't read message: %w", err)
 	}
 	c.lastMsgRead = &msg
 	return &msg, c.readerID(), nil
@@ -103,7 +103,7 @@ func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, erro
 func (c *segmentConsumer) Ack() error {
 	err := c.reader.CommitMessages(context.Background(), *c.lastMsgRead)
 	if err != nil {
-		return cerrors.Errorf("couldn't commit messages: %w", err)
+		return fmt.Errorf("couldn't commit messages: %w", err)
 	}
 	return nil
 }

@@ -21,10 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/conduitio/conduit/pkg/foundation/assert"
-	"github.com/conduitio/conduit/pkg/plugin/sdk"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
-	"github.com/conduitio/conduit/pkg/plugins/kafka/mock"
+	"github.com/conduitio/conduit-plugin-kafka/assert"
+
+	kafka "github.com/conduitio/conduit-plugin-kafka"
+	"github.com/conduitio/conduit-plugin-kafka/mock"
+	sdk "github.com/conduitio/connector-plugin-sdk"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 )

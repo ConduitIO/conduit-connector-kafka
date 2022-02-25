@@ -15,11 +15,11 @@
 package kafka_test
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/conduitio/conduit/pkg/foundation/assert"
-	"github.com/conduitio/conduit/pkg/foundation/cerrors"
-	"github.com/conduitio/conduit/pkg/plugins/kafka"
+	kafka "github.com/conduitio/conduit-plugin-kafka"
+	"github.com/conduitio/conduit-plugin-kafka/assert"
 )
 
 func TestNewProducer_MissingRequired(t *testing.T) {
@@ -46,7 +46,7 @@ func TestNewProducer_MissingRequired(t *testing.T) {
 			producer, err := kafka.NewProducer(tc.config)
 			assert.Nil(t, producer)
 			assert.Error(t, err)
-			assert.True(t, cerrors.Is(err, tc.exp), "expected "+tc.exp.Error())
+			assert.True(t, errors.Is(err, tc.exp), "expected "+tc.exp.Error())
 		})
 	}
 }
