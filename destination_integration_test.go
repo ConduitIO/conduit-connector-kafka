@@ -22,7 +22,7 @@ import (
 
 	kafka "github.com/conduitio/conduit-plugin-kafka"
 	"github.com/conduitio/conduit-plugin-kafka/assert"
-	sdk "github.com/conduitio/connector-plugin-sdk"
+	sdk "github.com/conduitio/conduit-plugin-sdk"
 	"github.com/google/uuid"
 	skafka "github.com/segmentio/kafka-go"
 )

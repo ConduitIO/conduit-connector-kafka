@@ -25,7 +25,7 @@ import (
 
 	kafka "github.com/conduitio/conduit-plugin-kafka"
 	"github.com/conduitio/conduit-plugin-kafka/mock"
-	sdk "github.com/conduitio/connector-plugin-sdk"
+	sdk "github.com/conduitio/conduit-plugin-sdk"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 )
