@@ -125,8 +125,6 @@ func setTLSConfigs(parsed *Config, cfg map[string]string) error {
 			return fmt.Errorf("value %q for InsecureSkipVerify is not valid", insecureString)
 		}
 		parsed.InsecureSkipVerify = insecure
-	} else {
-		parsed.InsecureSkipVerify = false
 	}
 	return nil
 }

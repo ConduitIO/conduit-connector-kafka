@@ -18,8 +18,6 @@ package kafka
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -102,36 +100,6 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 		readerCfg.Dialer = dialer
 	}
 	return kafka.NewReader(readerCfg), nil
-}
-
-func newTLSDialer(cfg Config) (*kafka.Dialer, error) {
-	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
-	if err != nil {
-		return nil, fmt.Errorf("invalid TLS config: %w", err)
-	}
-	return &kafka.Dialer{
-		ClientID:  "",
-		DualStack: true,
-		TLS:       tlsCfg,
-	}, nil
-}
-
-func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*tls.Config, error) {
-	tlsConfig := tls.Config{MinVersion: tls.VersionTLS12}
-
-	// Load client cert
-	cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
-	if err != nil {
-		return nil, err
-	}
-	tlsConfig.Certificates = []tls.Certificate{cert}
-
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(caCert))
-	tlsConfig.RootCAs = caCertPool
-
-	tlsConfig.InsecureSkipVerify = serverNoVerify
-	return &tlsConfig, err
 }
 
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {
