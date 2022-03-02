@@ -21,41 +21,44 @@ import (
 	"testing"
 	"time"
 
-	"github.com/conduitio/conduit-plugin-kafka/assert"
-
 	kafka "github.com/conduitio/conduit-plugin-kafka"
 	"github.com/conduitio/conduit-plugin-kafka/mock"
 	sdk "github.com/conduitio/conduit-plugin-sdk"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/matryer/is"
 )
 
 func TestConfigureDestination_FailsWhenConfigEmpty(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.Destination{}
 	err := underTest.Configure(context.Background(), make(map[string]string))
-	assert.Error(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "config is invalid:"), "incorrect error msg")
+	is.True(err != nil)
+	is.True(strings.HasPrefix(err.Error(), "config is invalid:"))
 }
 
 func TestConfigureDestination_FailsWhenConfigInvalid(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.Destination{}
 	err := underTest.Configure(context.Background(), map[string]string{"foobar": "foobar"})
-	assert.Error(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "config is invalid:"), "incorrect error msg")
+	is.True(err != nil)
+	is.True(strings.HasPrefix(err.Error(), "config is invalid:"))
 }
 
 func TestConfigureDestination_KafkaProducerCreated(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.Destination{}
 	err := underTest.Configure(context.Background(), configMap())
-	assert.Ok(t, err)
+	is.NoErr(err)
 
 	err = underTest.Open(context.Background())
-	assert.Ok(t, err)
-	assert.NotNil(t, underTest.Client)
+	is.NoErr(err)
+	is.True(underTest.Client != nil)
 	defer underTest.Client.Close()
 }
 
 func TestTeardown_ClosesClient(t *testing.T) {
+	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
 	clientMock := mock.NewProducer(ctrl)
@@ -65,14 +68,16 @@ func TestTeardown_ClosesClient(t *testing.T) {
 		Return()
 
 	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
-	assert.Ok(t, underTest.Teardown(context.Background()))
+	is.NoErr(underTest.Teardown(context.Background()))
 }
 func TestTeardown_NoOpen(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.NewDestination()
-	assert.Ok(t, underTest.Teardown(context.Background()))
+	is.NoErr(underTest.Teardown(context.Background()))
 }
 
 func TestWrite_ClientSendsMessage(t *testing.T) {
+	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
 	rec := testRec()
@@ -89,7 +94,7 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
 
 	err := underTest.Write(context.Background(), rec)
-	assert.Ok(t, err)
+	is.NoErr(err)
 }
 
 func connectorCfg() kafka.Config {

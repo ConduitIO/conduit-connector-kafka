@@ -21,28 +21,31 @@ import (
 	"time"
 
 	kafka "github.com/conduitio/conduit-plugin-kafka"
-	"github.com/conduitio/conduit-plugin-kafka/assert"
 	"github.com/conduitio/conduit-plugin-kafka/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/matryer/is"
 	skafka "github.com/segmentio/kafka-go"
 )
 
 func TestConfigureSource_FailsWhenConfigEmpty(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.Source{}
 	err := underTest.Configure(context.Background(), make(map[string]string))
-	assert.Error(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "config is invalid:"), "incorrect error msg")
+	is.True(err != nil)
+	is.True(strings.HasPrefix(err.Error(), "config is invalid:"))
 }
 
 func TestConfigureSource_FailsWhenConfigInvalid(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.Source{}
 	err := underTest.Configure(context.Background(), map[string]string{"foobar": "foobar"})
-	assert.Error(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "config is invalid:"), "incorrect error msg")
+	is.True(err != nil)
+	is.True(strings.HasPrefix(err.Error(), "config is invalid:"))
 }
 
 func TestTeardownSource_ClosesClient(t *testing.T) {
+	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
 	consumerMock := mock.NewConsumer(ctrl)
@@ -52,15 +55,17 @@ func TestTeardownSource_ClosesClient(t *testing.T) {
 		Return()
 
 	underTest := kafka.Source{Consumer: consumerMock, Config: connectorCfg()}
-	assert.Ok(t, underTest.Teardown(context.Background()))
+	is.NoErr(underTest.Teardown(context.Background()))
 }
 
 func TestTeardownSource_NoOpen(t *testing.T) {
+	is := is.New(t)
 	underTest := kafka.NewSource()
-	assert.Ok(t, underTest.Teardown(context.Background()))
+	is.NoErr(underTest.Teardown(context.Background()))
 }
 
 func TestReadPosition(t *testing.T) {
+	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
 	kafkaMsg := testKafkaMsg()
@@ -75,14 +80,15 @@ func TestReadPosition(t *testing.T) {
 
 	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
 	rec, err := underTest.Read(context.Background())
-	assert.Ok(t, err)
-	assert.Equal(t, rec.Key.Bytes(), kafkaMsg.Key)
-	assert.Equal(t, rec.Payload.Bytes(), kafkaMsg.Value)
+	is.NoErr(err)
+	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
+	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
 
-	assert.Equal(t, groupID, string(rec.Position))
+	is.Equal(groupID, string(rec.Position))
 }
 
 func TestRead(t *testing.T) {
+	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
 	kafkaMsg := testKafkaMsg()
@@ -97,10 +103,10 @@ func TestRead(t *testing.T) {
 
 	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
 	rec, err := underTest.Read(context.Background())
-	assert.Ok(t, err)
-	assert.Equal(t, rec.Key.Bytes(), kafkaMsg.Key)
-	assert.Equal(t, rec.Payload.Bytes(), kafkaMsg.Value)
-	assert.Equal(t, pos, string(rec.Position))
+	is.NoErr(err)
+	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
+	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
+	is.Equal(pos, string(rec.Position))
 }
 
 func testKafkaMsg() *skafka.Message {
