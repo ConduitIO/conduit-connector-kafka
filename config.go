@@ -107,16 +107,25 @@ func Parse(cfg map[string]string) (Config, error) {
 }
 
 func setTLSConfigs(parsed *Config, cfg map[string]string) error {
-	// All three values should be set so that TLS works
-	// If none of the three values are set, then TLS should not be used.
-	tlsCfgOk := (cfg[ClientCert] == "") == (cfg[ClientKey] == "")
-	tlsCfgOk = tlsCfgOk && (cfg[ClientKey] == "") == (cfg[CACert] == "")
-	if !tlsCfgOk {
-		return errors.New("TLS config not OK (all values need to be set or all values need to be unset)")
+	// Get client TLS settings
+	var missingClient []string
+	if cfg[ClientCert] == "" {
+		missingClient = append(missingClient, ClientCert)
+	}
+	if cfg[ClientKey] == "" {
+		missingClient = append(missingClient, ClientKey)
+	}
+	if len(missingClient) == 1 {
+		return fmt.Errorf("client TLS configuration incomplete, %v is missing", missingClient[0])
 	}
 	parsed.ClientCert = cfg[ClientCert]
 	parsed.ClientKey = cfg[ClientKey]
-	parsed.CACert = cfg[CACert]
+
+	// Get server CA
+	if caCert, ok := cfg[CACert]; ok {
+		parsed.CACert = caCert
+	}
+
 	// Parse InsecureSkipVerify, default is 'false'
 	insecureString, ok := cfg[InsecureSkipVerify]
 	if ok {

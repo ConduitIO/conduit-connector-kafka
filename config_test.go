@@ -101,11 +101,48 @@ func TestParse_TLSConfig(t *testing.T) {
 		assertFn func(t *testing.T, config Config, err error)
 	}{
 		{
-			name: "TLS config incomplete",
+			name: "Possible to provider server certificate only",
+			cfg: map[string]string{
+				Servers: "localhost:9092",
+				Topic:   "hello-world-topic",
+				CACert:  "CACert",
+			},
+			assertFn: func(t *testing.T, config Config, err error) {
+				assert.Ok(t, err)
+				assert.Equal(t, "CACert", config.CACert)
+			},
+		},
+		{
+			name: "Possible to configure client TLS only",
 			cfg: map[string]string{
 				Servers:    "localhost:9092",
 				Topic:      "hello-world-topic",
 				ClientCert: "ClientCert",
+				ClientKey:  "ClientKey",
+			},
+			assertFn: func(t *testing.T, config Config, err error) {
+				assert.Ok(t, err)
+				assert.Equal(t, "ClientCert", config.ClientCert)
+				assert.Equal(t, "ClientKey", config.ClientKey)
+			},
+		},
+		{
+			name: "Client certificate provided, client key missing",
+			cfg: map[string]string{
+				Servers:    "localhost:9092",
+				Topic:      "hello-world-topic",
+				ClientCert: "ClientCert",
+			},
+			assertFn: func(t *testing.T, config Config, err error) {
+				assert.Error(t, err)
+			},
+		},
+		{
+			name: "Client certificate missing, client key provided",
+			cfg: map[string]string{
+				Servers:   "localhost:9092",
+				Topic:     "hello-world-topic",
+				ClientKey: "ClientKey",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
 				assert.Error(t, err)
