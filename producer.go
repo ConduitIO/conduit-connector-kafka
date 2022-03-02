@@ -18,8 +18,8 @@ package kafka
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -38,23 +38,31 @@ type segmentProducer struct {
 
 // NewProducer creates a new Kafka producer.
 // The current implementation uses Segment's kafka-go client.
-func NewProducer(config Config) (Producer, error) {
-	if len(config.Servers) == 0 {
+func NewProducer(cfg Config) (Producer, error) {
+	if len(cfg.Servers) == 0 {
 		return nil, ErrServersMissing
 	}
-	if config.Topic == "" {
+	if cfg.Topic == "" {
 		return nil, ErrTopicMissing
 	}
 
 	writer := &kafka.Writer{
-		Addr:         kafka.TCP(config.Servers...),
-		Topic:        config.Topic,
+		Addr:         kafka.TCP(cfg.Servers...),
+		Topic:        cfg.Topic,
 		BatchSize:    1,
-		WriteTimeout: config.DeliveryTimeout,
-		RequiredAcks: config.Acks,
+		WriteTimeout: cfg.DeliveryTimeout,
+		RequiredAcks: cfg.Acks,
 		MaxAttempts:  3,
-		// todo use a secure transport
-		// Transport: nil,
+	}
+	// TLS config
+	if cfg.ClientCert != "" {
+		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
+		if err != nil {
+			return nil, errors.Errorf("invalid TLS config: %w", err)
+		}
+		writer.Transport = &kafka.Transport{
+			TLS: tlsCfg,
+		}
 	}
 	return &segmentProducer{writer: writer}, nil
 }
@@ -69,7 +77,7 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	)
 
 	if err != nil {
-		return fmt.Errorf("message not delivered: %w", err)
+		return errors.Errorf("message not delivered: %w", err)
 	}
 	return nil
 }

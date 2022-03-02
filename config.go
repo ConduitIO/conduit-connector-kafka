@@ -15,22 +15,25 @@
 package kafka
 
 import (
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/segmentio/kafka-go"
 )
 
 const (
-	Servers           = "servers"
-	Topic             = "topic"
-	SecurityProtocol  = "securityProtocol"
-	Acks              = "acks"
-	DeliveryTimeout   = "deliveryTimeout"
-	ReadFromBeginning = "readFromBeginning"
+	Servers            = "servers"
+	Topic              = "topic"
+	SecurityProtocol   = "securityProtocol"
+	Acks               = "acks"
+	DeliveryTimeout    = "deliveryTimeout"
+	ReadFromBeginning  = "readFromBeginning"
+	ClientCert         = "clientCert"
+	ClientKey          = "clientKey"
+	CACert             = "caCert"
+	InsecureSkipVerify = "insecureSkipVerify"
 )
 
 var Required = []string{Servers, Topic}
@@ -48,6 +51,11 @@ type Config struct {
 	// Read all messages present in a source topic.
 	// Default value: false (only new messages are read)
 	ReadFromBeginning bool
+	// TLS
+	ClientCert         string
+	ClientKey          string
+	CACert             string
+	InsecureSkipVerify bool
 }
 
 func Parse(cfg map[string]string) (Config, error) {
@@ -59,7 +67,7 @@ func Parse(cfg map[string]string) (Config, error) {
 	// parse servers
 	servers, err := split(cfg[Servers])
 	if err != nil {
-		return Config{}, fmt.Errorf("invalid servers: %w", err)
+		return Config{}, errors.Errorf("invalid servers: %w", err)
 	}
 	var parsed = Config{
 		Servers: servers,
@@ -68,28 +76,58 @@ func Parse(cfg map[string]string) (Config, error) {
 	// parse acknowledgment setting
 	ack, err := parseAcks(cfg[Acks])
 	if err != nil {
-		return Config{}, fmt.Errorf("couldn't parse ack: %w", err)
+		return Config{}, errors.Errorf("couldn't parse ack: %w", err)
 	}
 	parsed.Acks = ack
 
 	// parse and validate ReadFromBeginning
 	readFromBeginning, err := parseBool(cfg, ReadFromBeginning, false)
 	if err != nil {
-		return Config{}, fmt.Errorf("invalid value for ReadFromBeginning: %w", err)
+		return Config{}, errors.Errorf("invalid value for ReadFromBeginning: %w", err)
 	}
 	parsed.ReadFromBeginning = readFromBeginning
 
 	// parse and validate delivery DeliveryTimeout
 	timeout, err := parseDuration(cfg, DeliveryTimeout, 10*time.Second)
 	if err != nil {
-		return Config{}, fmt.Errorf("invalid delivery timeout: %w", err)
+		return Config{}, errors.Errorf("invalid delivery timeout: %w", err)
 	}
 	// it makes no sense to expect a message to be delivered immediately
 	if timeout == 0 {
 		return Config{}, errors.New("invalid delivery timeout: has to be > 0ms")
 	}
 	parsed.DeliveryTimeout = timeout
+
+	err = setTLSConfigs(&parsed, cfg)
+	if err != nil {
+		return Config{}, errors.Errorf("invalid TLS config: %w", err)
+	}
 	return parsed, nil
+}
+
+func setTLSConfigs(parsed *Config, cfg map[string]string) error {
+	// All three values should be set so that TLS works
+	// If none of the three values are set, then TLS should not be used.
+	tlsCfgOk := (cfg[ClientCert] == "") == (cfg[ClientKey] == "")
+	tlsCfgOk = tlsCfgOk && (cfg[ClientKey] == "") == (cfg[CACert] == "")
+	if !tlsCfgOk {
+		return errors.New("TLS config not OK (all values need to be set or all values need to be unset)")
+	}
+	parsed.ClientCert = cfg[ClientCert]
+	parsed.ClientKey = cfg[ClientKey]
+	parsed.CACert = cfg[CACert]
+	// Parse InsecureSkipVerify, default is 'false'
+	insecureString, ok := cfg[InsecureSkipVerify]
+	if ok {
+		insecure, err := strconv.ParseBool(insecureString)
+		if err != nil {
+			return errors.Errorf("value %q for InsecureSkipVerify is not valid", insecureString)
+		}
+		parsed.InsecureSkipVerify = insecure
+	} else {
+		parsed.InsecureSkipVerify = false
+	}
+	return nil
 }
 
 func parseAcks(ack string) (kafka.RequiredAcks, error) {
@@ -100,7 +138,7 @@ func parseAcks(ack string) (kafka.RequiredAcks, error) {
 	acks := kafka.RequiredAcks(0)
 	err := acks.UnmarshalText([]byte(ack))
 	if err != nil {
-		return 0, fmt.Errorf("unknown ack mode: %w", err)
+		return 0, errors.Errorf("unknown ack mode: %w", err)
 	}
 	return acks, nil
 }
@@ -112,7 +150,7 @@ func parseBool(cfg map[string]string, key string, defaultVal bool) (bool, error)
 	}
 	parsed, err := strconv.ParseBool(boolString)
 	if err != nil {
-		return false, fmt.Errorf("value for key %s cannot be parsed: %w", key, err)
+		return false, errors.Errorf("value for key %s cannot be parsed: %w", key, err)
 	}
 	return parsed, nil
 }
@@ -124,7 +162,7 @@ func parseDuration(cfg map[string]string, key string, defaultVal time.Duration) 
 	}
 	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
-		return 0, fmt.Errorf("duration cannot be parsed: %w", err)
+		return 0, errors.Errorf("duration cannot be parsed: %w", err)
 	}
 	return timeout, nil
 }
@@ -140,7 +178,7 @@ func checkRequired(cfg map[string]string) error {
 }
 
 func requiredConfigErr(name string) error {
-	return fmt.Errorf("%q config value must be set", name)
+	return errors.Errorf("%q config value must be set", name)
 }
 
 func split(serversString string) ([]string, error) {
@@ -148,7 +186,7 @@ func split(serversString string) ([]string, error) {
 	servers := make([]string, 0)
 	for i, s := range split {
 		if strings.Trim(s, " ") == "" {
-			return nil, fmt.Errorf("empty %d. server", i)
+			return nil, errors.Errorf("empty %d. server", i)
 		}
 		servers = append(servers, s)
 	}

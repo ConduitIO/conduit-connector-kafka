@@ -18,10 +18,12 @@ package kafka
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 
-	sdk "github.com/conduitio/conduit-plugin-sdk"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -66,11 +68,15 @@ func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
 	if config.Topic == "" {
 		return ErrTopicMissing
 	}
-	c.reader = newReader(config, groupID)
+	reader, err := newReader(config, groupID)
+	if err != nil {
+		return errors.Errorf("couldn't create reader: %w")
+	}
+	c.reader = reader
 	return nil
 }
 
-func newReader(cfg Config, groupID string) *kafka.Reader {
+func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 	readerCfg := kafka.ReaderConfig{
 		Brokers:               cfg.Servers,
 		Topic:                 cfg.Topic,
@@ -88,13 +94,51 @@ func newReader(cfg Config, groupID string) *kafka.Reader {
 	} else {
 		readerCfg.StartOffset = kafka.LastOffset
 	}
-	return kafka.NewReader(readerCfg)
+	// TLS config
+	if cfg.ClientCert != "" {
+		dialer, err := newTLSDialer(cfg)
+		if err != nil {
+			return nil, errors.Errorf("couldn't create dialer: %w", err)
+		}
+		readerCfg.Dialer = dialer
+	}
+	return kafka.NewReader(readerCfg), nil
+}
+
+func newTLSDialer(cfg Config) (*kafka.Dialer, error) {
+	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
+	if err != nil {
+		return nil, errors.Errorf("invalid TLS config: %w", err)
+	}
+	return &kafka.Dialer{
+		ClientID:  "",
+		DualStack: true,
+		TLS:       tlsCfg,
+	}, nil
+}
+
+func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*tls.Config, error) {
+	tlsConfig := tls.Config{MinVersion: tls.VersionTLS12}
+
+	// Load client cert
+	cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig.Certificates = []tls.Certificate{cert}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM([]byte(caCert))
+	tlsConfig.RootCAs = caCertPool
+
+	tlsConfig.InsecureSkipVerify = serverNoVerify
+	return &tlsConfig, err
 }
 
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {
 	msg, err := c.reader.FetchMessage(ctx)
 	if err != nil {
-		return nil, "", fmt.Errorf("couldn't read message: %w", err)
+		return nil, "", errors.Errorf("couldn't read message: %w", err)
 	}
 	c.lastMsgRead = &msg
 	return &msg, c.readerID(), nil
@@ -103,7 +147,7 @@ func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, erro
 func (c *segmentConsumer) Ack() error {
 	err := c.reader.CommitMessages(context.Background(), *c.lastMsgRead)
 	if err != nil {
-		return fmt.Errorf("couldn't commit messages: %w", err)
+		return errors.Errorf("couldn't commit messages: %w", err)
 	}
 	return nil
 }
@@ -115,7 +159,7 @@ func (c *segmentConsumer) Close() {
 	// this will also make the loops in the reader goroutines stop
 	err := c.reader.Close()
 	if err != nil {
-		sdk.Logger(context.Background()).Err(err).Msg("couldn't close reader")
+		fmt.Printf("couldn't close reader: %v\n", err)
 	}
 }
 
