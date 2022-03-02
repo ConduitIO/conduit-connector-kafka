@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	kafka "github.com/conduitio/conduit-plugin-kafka"
-	"github.com/conduitio/conduit-plugin-kafka/mock"
+	kafka "github.com/conduitio/conduit-connector-kafka"
+	"github.com/conduitio/conduit-connector-kafka/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/matryer/is"

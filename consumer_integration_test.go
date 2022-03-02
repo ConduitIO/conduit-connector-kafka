@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	kafka "github.com/conduitio/conduit-plugin-kafka"
+	kafka "github.com/conduitio/conduit-connector-kafka"
 	"github.com/google/uuid"
 	"github.com/matryer/is"
 	skafka "github.com/segmentio/kafka-go"

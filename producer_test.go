@@ -20,7 +20,7 @@ import (
 
 	"github.com/matryer/is"
 
-	kafka "github.com/conduitio/conduit-plugin-kafka"
+	kafka "github.com/conduitio/conduit-connector-kafka"
 )
 
 func TestNewProducer_MissingRequired(t *testing.T) {
