@@ -18,8 +18,8 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -58,7 +58,7 @@ func NewProducer(cfg Config) (Producer, error) {
 	if cfg.ClientCert != "" {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 		if err != nil {
-			return nil, errors.Errorf("invalid TLS config: %w", err)
+			return nil, fmt.Errorf("invalid TLS config: %w", err)
 		}
 		writer.Transport = &kafka.Transport{
 			TLS: tlsCfg,
@@ -77,7 +77,7 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	)
 
 	if err != nil {
-		return errors.Errorf("message not delivered: %w", err)
+		return fmt.Errorf("message not delivered: %w", err)
 	}
 	return nil
 }

@@ -23,7 +23,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -70,7 +69,7 @@ func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
 	}
 	reader, err := newReader(config, groupID)
 	if err != nil {
-		return errors.Errorf("couldn't create reader: %w")
+		return fmt.Errorf("couldn't create reader: %w", err)
 	}
 	c.reader = reader
 	return nil
@@ -98,7 +97,7 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 	if cfg.ClientCert != "" {
 		dialer, err := newTLSDialer(cfg)
 		if err != nil {
-			return nil, errors.Errorf("couldn't create dialer: %w", err)
+			return nil, fmt.Errorf("couldn't create dialer: %w", err)
 		}
 		readerCfg.Dialer = dialer
 	}
@@ -108,7 +107,7 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 func newTLSDialer(cfg Config) (*kafka.Dialer, error) {
 	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 	if err != nil {
-		return nil, errors.Errorf("invalid TLS config: %w", err)
+		return nil, fmt.Errorf("invalid TLS config: %w", err)
 	}
 	return &kafka.Dialer{
 		ClientID:  "",
@@ -138,7 +137,7 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {
 	msg, err := c.reader.FetchMessage(ctx)
 	if err != nil {
-		return nil, "", errors.Errorf("couldn't read message: %w", err)
+		return nil, "", fmt.Errorf("couldn't read message: %w", err)
 	}
 	c.lastMsgRead = &msg
 	return &msg, c.readerID(), nil
@@ -147,7 +146,7 @@ func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, erro
 func (c *segmentConsumer) Ack() error {
 	err := c.reader.CommitMessages(context.Background(), *c.lastMsgRead)
 	if err != nil {
-		return errors.Errorf("couldn't commit messages: %w", err)
+		return fmt.Errorf("couldn't commit messages: %w", err)
 	}
 	return nil
 }
