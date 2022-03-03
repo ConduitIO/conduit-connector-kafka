@@ -128,7 +128,7 @@ func (c *segmentConsumer) Close() error {
 	err := c.reader.Close()
 	if err != nil {
 		sdk.Logger(context.Background()).Err(err).Msg("couldn't close reader")
-		return fmt.Errorf("couldn't close reader: %v\n", err)
+		return fmt.Errorf("couldn't close reader: %v", err)
 	}
 
 	return nil
