@@ -18,11 +18,13 @@ import (
 	"errors"
 	"testing"
 
-	kafka "github.com/conduitio/conduit-plugin-kafka"
-	"github.com/conduitio/conduit-plugin-kafka/assert"
+	"github.com/matryer/is"
+
+	kafka "github.com/conduitio/conduit-connector-kafka"
 )
 
 func TestNewProducer_MissingRequired(t *testing.T) {
+	is := is.New(t)
 	testCases := []struct {
 		name   string
 		config kafka.Config
@@ -44,9 +46,9 @@ func TestNewProducer_MissingRequired(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			producer, err := kafka.NewProducer(tc.config)
-			assert.Nil(t, producer)
-			assert.Error(t, err)
-			assert.True(t, errors.Is(err, tc.exp), "expected "+tc.exp.Error())
+			is.True(producer == nil)
+			is.True(err != nil)
+			is.True(errors.Is(err, tc.exp))
 		})
 	}
 }

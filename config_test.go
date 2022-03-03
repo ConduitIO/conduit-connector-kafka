@@ -18,29 +18,33 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/conduitio/conduit-plugin-kafka/assert"
+	"github.com/matryer/is"
 	"github.com/segmentio/kafka-go"
 )
 
 func TestParse_Nil(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(nil)
-	assert.Equal(t, Config{}, parsed)
-	assert.Error(t, err)
+	is.Equal(Config{}, parsed)
+	is.True(err != nil)
 }
 
 func TestParse_Empty(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(make(map[string]string))
-	assert.Equal(t, Config{}, parsed)
-	assert.Error(t, err)
+	is.Equal(Config{}, parsed)
+	is.True(err != nil)
 }
 
 func TestParse_ServersMissing(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(map[string]string{"something-irrelevant": "even less relevant"})
-	assert.Equal(t, Config{}, parsed)
-	assert.Error(t, err)
+	is.Equal(Config{}, parsed)
+	is.True(err != nil)
 }
 
 func TestNewProducer_InvalidServers(t *testing.T) {
+	is := is.New(t)
 	testCases := []struct {
 		name   string
 		config map[string]string
@@ -68,33 +72,37 @@ func TestNewProducer_InvalidServers(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			parsed, err := Parse(tc.config)
-			assert.Equal(t, Config{}, parsed)
-			assert.Error(t, err)
-			assert.Equal(t, tc.exp, err.Error())
+			is.Equal(Config{}, parsed)
+			is.True(err != nil)
+			is.Equal(tc.exp, err.Error())
 		})
 	}
 }
 
 func TestParse_OneMissing_OnePresent(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(map[string]string{
 		Servers: "localhost:9092",
 	})
-	assert.Equal(t, Config{}, parsed)
-	assert.Error(t, err)
+	is.Equal(Config{}, parsed)
+	is.True(err != nil)
 }
 
 func TestParse_FullRequired(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(map[string]string{
 		Servers: "localhost:9092",
 		Topic:   "hello-world-topic",
 	})
 
-	assert.Ok(t, err)
-	assert.Equal(t, []string{"localhost:9092"}, parsed.Servers)
-	assert.Equal(t, "hello-world-topic", parsed.Topic)
+	is.NoErr(err)
+	is.Equal([]string{"localhost:9092"}, parsed.Servers)
+	is.Equal("hello-world-topic", parsed.Topic)
 }
 
 func TestParse_TLSConfig(t *testing.T) {
+	is := is.New(t)
+
 	testCases := []struct {
 		name     string
 		cfg      map[string]string
@@ -108,8 +116,8 @@ func TestParse_TLSConfig(t *testing.T) {
 				CACert:  "CACert",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Ok(t, err)
-				assert.Equal(t, "CACert", config.CACert)
+				is.NoErr(err)
+				is.Equal("CACert", config.CACert)
 			},
 		},
 		{
@@ -121,9 +129,9 @@ func TestParse_TLSConfig(t *testing.T) {
 				ClientKey:  "ClientKey",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Ok(t, err)
-				assert.Equal(t, "ClientCert", config.ClientCert)
-				assert.Equal(t, "ClientKey", config.ClientKey)
+				is.NoErr(err)
+				is.Equal("ClientCert", config.ClientCert)
+				is.Equal("ClientKey", config.ClientKey)
 			},
 		},
 		{
@@ -134,7 +142,7 @@ func TestParse_TLSConfig(t *testing.T) {
 				ClientCert: "ClientCert",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Error(t, err)
+				is.True(err != nil)
 			},
 		},
 		{
@@ -145,7 +153,7 @@ func TestParse_TLSConfig(t *testing.T) {
 				ClientKey: "ClientKey",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Error(t, err)
+				is.True(err != nil)
 			},
 		},
 		{
@@ -158,8 +166,8 @@ func TestParse_TLSConfig(t *testing.T) {
 				CACert:     "CACert",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Ok(t, err)
-				assert.Equal(t, false, config.InsecureSkipVerify)
+				is.NoErr(err)
+				is.Equal(false, config.InsecureSkipVerify)
 			},
 		},
 		{
@@ -173,8 +181,8 @@ func TestParse_TLSConfig(t *testing.T) {
 				InsecureSkipVerify: "true",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Ok(t, err)
-				assert.Equal(t, true, config.InsecureSkipVerify)
+				is.NoErr(err)
+				is.Equal(true, config.InsecureSkipVerify)
 			},
 		},
 		{
@@ -188,7 +196,7 @@ func TestParse_TLSConfig(t *testing.T) {
 				InsecureSkipVerify: "     false",
 			},
 			assertFn: func(t *testing.T, config Config, err error) {
-				assert.Error(t, err)
+				is.True(err != nil)
 			},
 		},
 	}
@@ -202,36 +210,36 @@ func TestParse_TLSConfig(t *testing.T) {
 }
 
 func TestParse_InvalidDeliveryTimeout(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(map[string]string{
 		Servers:         "localhost:9092",
 		Topic:           "hello-world-topic",
 		DeliveryTimeout: "nope, no integer here",
 	})
-	assert.Error(t, err)
-	assert.Equal(
-		t,
+	is.True(err != nil)
+	is.Equal(
 		`invalid delivery timeout: duration cannot be parsed: time: invalid duration "nope, no integer here"`,
 		err.Error(),
 	)
-	assert.Equal(t, Config{}, parsed)
+	is.Equal(Config{}, parsed)
 }
 
 func TestParse_ZeroDeliveryTimeout(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(map[string]string{
 		Servers:         "localhost:9092",
 		Topic:           "hello-world-topic",
 		DeliveryTimeout: "0ms",
 	})
-	assert.Error(t, err)
-	assert.True(
-		t,
+	is.True(err != nil)
+	is.True(
 		strings.HasPrefix(err.Error(), "invalid delivery timeout: has to be > 0ms"),
-		"expected different error msg",
 	)
-	assert.Equal(t, Config{}, parsed)
+	is.Equal(Config{}, parsed)
 }
 
 func TestParse_Full(t *testing.T) {
+	is := is.New(t)
 	parsed, err := Parse(map[string]string{
 		Servers:           "localhost:9092",
 		Topic:             "hello-world-topic",
@@ -244,18 +252,19 @@ func TestParse_Full(t *testing.T) {
 		CACert:            "CACert",
 	})
 
-	assert.Ok(t, err)
-	assert.Equal(t, []string{"localhost:9092"}, parsed.Servers)
-	assert.Equal(t, "hello-world-topic", parsed.Topic)
-	assert.Equal(t, kafka.RequireAll, parsed.Acks)
-	assert.Equal(t, int64(1002), parsed.DeliveryTimeout.Milliseconds())
-	assert.Equal(t, true, parsed.ReadFromBeginning)
-	assert.Equal(t, "ClientCert", parsed.ClientCert)
-	assert.Equal(t, "ClientKey", parsed.ClientKey)
-	assert.Equal(t, "CACert", parsed.CACert)
+	is.NoErr(err)
+	is.Equal([]string{"localhost:9092"}, parsed.Servers)
+	is.Equal("hello-world-topic", parsed.Topic)
+	is.Equal(kafka.RequireAll, parsed.Acks)
+	is.Equal(int64(1002), parsed.DeliveryTimeout.Milliseconds())
+	is.Equal(true, parsed.ReadFromBeginning)
+	is.Equal("ClientCert", parsed.ClientCert)
+	is.Equal("ClientKey", parsed.ClientKey)
+	is.Equal("CACert", parsed.CACert)
 }
 
 func TestParse_Ack(t *testing.T) {
+	is := is.New(t)
 	testCases := []struct {
 		name     string
 		ackInput string
@@ -307,12 +316,12 @@ func TestParse_Ack(t *testing.T) {
 				Acks:    tc.ackInput,
 			})
 			if tc.err != "" {
-				assert.Error(t, err)
+				is.True(err != nil)
 				// todo without string comparisons
-				assert.Equal(t, tc.err, err.Error())
+				is.Equal(tc.err, err.Error())
 			} else {
-				assert.Ok(t, err)
-				assert.Equal(t, tc.ackExp, parsed.Acks)
+				is.NoErr(err)
+				is.Equal(tc.ackExp, parsed.Acks)
 			}
 		})
 	}

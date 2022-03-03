@@ -1,34 +1,33 @@
-module github.com/conduitio/conduit-plugin-kafka
+module github.com/conduitio/conduit-connector-kafka
 
 go 1.17
 
 require (
-	github.com/conduitio/conduit-plugin-sdk v0.0.0-20220301133352-f8528ba3f87f
+	github.com/conduitio/conduit-connector-sdk v0.0.0-20220302183659-cde4aa4147ae
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/segmentio/kafka-go v0.4.28
+	github.com/matryer/is v1.4.0
+	github.com/segmentio/kafka-go v0.4.29
 )
 
 require (
-	github.com/conduitio/conduit-plugin-protocol v0.0.0-20220301130721-cbefccd064ea // indirect
+	github.com/conduitio/conduit-connector-protocol v0.0.0-20220302182649-4f4c215c2b83 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/hashicorp/go-hclog v1.1.0 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/jhump/protoreflect v1.10.2-0.20220118162304-602a8db873e3 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/klauspost/compress v1.14.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
+	github.com/klauspost/compress v1.14.2 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
-	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
+	github.com/pierrec/lz4/v4 v4.1.14 // indirect
 	github.com/rs/zerolog v1.26.1 // indirect
-	go.buf.build/library/go-grpc/conduitio/conduit-plugin-protocol v1.4.1 // indirect
+	go.buf.build/library/go-grpc/conduitio/conduit-connector-protocol v1.4.1 // indirect
 	golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/text v0.3.7 // indirect

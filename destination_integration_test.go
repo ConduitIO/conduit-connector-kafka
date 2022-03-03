@@ -20,15 +20,16 @@ import (
 	"testing"
 	"time"
 
-	kafka "github.com/conduitio/conduit-plugin-kafka"
-	"github.com/conduitio/conduit-plugin-kafka/assert"
-	sdk "github.com/conduitio/conduit-plugin-sdk"
+	kafka "github.com/conduitio/conduit-connector-kafka"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
+	"github.com/matryer/is"
 	skafka "github.com/segmentio/kafka-go"
 )
 
 // todo try optimizing, the test takes 15 seconds to run!
 func TestDestination_Write_Simple(t *testing.T) {
+	is := is.New(t)
 	// prepare test data
 	cfg := newTestConfig(t)
 	createTopic(t, cfg[kafka.Topic])
@@ -37,22 +38,22 @@ func TestDestination_Write_Simple(t *testing.T) {
 	// prepare SUT
 	underTest := kafka.Destination{}
 	err := underTest.Configure(context.Background(), cfg)
-	assert.Ok(t, err)
+	is.NoErr(err)
 
 	err = underTest.Open(context.Background())
 	defer func(underTest *kafka.Destination, ctx context.Context) {
 		err := underTest.Teardown(ctx)
-		assert.Ok(t, err)
+		is.NoErr(err)
 	}(&underTest, context.Background())
-	assert.Ok(t, err)
+	is.NoErr(err)
 
 	// act and assert
 	err = underTest.Write(context.Background(), record)
-	assert.Ok(t, err)
+	is.NoErr(err)
 
 	message, err := waitForReaderMessage(cfg[kafka.Topic], 15*time.Second)
-	assert.Ok(t, err)
-	assert.Equal(t, record.Payload.Bytes(), message.Value)
+	is.NoErr(err)
+	is.Equal(record.Payload.Bytes(), message.Value)
 }
 
 func waitForReaderMessage(topic string, timeout time.Duration) (skafka.Message, error) {

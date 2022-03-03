@@ -22,13 +22,14 @@ import (
 	"testing"
 	"time"
 
-	kafka "github.com/conduitio/conduit-plugin-kafka"
-	"github.com/conduitio/conduit-plugin-kafka/assert"
+	kafka "github.com/conduitio/conduit-connector-kafka"
 	"github.com/google/uuid"
+	"github.com/matryer/is"
 	skafka "github.com/segmentio/kafka-go"
 )
 
 func TestConsumer_Get_FromBeginning(t *testing.T) {
+	is := is.New(t)
 	t.Parallel()
 
 	cfg := kafka.Config{
@@ -40,11 +41,11 @@ func TestConsumer_Get_FromBeginning(t *testing.T) {
 	sendTestMessages(t, cfg, 1, 6)
 
 	consumer, err := kafka.NewConsumer()
-	assert.Ok(t, err)
+	is.NoErr(err)
 	defer consumer.Close()
 
 	err = consumer.StartFrom(cfg, uuid.NewString())
-	assert.Ok(t, err)
+	is.NoErr(err)
 	time.Sleep(5 * time.Second)
 
 	messagesUnseen := map[string]bool{
@@ -57,14 +58,15 @@ func TestConsumer_Get_FromBeginning(t *testing.T) {
 	}
 	for i := 1; i <= 6; i++ {
 		message, _, err := waitForMessage(consumer, 200*time.Millisecond)
-		assert.NotNil(t, message)
-		assert.Ok(t, err)
+		is.True(message != nil)
+		is.NoErr(err)
 		delete(messagesUnseen, string(message.Key))
 	}
-	assert.Equal(t, 0, len(messagesUnseen))
+	is.Equal(0, len(messagesUnseen))
 }
 
 func TestConsumer_Get_OnlyNew(t *testing.T) {
+	is := is.New(t)
 	t.Parallel()
 
 	cfg := kafka.Config{
@@ -76,11 +78,11 @@ func TestConsumer_Get_OnlyNew(t *testing.T) {
 	sendTestMessages(t, cfg, 1, 6)
 
 	consumer, err := kafka.NewConsumer()
-	assert.Ok(t, err)
+	is.NoErr(err)
 	defer consumer.Close()
 
 	err = consumer.StartFrom(cfg, uuid.NewString())
-	assert.Ok(t, err)
+	is.NoErr(err)
 	time.Sleep(4 * time.Second)
 
 	sendTestMessages(t, cfg, 7, 9)
@@ -92,11 +94,11 @@ func TestConsumer_Get_OnlyNew(t *testing.T) {
 	}
 	for i := 1; i <= 3; i++ {
 		message, _, err := waitForMessage(consumer, 200*time.Millisecond)
-		assert.NotNil(t, message)
-		assert.Ok(t, err)
+		is.True(message != nil)
+		is.NoErr(err)
 		delete(messagesUnseen, string(message.Key))
 	}
-	assert.Equal(t, 0, len(messagesUnseen))
+	is.Equal(0, len(messagesUnseen))
 }
 
 func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Message, string, error) {
@@ -124,6 +126,7 @@ func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Mes
 }
 
 func sendTestMessages(t *testing.T, cfg kafka.Config, from int, to int) {
+	is := is.New(t)
 	writer := skafka.Writer{
 		Addr:         skafka.TCP(cfg.Servers...),
 		Topic:        cfg.Topic,
@@ -141,7 +144,7 @@ func sendTestMessages(t *testing.T, cfg kafka.Config, from int, to int) {
 			fmt.Sprintf("test-key-%d", i),
 			fmt.Sprintf("test-payload-%d", i),
 		)
-		assert.Ok(t, err)
+		is.NoErr(err)
 	}
 }
 
@@ -156,30 +159,31 @@ func sendTestMessage(writer *skafka.Writer, key string, payload string) error {
 }
 
 func TestGet_KafkaDown(t *testing.T) {
+	is := is.New(t)
 	t.Parallel()
 
 	cfg := kafka.Config{Topic: "client_integration_test_topic", Servers: []string{"localhost:12345"}}
 	consumer, err := kafka.NewConsumer()
-	assert.Ok(t, err)
+	is.NoErr(err)
 
 	err = consumer.StartFrom(cfg, "")
-	assert.Ok(t, err)
+	is.NoErr(err)
 
 	msg, _, err := consumer.Get(context.Background())
-	assert.Nil(t, msg)
+	is.True(msg == nil)
 	var cause *net.OpError
-	as := errors.As(err, &cause)
-	assert.True(t, as, "expected net.OpError")
-	assert.Equal(t, "dial", cause.Op)
-	assert.Equal(t, "tcp", cause.Net)
+	is.True(errors.As(err, &cause))
+	is.Equal("dial", cause.Op)
+	is.Equal("tcp", cause.Net)
 }
 
 func createTopic(t *testing.T, topic string) {
+	is := is.New(t)
 	c, err := skafka.Dial("tcp", "localhost:9092")
-	assert.Ok(t, err)
+	is.NoErr(err)
 	defer c.Close()
 
 	kt := skafka.TopicConfig{Topic: topic, NumPartitions: 3, ReplicationFactor: 1}
 	err = c.CreateTopics(kt)
-	assert.Ok(t, err)
+	is.NoErr(err)
 }

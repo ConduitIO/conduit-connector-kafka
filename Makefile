@@ -1,7 +1,7 @@
 .PHONY: build test
 
 build:
-	go build -o conduit-plugin-kafka cmd/kafka/main.go
+	go build -o conduit-connector-kafka cmd/kafka/main.go
 
 test:
 	# run required docker containers, execute integration tests, stop containers after tests
