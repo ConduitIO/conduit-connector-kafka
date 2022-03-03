@@ -52,10 +52,15 @@ type Config struct {
 	// Read all messages present in a source topic.
 	// Default value: false (only new messages are read)
 	ReadFromBeginning bool
-	// TLS
-	ClientCert         string
-	ClientKey          string
-	CACert             string
+	// TLS section
+	// The Kafka client's certificate
+	ClientCert string
+	// The Kafka client's private key
+	ClientKey string
+	// The Kafka broker's certificate
+	CACert string
+	// Whether or not to validate the broker's certificate chain and host name.
+	// If `true`, accepts any certificate presented by the server and any host name in that certificate.
 	InsecureSkipVerify bool
 }
 
