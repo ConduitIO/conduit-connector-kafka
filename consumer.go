@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -42,7 +43,7 @@ type Consumer interface {
 	Ack() error
 
 	// Close this consumer and the associated resources (e.g. connections to the broker)
-	Close()
+	Close() error
 }
 
 type segmentConsumer struct {
@@ -119,15 +120,18 @@ func (c *segmentConsumer) Ack() error {
 	return nil
 }
 
-func (c *segmentConsumer) Close() {
+func (c *segmentConsumer) Close() error {
 	if c.reader == nil {
-		return
+		return nil
 	}
 	// this will also make the loops in the reader goroutines stop
 	err := c.reader.Close()
 	if err != nil {
-		fmt.Printf("couldn't close reader: %v\n", err)
+		sdk.Logger(context.Background()).Err(err).Msg("couldn't close reader")
+		return fmt.Errorf("couldn't close reader: %v\n", err)
 	}
+
+	return nil
 }
 
 func (c *segmentConsumer) readerID() string {
