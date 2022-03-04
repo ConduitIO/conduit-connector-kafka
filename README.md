@@ -3,7 +3,7 @@ The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) bu
 It provides both, a source and a destination Kafka connector.
 
 ### How to build it
-Run `make build`.
+Run `make`.
 
 ### Testing
 Run `make test` to run all the unit and integration tests, which require Docker to be installed
