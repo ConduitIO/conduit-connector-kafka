@@ -29,7 +29,7 @@ type Producer interface {
 	Send(key []byte, payload []byte) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
-	Close()
+	Close() error
 }
 
 type segmentProducer struct {
@@ -82,8 +82,15 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	return nil
 }
 
-func (c *segmentProducer) Close() {
-	if c.writer != nil {
-		c.writer.Close()
+func (c *segmentProducer) Close() error {
+	if c.writer == nil {
+		return nil
 	}
+	// this will also make the loops in the reader goroutines stop
+	err := c.writer.Close()
+	if err != nil {
+		return fmt.Errorf("couldn't close writer: %w", err)
+	}
+
+	return nil
 }
