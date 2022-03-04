@@ -1,3 +1,5 @@
+# Conduit Connector Kafka
+
 ### General
 The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) builtin plugins.
 It provides both, a source and a destination Kafka connector.
