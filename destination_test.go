@@ -65,7 +65,7 @@ func TestTeardown_ClosesClient(t *testing.T) {
 	clientMock.
 		EXPECT().
 		Close().
-		Return()
+		Return(nil)
 
 	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
 	is.NoErr(underTest.Teardown(context.Background()))
