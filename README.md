@@ -1,9 +1,19 @@
-### General
-The Conduit Kafka plugin provides both, a source and a destination Kafka connector, for Conduit.
+# Conduit Connector Kafka
 
-### How it works?
-Under the hood, the plugin uses [Segment's Go Client for Apache Kafka(tm)](https://github.com/segmentio/kafka-go). It was 
-chosen since it has no CGo dependency, making it possible to build the plugin for a wider range of platforms and architectures.
+### General
+The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) builtin plugins.
+It provides both, a source and a destination Kafka connector.
+
+### How to build it
+Run `make`.
+
+### Testing
+Run `make test` to run all the unit and integration tests, which require Docker to be installed
+and running. The command will handle starting and stopping docker containers for you.
+
+### How it works
+Under the hood, the connector uses [Segment's Go Client for Apache Kafka(tm)](https://github.com/segmentio/kafka-go). It was 
+chosen since it has no CGo dependency, making it possible to build the connector for a wider range of platforms and architectures.
 It also supports contexts, which will likely use in the future.
 
 #### Source
@@ -16,19 +26,10 @@ A source is getting associated with a consumer group ID the first time the `Read
 
 #### Destination
 The destination connector uses **synchronous** writes to Kafka. Proper buffering support which will enable asynchronous 
-(and more optimal) writes is planned. 
-
-### How to build?
-Run `make build-kafka-plugin`.
-
-### Testing
-Run `make test` to run all the unit tests. Run `make test-integration` to run the integration tests.
-
-The integration tests assume that an instance of Kafka at `localhost:9092` is running.
-The Docker compose file at `test/docker-compose.yml` can be used to quickly start a Kafka instance. 
+(and more optimal) writes is planned.
 
 ### Configuration
-There's no global, plugin configuration. Each connector instance is configured separately. 
+There's no global, connector configuration. Each connector instance is configured separately. 
 
 | name                 | part of             | description                                                                                                                                                                        | required | default value |
 |----------------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
@@ -41,6 +42,3 @@ There's no global, plugin configuration. Each connector instance is configured s
 | `clientKey`          | destination, source | A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.                                                                          | false    |               |
 | `caCert`             | destination, source | The Kafka broker's certificate, in PEM format.                                                                                                                                     | false    |               |
 | `insecureSkipVerify` | destination, source | Controls whether a client verifies the server's certificate chain and host name. If `true`, accepts any certificate presented by the server and any host name in that certificate. | false    | `false`       |
-
-### Planned work
-The planned work is tracked through [GitHub issues](https://github.com/ConduitIO/conduit/issues?q=is%3Aopen+label%3Aplugin%3Akafka).
