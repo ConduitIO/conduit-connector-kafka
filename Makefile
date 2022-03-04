@@ -10,3 +10,8 @@ test:
 		docker compose -f test/docker-compose-kafka.yml down; \
 		exit $$ret
 
+generate:
+	go generate ./...
+
+lint:
+	golangci-lint run

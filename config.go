@@ -25,12 +25,16 @@ import (
 )
 
 const (
-	Servers           = "servers"
-	Topic             = "topic"
-	SecurityProtocol  = "securityProtocol"
-	Acks              = "acks"
-	DeliveryTimeout   = "deliveryTimeout"
-	ReadFromBeginning = "readFromBeginning"
+	Servers            = "servers"
+	Topic              = "topic"
+	SecurityProtocol   = "securityProtocol"
+	Acks               = "acks"
+	DeliveryTimeout    = "deliveryTimeout"
+	ReadFromBeginning  = "readFromBeginning"
+	ClientCert         = "clientCert"
+	ClientKey          = "clientKey"
+	CACert             = "caCert"
+	InsecureSkipVerify = "insecureSkipVerify"
 )
 
 var Required = []string{Servers, Topic}
@@ -48,6 +52,16 @@ type Config struct {
 	// Read all messages present in a source topic.
 	// Default value: false (only new messages are read)
 	ReadFromBeginning bool
+	// TLS section
+	// The Kafka client's certificate
+	ClientCert string
+	// The Kafka client's private key
+	ClientKey string
+	// The Kafka broker's certificate
+	CACert string
+	// Whether or not to validate the broker's certificate chain and host name.
+	// If `true`, accepts any certificate presented by the server and any host name in that certificate.
+	InsecureSkipVerify bool
 }
 
 func Parse(cfg map[string]string) (Config, error) {
@@ -89,7 +103,44 @@ func Parse(cfg map[string]string) (Config, error) {
 		return Config{}, errors.New("invalid delivery timeout: has to be > 0ms")
 	}
 	parsed.DeliveryTimeout = timeout
+
+	err = setTLSConfigs(&parsed, cfg)
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid TLS config: %w", err)
+	}
 	return parsed, nil
+}
+
+func setTLSConfigs(parsed *Config, cfg map[string]string) error {
+	// Get client TLS settings
+	var missingClient []string
+	if cfg[ClientCert] == "" {
+		missingClient = append(missingClient, ClientCert)
+	}
+	if cfg[ClientKey] == "" {
+		missingClient = append(missingClient, ClientKey)
+	}
+	if len(missingClient) == 1 {
+		return fmt.Errorf("client TLS configuration incomplete, %v is missing", missingClient[0])
+	}
+	parsed.ClientCert = cfg[ClientCert]
+	parsed.ClientKey = cfg[ClientKey]
+
+	// Get server CA
+	if caCert, ok := cfg[CACert]; ok {
+		parsed.CACert = caCert
+	}
+
+	// Parse InsecureSkipVerify, default is 'false'
+	insecureString, ok := cfg[InsecureSkipVerify]
+	if ok {
+		insecure, err := strconv.ParseBool(insecureString)
+		if err != nil {
+			return fmt.Errorf("value %q for InsecureSkipVerify is not valid", insecureString)
+		}
+		parsed.InsecureSkipVerify = insecure
+	}
+	return nil
 }
 
 func parseAcks(ack string) (kafka.RequiredAcks, error) {
