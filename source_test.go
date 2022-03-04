@@ -52,7 +52,7 @@ func TestTeardownSource_ClosesClient(t *testing.T) {
 	consumerMock.
 		EXPECT().
 		Close().
-		Return()
+		Return(nil)
 
 	underTest := kafka.Source{Consumer: consumerMock, Config: connectorCfg()}
 	is.NoErr(underTest.Teardown(context.Background()))

@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -43,7 +42,7 @@ type Consumer interface {
 	Ack() error
 
 	// Close this consumer and the associated resources (e.g. connections to the broker)
-	Close()
+	Close() error
 }
 
 type segmentConsumer struct {
@@ -66,11 +65,15 @@ func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
 	if config.Topic == "" {
 		return ErrTopicMissing
 	}
-	c.reader = newReader(config, groupID)
+	reader, err := newReader(config, groupID)
+	if err != nil {
+		return fmt.Errorf("couldn't create reader: %w", err)
+	}
+	c.reader = reader
 	return nil
 }
 
-func newReader(cfg Config, groupID string) *kafka.Reader {
+func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 	readerCfg := kafka.ReaderConfig{
 		Brokers:               cfg.Servers,
 		Topic:                 cfg.Topic,
@@ -88,7 +91,15 @@ func newReader(cfg Config, groupID string) *kafka.Reader {
 	} else {
 		readerCfg.StartOffset = kafka.LastOffset
 	}
-	return kafka.NewReader(readerCfg)
+	// TLS config
+	if cfg.ClientCert != "" {
+		dialer, err := newTLSDialer(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't create dialer: %w", err)
+		}
+		readerCfg.Dialer = dialer
+	}
+	return kafka.NewReader(readerCfg), nil
 }
 
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {
@@ -108,15 +119,17 @@ func (c *segmentConsumer) Ack() error {
 	return nil
 }
 
-func (c *segmentConsumer) Close() {
+func (c *segmentConsumer) Close() error {
 	if c.reader == nil {
-		return
+		return nil
 	}
 	// this will also make the loops in the reader goroutines stop
 	err := c.reader.Close()
 	if err != nil {
-		sdk.Logger(context.Background()).Err(err).Msg("couldn't close reader")
+		return fmt.Errorf("couldn't close reader: %w", err)
 	}
+
+	return nil
 }
 
 func (c *segmentConsumer) readerID() string {

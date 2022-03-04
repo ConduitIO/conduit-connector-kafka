@@ -48,6 +48,26 @@ func Specification() sdk.Specification {
 				Required:    false,
 				Description: "Message delivery timeout.",
 			},
+			"clientCert": {
+				Default:     "",
+				Required:    false,
+				Description: "A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.",
+			},
+			"clientKey": {
+				Default:     "",
+				Required:    false,
+				Description: "A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.",
+			},
+			"caCert": {
+				Default:     "",
+				Required:    false,
+				Description: "The Kafka broker's certificate, in PEM format.",
+			},
+			"insecureSkipVerify": {
+				Default:     "false",
+				Required:    false,
+				Description: "",
+			},
 		},
 		SourceParams: map[string]sdk.Parameter{
 			"servers": {
@@ -64,6 +84,27 @@ func Specification() sdk.Specification {
 				Default:     "false",
 				Required:    false,
 				Description: "Whether or not to read a topic from beginning (i.e. existing messages or only new messages).",
+			},
+			"clientCert": {
+				Default:     "",
+				Required:    false,
+				Description: "A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.",
+			},
+			"clientKey": {
+				Default:     "",
+				Required:    false,
+				Description: "A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.",
+			},
+			"caCert": {
+				Default:     "",
+				Required:    false,
+				Description: "The Kafka broker's certificate, in PEM format.",
+			},
+			"insecureSkipVerify": {
+				Default:  "false",
+				Required: false,
+				Description: "Controls whether a client verifies the server's certificate chain and host name. " +
+					"If `true`, accepts any certificate presented by the server and any host name in that certificate.",
 			},
 		},
 	}

@@ -29,7 +29,7 @@ type Producer interface {
 	Send(key []byte, payload []byte) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
-	Close()
+	Close() error
 }
 
 type segmentProducer struct {
@@ -38,23 +38,31 @@ type segmentProducer struct {
 
 // NewProducer creates a new Kafka producer.
 // The current implementation uses Segment's kafka-go client.
-func NewProducer(config Config) (Producer, error) {
-	if len(config.Servers) == 0 {
+func NewProducer(cfg Config) (Producer, error) {
+	if len(cfg.Servers) == 0 {
 		return nil, ErrServersMissing
 	}
-	if config.Topic == "" {
+	if cfg.Topic == "" {
 		return nil, ErrTopicMissing
 	}
 
 	writer := &kafka.Writer{
-		Addr:         kafka.TCP(config.Servers...),
-		Topic:        config.Topic,
+		Addr:         kafka.TCP(cfg.Servers...),
+		Topic:        cfg.Topic,
 		BatchSize:    1,
-		WriteTimeout: config.DeliveryTimeout,
-		RequiredAcks: config.Acks,
+		WriteTimeout: cfg.DeliveryTimeout,
+		RequiredAcks: cfg.Acks,
 		MaxAttempts:  3,
-		// todo use a secure transport
-		// Transport: nil,
+	}
+	// TLS config
+	if cfg.ClientCert != "" {
+		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
+		if err != nil {
+			return nil, fmt.Errorf("invalid TLS config: %w", err)
+		}
+		writer.Transport = &kafka.Transport{
+			TLS: tlsCfg,
+		}
 	}
 	return &segmentProducer{writer: writer}, nil
 }
@@ -74,8 +82,15 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	return nil
 }
 
-func (c *segmentProducer) Close() {
-	if c.writer != nil {
-		c.writer.Close()
+func (c *segmentProducer) Close() error {
+	if c.writer == nil {
+		return nil
 	}
+	// this will also make the loops in the reader goroutines stop
+	err := c.writer.Close()
+	if err != nil {
+		return fmt.Errorf("couldn't close writer: %w", err)
+	}
+
+	return nil
 }
