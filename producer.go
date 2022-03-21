@@ -60,9 +60,14 @@ func NewProducer(cfg Config) (Producer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid TLS config: %w", err)
 		}
-		writer.Transport = &kafka.Transport{
+		transport := &kafka.Transport{
 			TLS: tlsCfg,
 		}
+		// todo move out
+		if cfg.saslEnabled() {
+			transportWithSASL(transport, cfg)
+		}
+		writer.Transport = transport
 	}
 	return &segmentProducer{writer: writer}, nil
 }

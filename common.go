@@ -17,9 +17,11 @@ package kafka
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 func newTLSDialer(cfg Config) (*kafka.Dialer, error) {
@@ -50,4 +52,33 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 
 	tlsConfig.InsecureSkipVerify = serverNoVerify
 	return &tlsConfig, err
+}
+
+func dialerWithSASL(dialer *kafka.Dialer, cfg Config) error {
+	if dialer == nil {
+		return errors.New("dialer cannot be nil")
+	}
+	if !cfg.saslEnabled() {
+		return errors.New("input config has no SASL parameters")
+	}
+	dialer.SASLMechanism = getSASLMechanism(cfg)
+	return nil
+}
+
+func getSASLMechanism(cfg Config) plain.Mechanism {
+	return plain.Mechanism{
+		Username: cfg.SASLUsername,
+		Password: cfg.SASLPassword,
+	}
+}
+
+func transportWithSASL(transport *kafka.Transport, cfg Config) error {
+	if transport == nil {
+		return errors.New("transport cannot be nil")
+	}
+	if !cfg.saslEnabled() {
+		return errors.New("input config has no SASL parameters")
+	}
+	transport.SASL = getSASLMechanism(cfg)
+	return nil
 }

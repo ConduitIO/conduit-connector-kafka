@@ -35,6 +35,8 @@ const (
 	ClientKey          = "clientKey"
 	CACert             = "caCert"
 	InsecureSkipVerify = "insecureSkipVerify"
+	SASLUsername       = "saslUsername"
+	SASLPassword       = "saslPassword"
 )
 
 var Required = []string{Servers, Topic}
@@ -62,6 +64,13 @@ type Config struct {
 	// Whether or not to validate the broker's certificate chain and host name.
 	// If `true`, accepts any certificate presented by the server and any host name in that certificate.
 	InsecureSkipVerify bool
+	// SASL section
+	SASLUsername string
+	SASLPassword string
+}
+
+func (c *Config) saslEnabled() bool {
+	return c.SASLUsername != "" && c.SASLPassword != ""
 }
 
 func Parse(cfg map[string]string) (Config, error) {
@@ -108,7 +117,27 @@ func Parse(cfg map[string]string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("invalid TLS config: %w", err)
 	}
+	err = setSASLConfigs(&parsed, cfg)
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid SASL config: %w", err)
+	}
 	return parsed, nil
+}
+
+func setSASLConfigs(parsed *Config, cfg map[string]string) error {
+	var missing []string
+	if cfg[SASLUsername] == "" {
+		missing = append(missing, SASLUsername)
+	}
+	if cfg[SASLPassword] == "" {
+		missing = append(missing, SASLPassword)
+	}
+	if len(missing) == 1 {
+		return fmt.Errorf("SASL configuration incomplete, %v is missing", missing[0])
+	}
+	parsed.SASLUsername = cfg[SASLUsername]
+	parsed.SASLPassword = cfg[SASLPassword]
+	return nil
 }
 
 func setTLSConfigs(parsed *Config, cfg map[string]string) error {

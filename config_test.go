@@ -250,6 +250,8 @@ func TestParse_Full(t *testing.T) {
 		ClientCert:        "ClientCert",
 		ClientKey:         "ClientKey",
 		CACert:            "CACert",
+		SASLUsername:      "test-username",
+		SASLPassword:      "test-password",
 	})
 
 	is.NoErr(err)
@@ -261,6 +263,8 @@ func TestParse_Full(t *testing.T) {
 	is.Equal("ClientCert", parsed.ClientCert)
 	is.Equal("ClientKey", parsed.ClientKey)
 	is.Equal("CACert", parsed.CACert)
+	is.Equal("test-username", parsed.SASLUsername)
+	is.Equal("test-password", parsed.SASLPassword)
 }
 
 func TestParse_Ack(t *testing.T) {

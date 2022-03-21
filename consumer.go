@@ -97,6 +97,11 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create dialer: %w", err)
 		}
+		// todo move out
+		if cfg.saslEnabled() {
+			dialerWithSASL(dialer, cfg)
+		}
+
 		readerCfg.Dialer = dialer
 	}
 	return kafka.NewReader(readerCfg), nil
