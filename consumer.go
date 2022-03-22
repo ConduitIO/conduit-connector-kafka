@@ -18,10 +18,12 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 // Consumer represents a Kafka consumer in a simplified form,
@@ -106,6 +108,33 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 		}
 	}
 	return kafka.NewReader(readerCfg), nil
+}
+
+func withTLS(readerCfg *kafka.ReaderConfig, cfg Config) error {
+	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
+	if err != nil {
+		return fmt.Errorf("invalid TLS config: %w", err)
+	}
+	if readerCfg.Dialer == nil {
+		readerCfg.Dialer = &kafka.Dialer{}
+	}
+	readerCfg.Dialer.DualStack = true
+	readerCfg.Dialer.TLS = tlsCfg
+	return nil
+}
+
+func withSASL(readerCfg *kafka.ReaderConfig, cfg Config) error {
+	if readerCfg.Dialer == nil {
+		readerCfg.Dialer = &kafka.Dialer{}
+	}
+	if !cfg.saslEnabled() {
+		return errors.New("input config has no SASL parameters")
+	}
+	readerCfg.Dialer.SASLMechanism = plain.Mechanism{
+		Username: cfg.SASLUsername,
+		Password: cfg.SASLPassword,
+	}
+	return nil
 }
 
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {

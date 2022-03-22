@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 type Producer interface {
@@ -46,6 +47,14 @@ func NewProducer(cfg Config) (Producer, error) {
 		return nil, ErrTopicMissing
 	}
 
+	writer, err := newWriter(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create writer: %w", err)
+	}
+	return &segmentProducer{writer: writer}, nil
+}
+
+func newWriter(cfg Config) (*kafka.Writer, error) {
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(cfg.Servers...),
 		Topic:        cfg.Topic,
@@ -54,22 +63,38 @@ func NewProducer(cfg Config) (Producer, error) {
 		RequiredAcks: cfg.Acks,
 		MaxAttempts:  3,
 	}
-	// TLS config
+	err := configureSecurity(cfg, writer)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't configure security: %w", err)
+	}
+	return writer, nil
+}
+
+func configureSecurity(cfg Config, writer *kafka.Writer) error {
+	// Nothing to do
+	if cfg.ClientCert == "" && !cfg.saslEnabled() {
+		return nil
+	}
+	transport := &kafka.Transport{}
+	// TLS settings
 	if cfg.ClientCert != "" {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 		if err != nil {
-			return nil, fmt.Errorf("invalid TLS config: %w", err)
+			return fmt.Errorf("invalid TLS config: %w", err)
 		}
-		transport := &kafka.Transport{
-			TLS: tlsCfg,
-		}
-		// todo move out
-		if cfg.saslEnabled() {
-			transportWithSASL(transport, cfg)
-		}
-		writer.Transport = transport
+		transport.TLS = tlsCfg
 	}
-	return &segmentProducer{writer: writer}, nil
+
+	// SASL
+	if cfg.saslEnabled() {
+		transport.SASL = plain.Mechanism{
+			Username: cfg.SASLUsername,
+			Password: cfg.SASLPassword,
+		}
+	}
+	writer.Transport = transport
+
+	return nil
 }
 
 func (c *segmentProducer) Send(key []byte, payload []byte) error {
