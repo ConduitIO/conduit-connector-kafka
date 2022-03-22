@@ -24,16 +24,17 @@ import (
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
-func newTLSDialer(cfg Config) (*kafka.Dialer, error) {
+func withTLS(readerCfg *kafka.ReaderConfig, cfg Config) error {
 	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 	if err != nil {
-		return nil, fmt.Errorf("invalid TLS config: %w", err)
+		return fmt.Errorf("invalid TLS config: %w", err)
 	}
-	return &kafka.Dialer{
-		ClientID:  "",
-		DualStack: true,
-		TLS:       tlsCfg,
-	}, nil
+	if readerCfg.Dialer == nil {
+		readerCfg.Dialer = &kafka.Dialer{}
+	}
+	readerCfg.Dialer.DualStack = true
+	readerCfg.Dialer.TLS = tlsCfg
+	return nil
 }
 
 func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*tls.Config, error) {
@@ -54,18 +55,18 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 	return &tlsConfig, err
 }
 
-func dialerWithSASL(dialer *kafka.Dialer, cfg Config) error {
-	if dialer == nil {
-		return errors.New("dialer cannot be nil")
+func withSASL(readerCfg *kafka.ReaderConfig, cfg Config) error {
+	if readerCfg.Dialer == nil {
+		readerCfg.Dialer = &kafka.Dialer{}
 	}
 	if !cfg.saslEnabled() {
 		return errors.New("input config has no SASL parameters")
 	}
-	dialer.SASLMechanism = getSASLMechanism(cfg)
+	readerCfg.Dialer.SASLMechanism = newSASLMechanism(cfg)
 	return nil
 }
 
-func getSASLMechanism(cfg Config) plain.Mechanism {
+func newSASLMechanism(cfg Config) plain.Mechanism {
 	return plain.Mechanism{
 		Username: cfg.SASLUsername,
 		Password: cfg.SASLPassword,
@@ -79,6 +80,6 @@ func transportWithSASL(transport *kafka.Transport, cfg Config) error {
 	if !cfg.saslEnabled() {
 		return errors.New("input config has no SASL parameters")
 	}
-	transport.SASL = getSASLMechanism(cfg)
+	transport.SASL = newSASLMechanism(cfg)
 	return nil
 }

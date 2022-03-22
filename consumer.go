@@ -93,16 +93,17 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 	}
 	// TLS config
 	if cfg.ClientCert != "" {
-		dialer, err := newTLSDialer(cfg)
+		err := withTLS(&readerCfg, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create dialer: %w", err)
 		}
-		// todo move out
-		if cfg.saslEnabled() {
-			dialerWithSASL(dialer, cfg)
+	}
+	// SASL
+	if cfg.saslEnabled() {
+		err := withSASL(&readerCfg, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't configure SASL: %w", err)
 		}
-
-		readerCfg.Dialer = dialer
 	}
 	return kafka.NewReader(readerCfg), nil
 }
