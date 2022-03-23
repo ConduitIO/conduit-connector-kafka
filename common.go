@@ -42,7 +42,7 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 	return &tlsConfig, err
 }
 
-func newSASLMechanism(mechanismString string, username string, password string) (sasl.Mechanism, error) {
+func newSASLMechanism(mechanismString, username, password string) (sasl.Mechanism, error) {
 	var mechanism sasl.Mechanism
 	switch mechanismString {
 	case "", "PLAIN":
