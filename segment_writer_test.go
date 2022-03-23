@@ -19,7 +19,6 @@ import (
 
 	"github.com/matryer/is"
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
@@ -87,9 +86,7 @@ func TestSegmentWriter_SASL_SCRAM_SHA_256(t *testing.T) {
 
 	mechanism := transport.SASL
 	is.True(mechanism != nil)
-	saslMechanism, ok := mechanism.(sasl.Mechanism)
-	is.True(ok)
-	is.Equal("SCRAM-SHA-256", saslMechanism.Name())
+	is.Equal("SCRAM-SHA-256", mechanism.Name())
 }
 
 func TestSegmentWriter_SASL_SCRAM_SHA_512(t *testing.T) {
@@ -109,7 +106,5 @@ func TestSegmentWriter_SASL_SCRAM_SHA_512(t *testing.T) {
 
 	mechanism := transport.SASL
 	is.True(mechanism != nil)
-	saslMechanism, ok := mechanism.(sasl.Mechanism)
-	is.True(ok)
-	is.Equal("SCRAM-SHA-512", saslMechanism.Name())
+	is.Equal("SCRAM-SHA-512", mechanism.Name())
 }
