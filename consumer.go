@@ -23,9 +23,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl"
-	"github.com/segmentio/kafka-go/sasl/plain"
-	"github.com/segmentio/kafka-go/sasl/scram"
 )
 
 // Consumer represents a Kafka consumer in a simplified form,
@@ -132,40 +129,12 @@ func withSASL(readerCfg *kafka.ReaderConfig, cfg Config) error {
 	if !cfg.saslEnabled() {
 		return errors.New("input config has no SASL parameters")
 	}
-	var mechanism sasl.Mechanism
-	switch cfg.SASLMechanism {
-	case "", "PLAIN":
-		mechanism = plain.Mechanism{
-			Username: cfg.SASLUsername,
-			Password: cfg.SASLPassword,
-		}
-	default:
-		m, err := newScramMechanism(cfg.SASLMechanism, cfg.SASLUsername, cfg.SASLPassword)
-		if err != nil {
-			return fmt.Errorf("couldn't configure SASL/SCRAM with %v due to: %w", cfg.SASLMechanism, err)
-		}
-		mechanism = m
+	mechanism, err := newSASLMechanism(cfg.SASLMechanism, cfg.SASLUsername, cfg.SASLPassword)
+	if err != nil {
+		return fmt.Errorf("couldn't configure SASL mechanism: %w", err)
 	}
-
 	readerCfg.Dialer.SASLMechanism = mechanism
 	return nil
-}
-
-func newScramMechanism(mechanism, username, password string) (sasl.Mechanism, error) {
-	var algo scram.Algorithm
-	switch mechanism {
-	case "SCRAM-SHA-256":
-		algo = scram.SHA256
-	case "SCRAM-SHA-512":
-		algo = scram.SHA512
-	default:
-		return nil, fmt.Errorf("unknown mechanism %q", mechanism)
-	}
-	m, err := scram.Mechanism(algo, username, password)
-	if err != nil {
-		return nil, fmt.Errorf("error creating %v mechanism: %w", mechanism, err)
-	}
-	return m, nil
 }
 
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {

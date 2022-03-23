@@ -19,6 +19,7 @@ import (
 
 	"github.com/matryer/is"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
@@ -46,7 +47,7 @@ func TestSegmentWriter_TLSOnly(t *testing.T) {
 	is.True(transport.TLS.InsecureSkipVerify == config.InsecureSkipVerify)
 }
 
-func TestSegmentWriter_SASLOnly(t *testing.T) {
+func TestSegmentWriter_SASL_Plain(t *testing.T) {
 	is := is.New(t)
 	config := Config{
 		Servers:      []string{"test-host:9092"},
@@ -67,4 +68,48 @@ func TestSegmentWriter_SASLOnly(t *testing.T) {
 	is.True(ok)
 	is.Equal(config.SASLUsername, plainMechanism.Username)
 	is.Equal(config.SASLPassword, plainMechanism.Password)
+}
+
+func TestSegmentWriter_SASL_SCRAM_SHA_256(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "SCRAM-SHA-256",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
+	}
+	underTest, err := newWriter(config)
+	is.NoErr(err)
+
+	transport, ok := underTest.Transport.(*kafka.Transport)
+	is.True(ok)
+
+	mechanism := transport.SASL
+	is.True(mechanism != nil)
+	saslMechanism, ok := mechanism.(sasl.Mechanism)
+	is.True(ok)
+	is.Equal("SCRAM-SHA-256", saslMechanism.Name())
+}
+
+func TestSegmentWriter_SASL_SCRAM_SHA_512(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "SCRAM-SHA-512",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
+	}
+	underTest, err := newWriter(config)
+	is.NoErr(err)
+
+	transport, ok := underTest.Transport.(*kafka.Transport)
+	is.True(ok)
+
+	mechanism := transport.SASL
+	is.True(mechanism != nil)
+	saslMechanism, ok := mechanism.(sasl.Mechanism)
+	is.True(ok)
+	is.Equal("SCRAM-SHA-512", saslMechanism.Name())
 }

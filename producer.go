@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 type Producer interface {
@@ -87,10 +86,11 @@ func configureSecurity(cfg Config, writer *kafka.Writer) error {
 
 	// SASL
 	if cfg.saslEnabled() {
-		transport.SASL = plain.Mechanism{
-			Username: cfg.SASLUsername,
-			Password: cfg.SASLPassword,
+		mechanism, err := newSASLMechanism(cfg.SASLMechanism, cfg.SASLUsername, cfg.SASLPassword)
+		if err != nil {
+			return fmt.Errorf("couldn't configure SASL: %w", err)
 		}
+		transport.SASL = mechanism
 	}
 	writer.Transport = transport
 

@@ -22,7 +22,7 @@ import (
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
-func TestSegmentConsumer_TLSOnly(t *testing.T) {
+func TestSegmentReader_TLSOnly(t *testing.T) {
 	is := is.New(t)
 
 	caCert := "Bag Attributes\n    friendlyName: caroot\n    2.16.840.1.113894.746875.1.1: <Unsupported tag 6>\nsubject=/CN=localhost/OU=CIA/O=REA/L=Melbourne/C=AU\nissuer=/CN=localhost/OU=CIA/O=REA/L=Melbourne/C=AU\n-----BEGIN CERTIFICATE-----\nMIIDHjCCAgYCCQC9iilqJUAoxzANBgkqhkiG9w0BAQsFADBRMRIwEAYDVQQDDAls\nb2NhbGhvc3QxDDAKBgNVBAsMA0NJQTEMMAoGA1UECgwDUkVBMRIwEAYDVQQHDAlN\nZWxib3VybmUxCzAJBgNVBAYTAkFVMB4XDTIyMDMyMTEyNDcyNloXDTQ5MDgwNTEy\nNDcyNlowUTESMBAGA1UEAwwJbG9jYWxob3N0MQwwCgYDVQQLDANDSUExDDAKBgNV\nBAoMA1JFQTESMBAGA1UEBwwJTWVsYm91cm5lMQswCQYDVQQGEwJBVTCCASIwDQYJ\nKoZIhvcNAQEBBQADggEPADCCAQoCggEBAK8eUXQWIEvqH6gWg9CyU1FZ9I5ZfeSz\n5BgEwQelG3YRiBmN4MXQmVErvy8JEdC9AbDdNvwsWlBD1xoWC0S2Q2qMhF6M03ny\nrrx0OwKNxdNwZvrMCin6adVS66x4R83X/YprZiS0fMtZHnrPsEVZxw7QSObGPnUV\nqinVqZh4Mo2N7tbxYa6ZALXgDf0yXbzGOGENuEaw9+5H01+6wDAwoxmm3pgQ0bF1\nyrqGh6P5ePtbaI6C+WBW/u0HgXUgyJaQA3vZIS6cOnwf76osPkFiCp5LtjTWblBd\nBwEmjtMu4n6/QEsUNM93lP/iJ7y8LWGrMFxL1700KFWlkJ8CIbpdjH0CAwEAATAN\nBgkqhkiG9w0BAQsFAAOCAQEAAJXIy4onOdKSceG3gjJHjCIZf74/Ka7rIhCnVyn1\n/EiTub70Df1b2vsPl25axv3ujMETubUzSzyyRSQ/5o61T5nZXPmmbTtU/7f1lLWk\n6tiHyKRCPd6InLnGFqhjmKp052LCwX0ZqUy2x+/uXxrYI7+wcB9QpDQsw4nnfDhb\nkym8hzUIu6IST1TbHFD7NoTA1L/qVlVQ8Sj6XVGQKmwBPxX/i1wHFTDrnS4uskvK\nFkPUsd6OmYbguwS3Ktj40C/pV3Z5OS/kR4+pO349I+b42ImzWxpgMRSVuI4y0Lvk\nm6GdbnJPvzqZT5yZmv05j6LQXkm5ugqPmOARMKrSrWACUA==\n-----END CERTIFICATE-----\n"
@@ -45,7 +45,7 @@ func TestSegmentConsumer_TLSOnly(t *testing.T) {
 	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
 }
 
-func TestSegmentConsumer_SASL_Plain(t *testing.T) {
+func TestSegmentReader_SASL_Plain(t *testing.T) {
 	is := is.New(t)
 	config := Config{
 		Servers:      []string{"test-host:9092"},
@@ -64,7 +64,7 @@ func TestSegmentConsumer_SASL_Plain(t *testing.T) {
 	is.Equal(config.SASLPassword, plainMechanism.Password)
 }
 
-func TestSegmentConsumer_SASL_SCRAM_SHA_256(t *testing.T) {
+func TestSegmentReader_SASL_SCRAM_SHA_256(t *testing.T) {
 	is := is.New(t)
 	config := Config{
 		Servers:       []string{"test-host:9092"},
@@ -83,7 +83,7 @@ func TestSegmentConsumer_SASL_SCRAM_SHA_256(t *testing.T) {
 	is.Equal("SCRAM-SHA-256", saslMechanism.Name())
 }
 
-func TestSegmentConsumer_SASL_SCRAM_SHA_512(t *testing.T) {
+func TestSegmentReader_SASL_SCRAM_SHA_512(t *testing.T) {
 	is := is.New(t)
 	config := Config{
 		Servers:       []string{"test-host:9092"},

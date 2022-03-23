@@ -17,6 +17,11 @@ package kafka
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
+
+	"github.com/segmentio/kafka-go/sasl"
+	"github.com/segmentio/kafka-go/sasl/plain"
+	"github.com/segmentio/kafka-go/sasl/scram"
 )
 
 func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*tls.Config, error) {
@@ -35,4 +40,39 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 
 	tlsConfig.InsecureSkipVerify = serverNoVerify
 	return &tlsConfig, err
+}
+
+func newSASLMechanism(mechanismString string, username string, password string) (sasl.Mechanism, error) {
+	var mechanism sasl.Mechanism
+	switch mechanismString {
+	case "", "PLAIN":
+		mechanism = plain.Mechanism{
+			Username: username,
+			Password: password,
+		}
+	default:
+		m, err := newSCRAMMechanism(mechanismString, username, password)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't configure SASL/SCRAM with %v due to: %w", mechanismString, err)
+		}
+		mechanism = m
+	}
+	return mechanism, nil
+}
+
+func newSCRAMMechanism(mechanism, username, password string) (sasl.Mechanism, error) {
+	var algo scram.Algorithm
+	switch mechanism {
+	case "SCRAM-SHA-256":
+		algo = scram.SHA256
+	case "SCRAM-SHA-512":
+		algo = scram.SHA512
+	default:
+		return nil, fmt.Errorf("unknown mechanism %q", mechanism)
+	}
+	m, err := scram.Mechanism(algo, username, password)
+	if err != nil {
+		return nil, fmt.Errorf("error creating %v mechanism: %w", mechanism, err)
+	}
+	return m, nil
 }
