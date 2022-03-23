@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
@@ -44,7 +45,7 @@ func TestSegmentConsumer_TLSOnly(t *testing.T) {
 	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
 }
 
-func TestSegmentConsumer_SASLOnly(t *testing.T) {
+func TestSegmentConsumer_SASL_Plain(t *testing.T) {
 	is := is.New(t)
 	config := Config{
 		Servers:      []string{"test-host:9092"},
@@ -61,4 +62,42 @@ func TestSegmentConsumer_SASLOnly(t *testing.T) {
 	is.True(ok)
 	is.Equal(config.SASLUsername, plainMechanism.Username)
 	is.Equal(config.SASLPassword, plainMechanism.Password)
+}
+
+func TestSegmentConsumer_SASL_SCRAM_SHA_256(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "SCRAM-SHA-256",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
+	}
+	underTest, err := newReader(config, "group-id")
+	is.NoErr(err)
+
+	mechanism := underTest.Config().Dialer.SASLMechanism
+	is.True(mechanism != nil)
+	saslMechanism, ok := mechanism.(sasl.Mechanism)
+	is.True(ok)
+	is.Equal("SCRAM-SHA-256", saslMechanism.Name())
+}
+
+func TestSegmentConsumer_SASL_SCRAM_SHA_512(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "SCRAM-SHA-512",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
+	}
+	underTest, err := newReader(config, "group-id")
+	is.NoErr(err)
+
+	mechanism := underTest.Config().Dialer.SASLMechanism
+	is.True(mechanism != nil)
+	saslMechanism, ok := mechanism.(sasl.Mechanism)
+	is.True(ok)
+	is.Equal("SCRAM-SHA-512", saslMechanism.Name())
 }
