@@ -66,15 +66,14 @@ func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
 	if config.Topic == "" {
 		return ErrTopicMissing
 	}
-	reader, err := newReader(config, groupID)
+	err := c.newReader(config, groupID)
 	if err != nil {
 		return fmt.Errorf("couldn't create reader: %w", err)
 	}
-	c.reader = reader
 	return nil
 }
 
-func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
+func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 	readerCfg := kafka.ReaderConfig{
 		Brokers:               cfg.Servers,
 		Topic:                 cfg.Topic,
@@ -94,22 +93,23 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 	}
 	// TLS config
 	if cfg.ClientCert != "" {
-		err := withTLS(&readerCfg, cfg)
+		err := c.withTLS(&readerCfg, cfg)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't create dialer: %w", err)
+			return fmt.Errorf("couldn't create dialer: %w", err)
 		}
 	}
 	// SASL
 	if cfg.saslEnabled() {
-		err := withSASL(&readerCfg, cfg)
+		err := c.withSASL(&readerCfg, cfg)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't configure SASL: %w", err)
+			return fmt.Errorf("couldn't configure SASL: %w", err)
 		}
 	}
-	return kafka.NewReader(readerCfg), nil
+	c.reader = kafka.NewReader(readerCfg)
+	return nil
 }
 
-func withTLS(readerCfg *kafka.ReaderConfig, cfg Config) error {
+func (c *segmentConsumer) withTLS(readerCfg *kafka.ReaderConfig, cfg Config) error {
 	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 	if err != nil {
 		return fmt.Errorf("invalid TLS config: %w", err)
@@ -122,7 +122,7 @@ func withTLS(readerCfg *kafka.ReaderConfig, cfg Config) error {
 	return nil
 }
 
-func withSASL(readerCfg *kafka.ReaderConfig, cfg Config) error {
+func (c *segmentConsumer) withSASL(readerCfg *kafka.ReaderConfig, cfg Config) error {
 	if readerCfg.Dialer == nil {
 		readerCfg.Dialer = &kafka.Dialer{}
 	}

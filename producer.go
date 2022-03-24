@@ -46,14 +46,15 @@ func NewProducer(cfg Config) (Producer, error) {
 		return nil, ErrTopicMissing
 	}
 
-	writer, err := newWriter(cfg)
+	p := &segmentProducer{}
+	err := p.newWriter(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create writer: %w", err)
 	}
-	return &segmentProducer{writer: writer}, nil
+	return p, nil
 }
 
-func newWriter(cfg Config) (*kafka.Writer, error) {
+func (p *segmentProducer) newWriter(cfg Config) error {
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(cfg.Servers...),
 		Topic:        cfg.Topic,
@@ -62,14 +63,15 @@ func newWriter(cfg Config) (*kafka.Writer, error) {
 		RequiredAcks: cfg.Acks,
 		MaxAttempts:  3,
 	}
-	err := configureSecurity(cfg, writer)
+	err := p.configureSecurity(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't configure security: %w", err)
+		return fmt.Errorf("couldn't configure security: %w", err)
 	}
-	return writer, nil
+	p.writer = writer
+	return nil
 }
 
-func configureSecurity(cfg Config, writer *kafka.Writer) error {
+func (p *segmentProducer) configureSecurity(cfg Config) error {
 	// Nothing to do
 	if cfg.ClientCert == "" && !cfg.saslEnabled() {
 		return nil
@@ -92,13 +94,13 @@ func configureSecurity(cfg Config, writer *kafka.Writer) error {
 		}
 		transport.SASL = mechanism
 	}
-	writer.Transport = transport
+	p.writer.Transport = transport
 
 	return nil
 }
 
-func (c *segmentProducer) Send(key []byte, payload []byte) error {
-	err := c.writer.WriteMessages(
+func (p *segmentProducer) Send(key []byte, payload []byte) error {
+	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
 			Key:   key,
@@ -112,12 +114,12 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	return nil
 }
 
-func (c *segmentProducer) Close() error {
-	if c.writer == nil {
+func (p *segmentProducer) Close() error {
+	if p.writer == nil {
 		return nil
 	}
 	// this will also make the loops in the reader goroutines stop
-	err := c.writer.Close()
+	err := p.writer.Close()
 	if err != nil {
 		return fmt.Errorf("couldn't close writer: %w", err)
 	}
