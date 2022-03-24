@@ -37,8 +37,10 @@ func TestSegmentWriter_TLSOnly(t *testing.T) {
 		ClientCert:         clientCerPem,
 		InsecureSkipVerify: true,
 	}
-	underTest, err := newWriter(config)
+	p := &segmentProducer{}
+	err := p.newWriter(config)
 	is.NoErr(err)
+	underTest := p.writer
 
 	transport, ok := underTest.Transport.(*kafka.Transport)
 	is.True(ok)
@@ -54,8 +56,10 @@ func TestSegmentWriter_SASL_Plain(t *testing.T) {
 		SASLUsername: "sasl-username",
 		SASLPassword: "sasl-password",
 	}
-	underTest, err := newWriter(config)
+	p := &segmentProducer{}
+	err := p.newWriter(config)
 	is.NoErr(err)
+	underTest := p.writer
 
 	transport, ok := underTest.Transport.(*kafka.Transport)
 	is.True(ok)
@@ -78,8 +82,10 @@ func TestSegmentWriter_SASL_SCRAM_SHA_256(t *testing.T) {
 		SASLUsername:  "sasl-username",
 		SASLPassword:  "sasl-password",
 	}
-	underTest, err := newWriter(config)
+	p := &segmentProducer{}
+	err := p.newWriter(config)
 	is.NoErr(err)
+	underTest := p.writer
 
 	transport, ok := underTest.Transport.(*kafka.Transport)
 	is.True(ok)
@@ -98,8 +104,10 @@ func TestSegmentWriter_SASL_SCRAM_SHA_512(t *testing.T) {
 		SASLUsername:  "sasl-username",
 		SASLPassword:  "sasl-password",
 	}
-	underTest, err := newWriter(config)
+	p := &segmentProducer{}
+	err := p.newWriter(config)
 	is.NoErr(err)
+	underTest := p.writer
 
 	transport, ok := underTest.Transport.(*kafka.Transport)
 	is.True(ok)

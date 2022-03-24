@@ -341,6 +341,19 @@ func TestParseSASL(t *testing.T) {
 		expectation func(cfg Config, err error, is *is.I)
 	}{
 		{
+			name:      "mechanism without credentials not allowed",
+			mechanism: "SCRAM-SHA-256",
+			username:  "",
+			password:  "",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err != nil)
+				is.Equal(
+					"invalid SASL config: SASL mechanism provided, but username and password are missing",
+					err.Error(),
+				)
+			},
+		},
+		{
 			name:      "password missing",
 			mechanism: "",
 			username:  "test-user",

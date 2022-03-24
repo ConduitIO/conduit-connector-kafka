@@ -36,8 +36,10 @@ func TestSegmentReader_TLSOnly(t *testing.T) {
 		ClientCert:         clientCerPem,
 		InsecureSkipVerify: true,
 	}
-	underTest, err := newReader(config, "group-id")
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
 	is.NoErr(err)
+	underTest := c.reader
 
 	tlsConfig := underTest.Config().Dialer.TLS
 	is.True(tlsConfig != nil)
@@ -52,8 +54,10 @@ func TestSegmentReader_SASL_Plain(t *testing.T) {
 		SASLUsername: "sasl-username",
 		SASLPassword: "sasl-password",
 	}
-	underTest, err := newReader(config, "group-id")
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
 	is.NoErr(err)
+	underTest := c.reader
 
 	mechanism := underTest.Config().Dialer.SASLMechanism
 	is.True(mechanism != nil)
@@ -72,8 +76,10 @@ func TestSegmentReader_SASL_SCRAM_SHA_256(t *testing.T) {
 		SASLUsername:  "sasl-username",
 		SASLPassword:  "sasl-password",
 	}
-	underTest, err := newReader(config, "group-id")
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
 	is.NoErr(err)
+	underTest := c.reader
 
 	mechanism := underTest.Config().Dialer.SASLMechanism
 	is.True(mechanism != nil)
@@ -89,8 +95,10 @@ func TestSegmentReader_SASL_SCRAM_SHA_512(t *testing.T) {
 		SASLUsername:  "sasl-username",
 		SASLPassword:  "sasl-password",
 	}
-	underTest, err := newReader(config, "group-id")
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
 	is.NoErr(err)
+	underTest := c.reader
 
 	mechanism := underTest.Config().Dialer.SASLMechanism
 	is.True(mechanism != nil)

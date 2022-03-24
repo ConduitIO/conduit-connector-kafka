@@ -131,24 +131,31 @@ func Parse(cfg map[string]string) (Config, error) {
 }
 
 func setSASLConfigs(parsed *Config, cfg map[string]string) error {
-	var missing []string
+	var missingCreds []string
 	if cfg[SASLUsername] == "" {
-		missing = append(missing, SASLUsername)
+		missingCreds = append(missingCreds, SASLUsername)
 	}
 	if cfg[SASLPassword] == "" {
-		missing = append(missing, SASLPassword)
+		missingCreds = append(missingCreds, SASLPassword)
 	}
-	if len(missing) == 1 {
-		return fmt.Errorf("SASL configuration incomplete, %v is missing", missing[0])
+	if len(missingCreds) == 1 {
+		return fmt.Errorf("SASL configuration incomplete, %v is missing", missingCreds[0])
 	}
-	saslMechanism := cfg[SASLMechanism]
-	if saslMechanism == "" {
-		saslMechanism = "PLAIN"
+	mechanism, mechanismPresent := cfg[SASLMechanism]
+	// Mechanism specified, but credentials haven't been provided.
+	// Handles specifically the case where neither a username nor a password
+	// have been provided.
+	if mechanismPresent && len(missingCreds) != 0 {
+		return errors.New("SASL mechanism provided, but username and password are missing")
 	}
-	if !validSASLMechanism(saslMechanism) {
-		return fmt.Errorf("invalid SASL mechanism %q, expected one of: %v", saslMechanism, SASLMechanismValues)
+
+	if mechanism == "" {
+		mechanism = "PLAIN"
 	}
-	parsed.SASLMechanism = saslMechanism
+	if !validSASLMechanism(mechanism) {
+		return fmt.Errorf("invalid SASL mechanism %q, expected one of: %v", mechanism, SASLMechanismValues)
+	}
+	parsed.SASLMechanism = mechanism
 	parsed.SASLUsername = cfg[SASLUsername]
 	parsed.SASLPassword = cfg[SASLPassword]
 	return nil
