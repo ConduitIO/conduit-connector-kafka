@@ -3,3 +3,5 @@
 
 # Binary built with `make build`
 /conduit-connector-kafka
+
+.DS_Store
