@@ -55,7 +55,7 @@ func NewProducer(cfg Config) (Producer, error) {
 }
 
 func (p *segmentProducer) newWriter(cfg Config) error {
-	writer := &kafka.Writer{
+	p.writer = &kafka.Writer{
 		Addr:         kafka.TCP(cfg.Servers...),
 		Topic:        cfg.Topic,
 		BatchSize:    1,
@@ -67,7 +67,6 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("couldn't configure security: %w", err)
 	}
-	p.writer = writer
 	return nil
 }
 
