@@ -20,11 +20,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/avast/retry-go"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
 )
-
-const writeRetry = 15 * time.Second
 
 type Destination struct {
 	sdk.UnimplementedDestination
@@ -58,24 +57,32 @@ func (d *Destination) Open(ctx context.Context) error {
 }
 
 func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
-	return d.writeInternal(ctx, record, true)
+	return retry.Do(
+		func() error {
+			return d.writeInternal(ctx, record)
+		},
+		retry.RetryIf(func(err error) bool {
+			// this can happen when the topic doesn't exist and the broker has auto-create enabled
+			// we give it some time to process topic metadata and retry
+			return errors.Is(err, kafka.LeaderNotAvailable)
+		}),
+		retry.OnRetry(func(n uint, err error) {
+			sdk.Logger(ctx).
+				Info().
+				Err(err).
+				Msgf("retrying write, attempt #%v", n)
+		}),
+		retry.Delay(time.Second),
+		retry.Attempts(10),
+		retry.LastErrorOnly(true),
+	)
 }
 
-func (d *Destination) writeInternal(ctx context.Context, record sdk.Record, retry bool) error {
+func (d *Destination) writeInternal(ctx context.Context, record sdk.Record) error {
 	err := d.Client.Send(
 		record.Key.Bytes(),
 		record.Payload.Bytes(),
 	)
-	// this can happen when the topic doesn't exist and the broker has auto-create enabled
-	// we give it some time to process topic metadata and retry
-	if retry && errors.Is(err, kafka.LeaderNotAvailable) {
-		sdk.Logger(ctx).
-			Info().
-			Err(err).
-			Msgf("leader for topic unavailable, will retry in %v", writeRetry)
-		time.Sleep(writeRetry)
-		return d.writeInternal(ctx, record, false)
-	}
 	if err != nil {
 		return fmt.Errorf("message not delivered %w", err)
 	}
