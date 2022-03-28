@@ -16,7 +16,10 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/segmentio/kafka-go"
+	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
@@ -53,10 +56,24 @@ func (d *Destination) Open(ctx context.Context) error {
 }
 
 func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
+	return d.writeInternal(ctx, record, true)
+}
+
+func (d *Destination) writeInternal(ctx context.Context, record sdk.Record, retry bool) error {
 	err := d.Client.Send(
 		record.Key.Bytes(),
 		record.Payload.Bytes(),
 	)
+	// this can happen when the topic doesn't exist and the broker has auto-create enabled
+	// we give it some time to process topic metadata and retry
+	if retry && errors.Is(err, kafka.LeaderNotAvailable) {
+		sdk.Logger(ctx).
+			Info().
+			Err(err).
+			Msg("leader for topic unavailable, will retry")
+		time.Sleep(15 * time.Second)
+		return d.writeInternal(ctx, record, false)
+	}
 	if err != nil {
 		return fmt.Errorf("message not delivered %w", err)
 	}
