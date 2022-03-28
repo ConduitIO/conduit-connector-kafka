@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/segmentio/kafka-go"
 	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/segmentio/kafka-go"
 )
+
+const writeRetry = 15 * time.Second
 
 type Destination struct {
 	sdk.UnimplementedDestination
@@ -70,8 +72,8 @@ func (d *Destination) writeInternal(ctx context.Context, record sdk.Record, retr
 		sdk.Logger(ctx).
 			Info().
 			Err(err).
-			Msg("leader for topic unavailable, will retry")
-		time.Sleep(15 * time.Second)
+			Msgf("leader for topic unavailable, will retry in %v", writeRetry)
+		time.Sleep(writeRetry)
 		return d.writeInternal(ctx, record, false)
 	}
 	if err != nil {
