@@ -15,6 +15,7 @@
 package kafka
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -250,6 +251,8 @@ func TestParse_Full(t *testing.T) {
 		ClientCert:        "ClientCert",
 		ClientKey:         "ClientKey",
 		CACert:            "CACert",
+		SASLUsername:      "test-username",
+		SASLPassword:      "test-password",
 	})
 
 	is.NoErr(err)
@@ -261,10 +264,11 @@ func TestParse_Full(t *testing.T) {
 	is.Equal("ClientCert", parsed.ClientCert)
 	is.Equal("ClientKey", parsed.ClientKey)
 	is.Equal("CACert", parsed.CACert)
+	is.Equal("test-username", parsed.SASLUsername)
+	is.Equal("test-password", parsed.SASLPassword)
 }
 
 func TestParse_Ack(t *testing.T) {
-	is := is.New(t)
 	testCases := []struct {
 		name     string
 		ackInput string
@@ -310,6 +314,7 @@ func TestParse_Ack(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
 			parsed, err := Parse(map[string]string{
 				Servers: "localhost:9092",
 				Topic:   "hello-world-topic",
@@ -323,6 +328,132 @@ func TestParse_Ack(t *testing.T) {
 				is.NoErr(err)
 				is.Equal(tc.ackExp, parsed.Acks)
 			}
+		})
+	}
+}
+
+func TestParseSASL(t *testing.T) {
+	testCases := []struct {
+		name        string
+		mechanism   string
+		username    string
+		password    string
+		expectation func(cfg Config, err error, is *is.I)
+	}{
+		{
+			name:      "mechanism without credentials not allowed",
+			mechanism: "SCRAM-SHA-256",
+			username:  "",
+			password:  "",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err != nil)
+				is.Equal(
+					"invalid SASL config: SASL mechanism provided, but username and password are missing",
+					err.Error(),
+				)
+			},
+		},
+		{
+			name:      "password missing",
+			mechanism: "",
+			username:  "test-user",
+			password:  "",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err != nil)
+				is.Equal(
+					"invalid SASL config: SASL configuration incomplete, saslPassword is missing",
+					err.Error(),
+				)
+			},
+		},
+		{
+			name:      "username missing",
+			mechanism: "",
+			username:  "",
+			password:  "test-password",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err != nil)
+				is.Equal(
+					"invalid SASL config: SASL configuration incomplete, saslUsername is missing",
+					err.Error(),
+				)
+			},
+		},
+		{
+			name:      "invalid mechanism",
+			mechanism: "SCRAM-SHA-1024",
+			username:  "test-username",
+			password:  "test-password",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err != nil)
+				is.Equal(
+					fmt.Sprintf("invalid SASL config: invalid SASL mechanism \"SCRAM-SHA-1024\", expected one of: %v", SASLMechanismValues),
+					err.Error(),
+				)
+			},
+		},
+		{
+			name:      "default mechanism is PLAIN",
+			mechanism: "",
+			username:  "test-username",
+			password:  "test-password",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err == nil)
+				is.Equal(cfg.SASLMechanism, "PLAIN")
+				is.Equal(cfg.SASLUsername, "test-username")
+				is.Equal(cfg.SASLPassword, "test-password")
+			},
+		},
+		{
+			name:      "mechanism is PLAIN (explicitly)",
+			mechanism: "PLAIN",
+			username:  "test-username",
+			password:  "test-password",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err == nil)
+				is.Equal(cfg.SASLMechanism, "PLAIN")
+				is.Equal(cfg.SASLUsername, "test-username")
+				is.Equal(cfg.SASLPassword, "test-password")
+			},
+		},
+		{
+			name:      "mechanism is SCRAM-SHA-256",
+			mechanism: "SCRAM-SHA-256",
+			username:  "test-username",
+			password:  "test-password",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err == nil)
+				is.Equal(cfg.SASLMechanism, "SCRAM-SHA-256")
+				is.Equal(cfg.SASLUsername, "test-username")
+				is.Equal(cfg.SASLPassword, "test-password")
+			},
+		},
+		{
+			name:      "mechanism is SCRAM-SHA-512",
+			mechanism: "SCRAM-SHA-512",
+			username:  "test-username",
+			password:  "test-password",
+			expectation: func(cfg Config, err error, is *is.I) {
+				is.True(err == nil)
+				is.Equal(cfg.SASLMechanism, "SCRAM-SHA-512")
+				is.Equal(cfg.SASLUsername, "test-username")
+				is.Equal(cfg.SASLPassword, "test-password")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			parsed, err := Parse(map[string]string{
+				Servers:       "localhost:9092",
+				Topic:         "hello-world-topic",
+				SASLMechanism: tc.mechanism,
+				SASLUsername:  tc.username,
+				SASLPassword:  tc.password,
+			})
+			tc.expectation(parsed, err, is)
 		})
 	}
 }

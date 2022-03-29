@@ -46,7 +46,16 @@ func NewProducer(cfg Config) (Producer, error) {
 		return nil, ErrTopicMissing
 	}
 
-	writer := &kafka.Writer{
+	p := &segmentProducer{}
+	err := p.newWriter(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create writer: %w", err)
+	}
+	return p, nil
+}
+
+func (p *segmentProducer) newWriter(cfg Config) error {
+	p.writer = &kafka.Writer{
 		Addr:         kafka.TCP(cfg.Servers...),
 		Topic:        cfg.Topic,
 		BatchSize:    1,
@@ -54,21 +63,43 @@ func NewProducer(cfg Config) (Producer, error) {
 		RequiredAcks: cfg.Acks,
 		MaxAttempts:  3,
 	}
-	// TLS config
+	err := p.configureSecurity(cfg)
+	if err != nil {
+		return fmt.Errorf("couldn't configure security: %w", err)
+	}
+	return nil
+}
+
+func (p *segmentProducer) configureSecurity(cfg Config) error {
+	// Nothing to do
+	if cfg.ClientCert == "" && !cfg.saslEnabled() {
+		return nil
+	}
+	transport := &kafka.Transport{}
+	// TLS settings
 	if cfg.ClientCert != "" {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 		if err != nil {
-			return nil, fmt.Errorf("invalid TLS config: %w", err)
+			return fmt.Errorf("invalid TLS config: %w", err)
 		}
-		writer.Transport = &kafka.Transport{
-			TLS: tlsCfg,
-		}
+		transport.TLS = tlsCfg
 	}
-	return &segmentProducer{writer: writer}, nil
+
+	// SASL
+	if cfg.saslEnabled() {
+		mechanism, err := newSASLMechanism(cfg.SASLMechanism, cfg.SASLUsername, cfg.SASLPassword)
+		if err != nil {
+			return fmt.Errorf("couldn't configure SASL: %w", err)
+		}
+		transport.SASL = mechanism
+	}
+	p.writer.Transport = transport
+
+	return nil
 }
 
-func (c *segmentProducer) Send(key []byte, payload []byte) error {
-	err := c.writer.WriteMessages(
+func (p *segmentProducer) Send(key []byte, payload []byte) error {
+	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
 			Key:   key,
@@ -82,12 +113,12 @@ func (c *segmentProducer) Send(key []byte, payload []byte) error {
 	return nil
 }
 
-func (c *segmentProducer) Close() error {
-	if c.writer == nil {
+func (p *segmentProducer) Close() error {
+	if p.writer == nil {
 		return nil
 	}
 	// this will also make the loops in the reader goroutines stop
-	err := c.writer.Close()
+	err := p.writer.Close()
 	if err != nil {
 		return fmt.Errorf("couldn't close writer: %w", err)
 	}
