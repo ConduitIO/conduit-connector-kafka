@@ -18,6 +18,7 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -65,15 +66,14 @@ func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
 	if config.Topic == "" {
 		return ErrTopicMissing
 	}
-	reader, err := newReader(config, groupID)
+	err := c.newReader(config, groupID)
 	if err != nil {
 		return fmt.Errorf("couldn't create reader: %w", err)
 	}
-	c.reader = reader
 	return nil
 }
 
-func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
+func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 	readerCfg := kafka.ReaderConfig{
 		Brokers:               cfg.Servers,
 		Topic:                 cfg.Topic,
@@ -93,13 +93,48 @@ func newReader(cfg Config, groupID string) (*kafka.Reader, error) {
 	}
 	// TLS config
 	if cfg.ClientCert != "" {
-		dialer, err := newTLSDialer(cfg)
+		err := c.withTLS(&readerCfg, cfg)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't create dialer: %w", err)
+			return fmt.Errorf("couldn't create dialer: %w", err)
 		}
-		readerCfg.Dialer = dialer
 	}
-	return kafka.NewReader(readerCfg), nil
+	// SASL
+	if cfg.saslEnabled() {
+		err := c.withSASL(&readerCfg, cfg)
+		if err != nil {
+			return fmt.Errorf("couldn't configure SASL: %w", err)
+		}
+	}
+	c.reader = kafka.NewReader(readerCfg)
+	return nil
+}
+
+func (c *segmentConsumer) withTLS(readerCfg *kafka.ReaderConfig, cfg Config) error {
+	tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
+	if err != nil {
+		return fmt.Errorf("invalid TLS config: %w", err)
+	}
+	if readerCfg.Dialer == nil {
+		readerCfg.Dialer = &kafka.Dialer{}
+	}
+	readerCfg.Dialer.DualStack = true
+	readerCfg.Dialer.TLS = tlsCfg
+	return nil
+}
+
+func (c *segmentConsumer) withSASL(readerCfg *kafka.ReaderConfig, cfg Config) error {
+	if readerCfg.Dialer == nil {
+		readerCfg.Dialer = &kafka.Dialer{}
+	}
+	if !cfg.saslEnabled() {
+		return errors.New("input config has no SASL parameters")
+	}
+	mechanism, err := newSASLMechanism(cfg.SASLMechanism, cfg.SASLUsername, cfg.SASLPassword)
+	if err != nil {
+		return fmt.Errorf("couldn't configure SASL mechanism: %w", err)
+	}
+	readerCfg.Dialer.SASLMechanism = mechanism
+	return nil
 }
 
 func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {

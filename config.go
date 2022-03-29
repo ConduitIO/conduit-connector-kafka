@@ -35,9 +35,15 @@ const (
 	ClientKey          = "clientKey"
 	CACert             = "caCert"
 	InsecureSkipVerify = "insecureSkipVerify"
+	SASLMechanism      = "saslMechanism"
+	SASLUsername       = "saslUsername"
+	SASLPassword       = "saslPassword"
 )
 
-var Required = []string{Servers, Topic}
+var (
+	SASLMechanismValues = []string{"PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"}
+	Required            = []string{Servers, Topic}
+)
 
 // Config contains all the possible configuration parameters for Kafka sources and destinations.
 // When changing this struct, please also change the plugin specification (in main.go) as well as the ReadMe.
@@ -62,6 +68,15 @@ type Config struct {
 	// Whether or not to validate the broker's certificate chain and host name.
 	// If `true`, accepts any certificate presented by the server and any host name in that certificate.
 	InsecureSkipVerify bool
+	// SASL section
+	// possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
+	SASLMechanism string
+	SASLUsername  string
+	SASLPassword  string
+}
+
+func (c *Config) saslEnabled() bool {
+	return c.SASLUsername != "" && c.SASLPassword != ""
 }
 
 func Parse(cfg map[string]string) (Config, error) {
@@ -108,7 +123,51 @@ func Parse(cfg map[string]string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("invalid TLS config: %w", err)
 	}
+	err = setSASLConfigs(&parsed, cfg)
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid SASL config: %w", err)
+	}
 	return parsed, nil
+}
+
+func setSASLConfigs(parsed *Config, cfg map[string]string) error {
+	var missingCreds []string
+	if cfg[SASLUsername] == "" {
+		missingCreds = append(missingCreds, SASLUsername)
+	}
+	if cfg[SASLPassword] == "" {
+		missingCreds = append(missingCreds, SASLPassword)
+	}
+	if len(missingCreds) == 1 {
+		return fmt.Errorf("SASL configuration incomplete, %v is missing", missingCreds[0])
+	}
+	mechanism, mechanismPresent := cfg[SASLMechanism]
+	// Mechanism specified, but credentials haven't been provided.
+	// Handles specifically the case where neither a username nor a password
+	// have been provided.
+	if mechanismPresent && len(missingCreds) != 0 {
+		return errors.New("SASL mechanism provided, but username and password are missing")
+	}
+
+	if mechanism == "" {
+		mechanism = "PLAIN"
+	}
+	if !validSASLMechanism(mechanism) {
+		return fmt.Errorf("invalid SASL mechanism %q, expected one of: %v", mechanism, SASLMechanismValues)
+	}
+	parsed.SASLMechanism = mechanism
+	parsed.SASLUsername = cfg[SASLUsername]
+	parsed.SASLPassword = cfg[SASLPassword]
+	return nil
+}
+
+func validSASLMechanism(mechanism string) bool {
+	for _, v := range SASLMechanismValues {
+		if v == mechanism {
+			return true
+		}
+	}
+	return false
 }
 
 func setTLSConfigs(parsed *Config, cfg map[string]string) error {
