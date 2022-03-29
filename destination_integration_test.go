@@ -33,6 +33,17 @@ func TestDestination_Write_Simple(t *testing.T) {
 	// prepare test data
 	cfg := newTestConfig(t)
 	createTopic(t, cfg[kafka.Topic])
+	testWriteSimple(cfg, is)
+}
+
+func TestDestination_Write_Simple_AutoCreate(t *testing.T) {
+	is := is.New(t)
+	// prepare test data
+	cfg := newTestConfig(t)
+	testWriteSimple(cfg, is)
+}
+
+func testWriteSimple(cfg map[string]string, is *is.I) {
 	record := testRecord()
 
 	// prepare SUT
