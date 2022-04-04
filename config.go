@@ -27,7 +27,6 @@ import (
 const (
 	Servers            = "servers"
 	Topic              = "topic"
-	SecurityProtocol   = "securityProtocol"
 	Acks               = "acks"
 	DeliveryTimeout    = "deliveryTimeout"
 	ReadFromBeginning  = "readFromBeginning"
@@ -52,7 +51,7 @@ type Config struct {
 	Servers []string
 	Topic   string
 	// Required acknowledgments when writing messages to a topic:
-	// Can be: 0, 1, -1 (all)
+	// Can be: none, one, all
 	Acks            kafka.RequiredAcks
 	DeliveryTimeout time.Duration
 	// Read all messages present in a source topic.

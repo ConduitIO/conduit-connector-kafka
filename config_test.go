@@ -244,7 +244,6 @@ func TestParse_Full(t *testing.T) {
 	parsed, err := Parse(map[string]string{
 		Servers:           "localhost:9092",
 		Topic:             "hello-world-topic",
-		SecurityProtocol:  "SASL_SSL",
 		Acks:              "all",
 		DeliveryTimeout:   "1s2ms",
 		ReadFromBeginning: "true",
