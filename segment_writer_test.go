@@ -48,6 +48,52 @@ func TestSegmentWriter_TLSOnly(t *testing.T) {
 	is.True(transport.TLS.InsecureSkipVerify == config.InsecureSkipVerify)
 }
 
+func TestSegmentWriter_ClientTLS(t *testing.T) {
+	is := is.New(t)
+
+	clientKeyPem := readFile("test/client.key.pem", t)
+	clientCerPem := readFile("test/client.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		ClientKey:          clientKeyPem,
+		ClientCert:         clientCerPem,
+		InsecureSkipVerify: true,
+	}
+	p := &segmentProducer{}
+	err := p.newWriter(config)
+	is.NoErr(err)
+	underTest := p.writer
+
+	transport, ok := underTest.Transport.(*kafka.Transport)
+	is.True(ok)
+	is.True(transport.TLS != nil)
+	is.True(transport.TLS.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
+func TestSegmentWriter_ServerTLS(t *testing.T) {
+	is := is.New(t)
+
+	caCert := readFile("test/server.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		CACert:             caCert,
+		InsecureSkipVerify: true,
+	}
+	p := &segmentProducer{}
+	err := p.newWriter(config)
+	is.NoErr(err)
+	underTest := p.writer
+
+	transport, ok := underTest.Transport.(*kafka.Transport)
+	is.True(ok)
+	is.True(transport.TLS != nil)
+	is.True(transport.TLS.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
 func TestSegmentWriter_SASL_Plain(t *testing.T) {
 	is := is.New(t)
 	config := Config{

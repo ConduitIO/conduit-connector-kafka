@@ -77,7 +77,7 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	}
 	transport := &kafka.Transport{}
 	// TLS settings
-	if cfg.ClientCert != "" {
+	if cfg.tlsEnabled() {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 		if err != nil {
 			return fmt.Errorf("invalid TLS config: %w", err)
