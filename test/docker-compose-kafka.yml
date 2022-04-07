@@ -10,8 +10,8 @@ services:
     image: confluentinc/cp-kafka:7.0.0
     healthcheck:
       test: kafka-topics --list --bootstrap-server localhost:9092
-      # healthchecks happen every 10s, failures in the first 30s are not counted toward the maximum number of retries,
-      # after 3 failed healthchecks the service is marked as unhealthy
+      # health checks happen every 10s, failures in the first 30s are not counted toward the maximum number of retries,
+      # after 3 failed health checks the service is marked as unhealthy
       interval: 10s
       timeout: 5s
       retries: 3
@@ -19,7 +19,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - 9092:9092
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
