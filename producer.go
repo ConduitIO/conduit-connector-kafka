@@ -56,12 +56,13 @@ func NewProducer(cfg Config) (Producer, error) {
 
 func (p *segmentProducer) newWriter(cfg Config) error {
 	p.writer = &kafka.Writer{
-		Addr:         kafka.TCP(cfg.Servers...),
-		Topic:        cfg.Topic,
-		BatchSize:    1,
-		WriteTimeout: cfg.DeliveryTimeout,
-		RequiredAcks: cfg.Acks,
-		MaxAttempts:  3,
+		Addr:                   kafka.TCP(cfg.Servers...),
+		Topic:                  cfg.Topic,
+		BatchSize:              1,
+		WriteTimeout:           cfg.DeliveryTimeout,
+		RequiredAcks:           cfg.Acks,
+		MaxAttempts:            3,
+		AllowAutoTopicCreation: true,
 	}
 	err := p.configureSecurity(cfg)
 	if err != nil {
