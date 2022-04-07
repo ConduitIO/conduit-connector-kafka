@@ -72,7 +72,7 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 
 func (p *segmentProducer) configureSecurity(cfg Config) error {
 	// Nothing to do
-	if cfg.ClientCert == "" && !cfg.saslEnabled() {
+	if !cfg.tlsEnabled() && !cfg.saslEnabled() {
 		return nil
 	}
 	transport := &kafka.Transport{}

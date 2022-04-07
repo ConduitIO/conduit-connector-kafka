@@ -122,6 +122,7 @@ func Parse(cfg map[string]string) (Config, error) {
 	}
 	parsed.DeliveryTimeout = timeout
 
+	// Security related settings
 	err = setTLSConfigs(&parsed, cfg)
 	if err != nil {
 		return Config{}, fmt.Errorf("invalid TLS config: %w", err)
