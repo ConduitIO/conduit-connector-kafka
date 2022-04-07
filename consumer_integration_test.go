@@ -128,14 +128,11 @@ func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Mes
 func sendTestMessages(t *testing.T, cfg kafka.Config, from int, to int) {
 	is := is.New(t)
 	writer := skafka.Writer{
-		Addr:                   skafka.TCP(cfg.Servers...),
-		Topic:                  cfg.Topic,
-		BatchSize:              1,
-		BatchTimeout:           10 * time.Millisecond,
-		WriteTimeout:           cfg.DeliveryTimeout,
-		RequiredAcks:           cfg.Acks,
-		MaxAttempts:            2,
-		AllowAutoTopicCreation: true,
+		Addr:         skafka.TCP(cfg.Servers...),
+		Topic:        cfg.Topic,
+		BatchSize:    1,
+		BatchTimeout: 10 * time.Millisecond,
+		MaxAttempts:  2,
 	}
 	defer writer.Close()
 
@@ -178,13 +175,19 @@ func TestGet_KafkaDown(t *testing.T) {
 	is.Equal("tcp", cause.Net)
 }
 
+// createTopic creates a topic and waits until its actually created.
+// Having topics auto-created is not an option since the writer
+// again doesn't wait for the topic to be actually created.
+// Also see: https://github.com/segmentio/kafka-go/issues/219
 func createTopic(t *testing.T, topic string) {
 	is := is.New(t)
-	c, err := skafka.Dial("tcp", "localhost:9092")
-	is.NoErr(err)
-	defer c.Close()
 
-	kt := skafka.TopicConfig{Topic: topic, NumPartitions: 3, ReplicationFactor: 1}
-	err = c.CreateTopics(kt)
+	client := skafka.Client{Addr: skafka.TCP("localhost:9092")}
+	_, err := client.CreateTopics(
+		context.Background(),
+		&skafka.CreateTopicsRequest{Topics: []skafka.TopicConfig{
+			{Topic: topic, NumPartitions: 1, ReplicationFactor: 1},
+		}},
+	)
 	is.NoErr(err)
 }
