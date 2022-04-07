@@ -73,12 +73,12 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 
 func (p *segmentProducer) configureSecurity(cfg Config) error {
 	// Nothing to do
-	if cfg.ClientCert == "" && !cfg.saslEnabled() {
+	if !cfg.tlsEnabled() && !cfg.saslEnabled() {
 		return nil
 	}
 	transport := &kafka.Transport{}
 	// TLS settings
-	if cfg.ClientCert != "" {
+	if cfg.tlsEnabled() {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 		if err != nil {
 			return fmt.Errorf("invalid TLS config: %w", err)
