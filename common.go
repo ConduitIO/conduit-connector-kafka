@@ -25,21 +25,32 @@ import (
 )
 
 func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*tls.Config, error) {
-	tlsConfig := tls.Config{MinVersion: tls.VersionTLS12}
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
 
 	// Load client cert
-	cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+	err := loadClientCert(tlsConfig, clientCert, clientKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't confligure client TLS: %w", err)
 	}
-	tlsConfig.Certificates = []tls.Certificate{cert}
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM([]byte(caCert))
 	tlsConfig.RootCAs = caCertPool
 
 	tlsConfig.InsecureSkipVerify = serverNoVerify
-	return &tlsConfig, err
+	return tlsConfig, err
+}
+
+func loadClientCert(tlsConfig *tls.Config, clientCert string, clientKey string) error {
+	if clientCert == "" && clientKey == "" {
+		return nil
+	}
+	cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+	if err != nil {
+		return err
+	}
+	tlsConfig.Certificates = []tls.Certificate{cert}
+	return nil
 }
 
 func newSASLMechanism(mechanismString, username, password string) (sasl.Mechanism, error) {

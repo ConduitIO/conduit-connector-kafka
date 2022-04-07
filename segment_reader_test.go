@@ -21,7 +21,7 @@ import (
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
-func TestSegmentReader_TLSOnly(t *testing.T) {
+func TestSegmentReader_MutualTLS(t *testing.T) {
 	is := is.New(t)
 
 	caCert := readFile("test/server.cer.pem", t)
@@ -34,6 +34,50 @@ func TestSegmentReader_TLSOnly(t *testing.T) {
 		CACert:             caCert,
 		ClientKey:          clientKeyPem,
 		ClientCert:         clientCerPem,
+		InsecureSkipVerify: true,
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	tlsConfig := underTest.Config().Dialer.TLS
+	is.True(tlsConfig != nil)
+	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
+func TestSegmentReader_ClientTLS(t *testing.T) {
+	is := is.New(t)
+
+	clientKeyPem := readFile("test/client.key.pem", t)
+	clientCerPem := readFile("test/client.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		ClientKey:          clientKeyPem,
+		ClientCert:         clientCerPem,
+		InsecureSkipVerify: true,
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	tlsConfig := underTest.Config().Dialer.TLS
+	is.True(tlsConfig != nil)
+	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
+func TestSegmentReader_ServerTLS(t *testing.T) {
+	is := is.New(t)
+
+	caCert := readFile("test/server.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		CACert:             caCert,
 		InsecureSkipVerify: true,
 	}
 	c := &segmentConsumer{}
