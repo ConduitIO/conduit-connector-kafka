@@ -28,7 +28,7 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 	tlsConfig := tls.Config{MinVersion: tls.VersionTLS12}
 
 	// Load client cert
-	err := loadClientCert(tlsConfig, clientCert, clientKey)
+	err := loadClientCert(&tlsConfig, clientCert, clientKey)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't confligure client TLS: %w", err)
 	}
@@ -41,7 +41,7 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 	return &tlsConfig, err
 }
 
-func loadClientCert(tlsConfig tls.Config, clientCert string, clientKey string) error {
+func loadClientCert(tlsConfig *tls.Config, clientCert string, clientKey string) error {
 	if clientCert == "" && clientKey == "" {
 		return nil
 	}
