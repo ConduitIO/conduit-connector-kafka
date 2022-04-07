@@ -128,13 +128,14 @@ func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Mes
 func sendTestMessages(t *testing.T, cfg kafka.Config, from int, to int) {
 	is := is.New(t)
 	writer := skafka.Writer{
-		Addr:         skafka.TCP(cfg.Servers...),
-		Topic:        cfg.Topic,
-		BatchSize:    1,
-		BatchTimeout: 10 * time.Millisecond,
-		WriteTimeout: cfg.DeliveryTimeout,
-		RequiredAcks: cfg.Acks,
-		MaxAttempts:  2,
+		Addr:                   skafka.TCP(cfg.Servers...),
+		Topic:                  cfg.Topic,
+		BatchSize:              1,
+		BatchTimeout:           10 * time.Millisecond,
+		WriteTimeout:           cfg.DeliveryTimeout,
+		RequiredAcks:           cfg.Acks,
+		MaxAttempts:            2,
+		AllowAutoTopicCreation: true,
 	}
 	defer writer.Close()
 
