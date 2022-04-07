@@ -175,13 +175,16 @@ func TestGet_KafkaDown(t *testing.T) {
 	is.Equal("tcp", cause.Net)
 }
 
+// createTopic creates a topic and waits until its actually created.
+// Having topics auto-created is not an option since the writer
+// again doesn't wait for the topic to be actually created.
 func createTopic(t *testing.T, topic string) {
 	is := is.New(t)
 	c, err := skafka.Dial("tcp", "localhost:9092")
 	is.NoErr(err)
 	defer c.Close()
 
-	kt := skafka.TopicConfig{Topic: topic, NumPartitions: 3, ReplicationFactor: 1}
+	kt := skafka.TopicConfig{Topic: topic, NumPartitions: 1, ReplicationFactor: 1}
 	err = c.CreateTopics(kt)
 	is.NoErr(err)
 	time.Sleep(2500 * time.Millisecond)
