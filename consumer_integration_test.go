@@ -182,7 +182,7 @@ func TestGet_KafkaDown(t *testing.T) {
 func createTopic(t *testing.T, topic string) {
 	is := is.New(t)
 
-	client := skafka.Client{Addr: skafka.TCP("localhost")}
+	client := skafka.Client{Addr: skafka.TCP("localhost:9092")}
 	_, err := client.CreateTopics(
 		context.Background(),
 		&skafka.CreateTopicsRequest{Topics: []skafka.TopicConfig{
