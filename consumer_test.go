@@ -16,9 +16,10 @@ package kafka
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/matryer/is"
 	"github.com/segmentio/kafka-go"
-	"testing"
 )
 
 func TestMessagePosition(t *testing.T) {
