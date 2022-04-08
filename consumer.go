@@ -179,6 +179,7 @@ func (c *segmentConsumer) positionOf(m *kafka.Message) ([]byte, error) {
 }
 
 func (c *segmentConsumer) Ack() error {
+	// See issue related to this: https://github.com/ConduitIO/conduit-connector-kafka/issues/23
 	err := c.reader.CommitMessages(context.Background(), *c.lastMsgRead)
 	if err != nil {
 		return fmt.Errorf("couldn't commit messages: %w", err)
