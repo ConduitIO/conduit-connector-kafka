@@ -23,7 +23,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-func TestMessagePosition(t *testing.T) {
+func TestSegmentConsumer_MessagePosition(t *testing.T) {
 	is := is.New(t)
 	msg := &kafka.Message{
 		Topic:     "test-topic",
@@ -46,6 +46,36 @@ func TestMessagePosition(t *testing.T) {
 	is.Equal("test-topic", positionParsed.Topic)
 	is.Equal(12, positionParsed.Partition)
 	is.Equal(int64(987), positionParsed.Offset)
+}
+
+func TestSegmentConsumer_StartFrom_NilPos(t *testing.T) {
+	is := is.New(t)
+
+	underTest := segmentConsumer{}
+	err := underTest.StartFrom(connectorCfg(), nil)
+	is.NoErr(err)
+}
+
+func TestSegmentConsumer_StartFrom_ValidPos(t *testing.T) {
+	is := is.New(t)
+
+	underTest := segmentConsumer{}
+	pos := position{GroupID: "foo"}
+	posBytes, _ := pos.json()
+
+	err := underTest.StartFrom(connectorCfg(), posBytes)
+	is.NoErr(err)
+
+	is.Equal("foo", underTest.reader.Config().GroupID)
+}
+
+func TestSegmentConsumer_StartFrom_InvalidPos(t *testing.T) {
+	is := is.New(t)
+
+	underTest := segmentConsumer{}
+
+	err := underTest.StartFrom(connectorCfg(), []byte("hello, error!"))
+	is.True(err != nil)
 }
 
 func TestReaderConfig_MutualTLS(t *testing.T) {
@@ -174,4 +204,14 @@ func TestReaderConfig_SASL_SCRAM_SHA_512(t *testing.T) {
 	mechanism := underTest.Config().Dialer.SASLMechanism
 	is.True(mechanism != nil)
 	is.Equal("SCRAM-SHA-512", mechanism.Name())
+}
+
+// todo reuse from destination_test.go
+func connectorCfg() Config {
+	cfg, _ := Parse(configMap())
+	return cfg
+}
+
+func configMap() map[string]string {
+	return map[string]string{Servers: "localhost:9092", Topic: "test"}
 }
