@@ -44,7 +44,7 @@ func TestConsumer_Get_FromBeginning(t *testing.T) {
 	is.NoErr(err)
 	defer consumer.Close()
 
-	err = consumer.StartFrom(cfg, uuid.NewString())
+	err = consumer.StartFrom(cfg, nil)
 	is.NoErr(err)
 	time.Sleep(5 * time.Second)
 
@@ -81,7 +81,7 @@ func TestConsumer_Get_OnlyNew(t *testing.T) {
 	is.NoErr(err)
 	defer consumer.Close()
 
-	err = consumer.StartFrom(cfg, uuid.NewString())
+	err = consumer.StartFrom(cfg, nil)
 	is.NoErr(err)
 	time.Sleep(4 * time.Second)
 
@@ -164,7 +164,7 @@ func TestGet_KafkaDown(t *testing.T) {
 	consumer, err := kafka.NewConsumer()
 	is.NoErr(err)
 
-	err = consumer.StartFrom(cfg, "")
+	err = consumer.StartFrom(cfg, nil)
 	is.NoErr(err)
 
 	msg, _, err := consumer.Get(context.Background())

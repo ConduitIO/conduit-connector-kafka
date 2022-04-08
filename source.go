@@ -15,7 +15,6 @@
 package kafka
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -53,9 +52,9 @@ func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 	}
 	s.Consumer = client
 
-	err = s.startFrom(ctx, pos)
+	err = s.Consumer.StartFrom(s.Config, pos)
 	if err != nil {
-		return fmt.Errorf("couldn't start from position: %w", err)
+		return fmt.Errorf("couldn't start from given position %v due to %w", string(pos), err)
 	}
 
 	return nil
@@ -75,21 +74,6 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 	}
 	s.lastPositionRead = rec.Position
 	return rec, nil
-}
-
-func (s *Source) startFrom(ctx context.Context, position sdk.Position) error {
-	// The check is in place, to avoid reconstructing the Kafka consumer.
-	if s.lastPositionRead != nil && bytes.Equal(s.lastPositionRead, position) {
-		sdk.Logger(ctx).Debug().Msg("Source already at the correct position.")
-		return nil
-	}
-
-	err := s.Consumer.StartFrom(s.Config, string(position))
-	if err != nil {
-		return fmt.Errorf("couldn't start from given position %v due to %w", string(position), err)
-	}
-	s.lastPositionRead = position
-	return nil
 }
 
 func toRecord(message *kafka.Message, position []byte) (sdk.Record, error) {

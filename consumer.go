@@ -34,7 +34,7 @@ type Consumer interface {
 	// The group ID is significant for this consumer's offsets.
 	// By using the same group ID after a restart, we make sure that the consumer continues from where it left off.
 	// Returns: An error, if the consumer could not be set to read from the given position, nil otherwise.
-	StartFrom(config Config, groupID string) error
+	StartFrom(config Config, position []byte) error
 
 	// Get returns a message from the configured topic. Waits until a messages is available
 	// or until it errors out.
@@ -62,6 +62,18 @@ func (p *position) json() ([]byte, error) {
 	return bytes, nil
 }
 
+func parsePosition(bytes []byte) (position, error) {
+	pos := position{}
+	if len(bytes) == 0 {
+		return pos, nil
+	}
+	err := json.Unmarshal(bytes, &pos)
+	if err != nil {
+		return position{}, err
+	}
+	return pos, nil
+}
+
 type segmentConsumer struct {
 	reader      *kafka.Reader
 	lastMsgRead *kafka.Message
@@ -73,7 +85,7 @@ func NewConsumer() (Consumer, error) {
 	return &segmentConsumer{}, nil
 }
 
-func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
+func (c *segmentConsumer) StartFrom(config Config, positionBytes []byte) error {
 	// todo if we can assume that a new Config instance will always be created by calling Parse(),
 	// and that the instance will not be mutated, then we can leave it out these checks.
 	if len(config.Servers) == 0 {
@@ -82,7 +94,12 @@ func (c *segmentConsumer) StartFrom(config Config, groupID string) error {
 	if config.Topic == "" {
 		return ErrTopicMissing
 	}
-	err := c.newReader(config, groupID)
+	position, err := parsePosition(positionBytes)
+	if err != nil {
+		return fmt.Errorf("couldn't parse position: %w", err)
+	}
+
+	err = c.newReader(config, position.GroupID)
 	if err != nil {
 		return fmt.Errorf("couldn't create reader: %w", err)
 	}

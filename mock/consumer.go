@@ -81,7 +81,7 @@ func (mr *ConsumerMockRecorder) Get(arg0 interface{}) *gomock.Call {
 }
 
 // StartFrom mocks base method.
-func (m *Consumer) StartFrom(arg0 kafka.Config, arg1 string) error {
+func (m *Consumer) StartFrom(arg0 kafka.Config, arg1 []byte) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StartFrom", arg0, arg1)
 	ret0, _ := ret[0].(error)
