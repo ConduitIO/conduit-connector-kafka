@@ -16,6 +16,7 @@ package kafka
 
 import (
 	"encoding/json"
+	"github.com/segmentio/kafka-go/sasl/plain"
 	"testing"
 
 	"github.com/matryer/is"
@@ -45,4 +46,132 @@ func TestMessagePosition(t *testing.T) {
 	is.Equal("test-topic", positionParsed.Topic)
 	is.Equal(12, positionParsed.Partition)
 	is.Equal(int64(987), positionParsed.Offset)
+}
+
+func TestReaderConfig_MutualTLS(t *testing.T) {
+	is := is.New(t)
+
+	caCert := readFile("test/server.cer.pem", t)
+	clientKeyPem := readFile("test/client.key.pem", t)
+	clientCerPem := readFile("test/client.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		CACert:             caCert,
+		ClientKey:          clientKeyPem,
+		ClientCert:         clientCerPem,
+		InsecureSkipVerify: true,
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	tlsConfig := underTest.Config().Dialer.TLS
+	is.True(tlsConfig != nil)
+	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
+func TestReaderConfig_ClientTLS(t *testing.T) {
+	is := is.New(t)
+
+	clientKeyPem := readFile("test/client.key.pem", t)
+	clientCerPem := readFile("test/client.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		ClientKey:          clientKeyPem,
+		ClientCert:         clientCerPem,
+		InsecureSkipVerify: true,
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	tlsConfig := underTest.Config().Dialer.TLS
+	is.True(tlsConfig != nil)
+	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
+func TestReaderConfig_ServerTLS(t *testing.T) {
+	is := is.New(t)
+
+	caCert := readFile("test/server.cer.pem", t)
+
+	config := Config{
+		Servers:            []string{"test-host:9092"},
+		Topic:              "test-topic",
+		CACert:             caCert,
+		InsecureSkipVerify: true,
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	tlsConfig := underTest.Config().Dialer.TLS
+	is.True(tlsConfig != nil)
+	is.True(tlsConfig.InsecureSkipVerify == config.InsecureSkipVerify)
+}
+
+func TestReaderConfig_SASL_Plain(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:      []string{"test-host:9092"},
+		Topic:        "test-topic",
+		SASLUsername: "sasl-username",
+		SASLPassword: "sasl-password",
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	mechanism := underTest.Config().Dialer.SASLMechanism
+	is.True(mechanism != nil)
+	plainMechanism, ok := mechanism.(plain.Mechanism)
+	is.True(ok)
+	is.Equal(config.SASLUsername, plainMechanism.Username)
+	is.Equal(config.SASLPassword, plainMechanism.Password)
+}
+
+func TestReaderConfig_SASL_SCRAM_SHA_256(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "SCRAM-SHA-256",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	mechanism := underTest.Config().Dialer.SASLMechanism
+	is.True(mechanism != nil)
+	is.Equal("SCRAM-SHA-256", mechanism.Name())
+}
+
+func TestReaderConfig_SASL_SCRAM_SHA_512(t *testing.T) {
+	is := is.New(t)
+	config := Config{
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "SCRAM-SHA-512",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
+	}
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.NoErr(err)
+	underTest := c.reader
+
+	mechanism := underTest.Config().Dialer.SASLMechanism
+	is.True(mechanism != nil)
+	is.Equal("SCRAM-SHA-512", mechanism.Name())
 }
