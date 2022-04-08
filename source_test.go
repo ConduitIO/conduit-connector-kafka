@@ -70,30 +70,7 @@ func TestReadPosition(t *testing.T) {
 
 	kafkaMsg := testKafkaMsg()
 	cfg := connectorCfg()
-	groupID := uuid.NewString()
-
-	consumerMock := mock.NewConsumer(ctrl)
-	consumerMock.
-		EXPECT().
-		Get(gomock.Any()).
-		Return(kafkaMsg, groupID, nil)
-
-	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
-	rec, err := underTest.Read(context.Background())
-	is.NoErr(err)
-	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
-	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
-
-	is.Equal(groupID, string(rec.Position))
-}
-
-func TestRead(t *testing.T) {
-	is := is.New(t)
-	ctrl := gomock.NewController(t)
-
-	kafkaMsg := testKafkaMsg()
-	cfg := connectorCfg()
-	pos := uuid.NewString()
+	pos := []byte(uuid.NewString())
 
 	consumerMock := mock.NewConsumer(ctrl)
 	consumerMock.
@@ -106,7 +83,30 @@ func TestRead(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
 	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
-	is.Equal(pos, string(rec.Position))
+
+	is.Equal(pos, []byte(rec.Position))
+}
+
+func TestRead(t *testing.T) {
+	is := is.New(t)
+	ctrl := gomock.NewController(t)
+
+	kafkaMsg := testKafkaMsg()
+	cfg := connectorCfg()
+	pos := []byte(uuid.NewString())
+
+	consumerMock := mock.NewConsumer(ctrl)
+	consumerMock.
+		EXPECT().
+		Get(gomock.Any()).
+		Return(kafkaMsg, pos, nil)
+
+	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
+	rec, err := underTest.Read(context.Background())
+	is.NoErr(err)
+	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
+	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
+	is.Equal(pos, []byte(rec.Position))
 }
 
 func testKafkaMsg() *skafka.Message {
