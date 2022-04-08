@@ -16,6 +16,7 @@ package kafka
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/segmentio/kafka-go/sasl/plain"
 	"testing"
 
@@ -76,6 +77,8 @@ func TestSegmentConsumer_StartFrom_InvalidPos(t *testing.T) {
 
 	err := underTest.StartFrom(connectorCfg(), []byte("hello, error!"))
 	is.True(err != nil)
+	var jsonError *json.SyntaxError
+	is.True(errors.As(err, &jsonError))
 }
 
 func TestReaderConfig_MutualTLS(t *testing.T) {
