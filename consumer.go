@@ -18,6 +18,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -37,13 +38,28 @@ type Consumer interface {
 
 	// Get returns a message from the configured topic. Waits until a messages is available
 	// or until it errors out.
-	// Returns: a message (if available), the consumer group ID and an error (if there was one).
-	Get(ctx context.Context) (*kafka.Message, string, error)
+	// Returns: a message (if available), the message's position and an error (if there was one).
+	Get(ctx context.Context) (*kafka.Message, []byte, error)
 
 	Ack() error
 
 	// Close this consumer and the associated resources (e.g. connections to the broker)
 	Close() error
+}
+
+type position struct {
+	GroupID   string `json:"groupID"`
+	Topic     string `json:"topic"`
+	Partition int    `json:"partition"`
+	Offset    int64  `json:"offset"`
+}
+
+func (p *position) json() ([]byte, error) {
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't transform position into json: %w", err)
+	}
+	return bytes, nil
 }
 
 type segmentConsumer struct {
@@ -137,13 +153,29 @@ func (c *segmentConsumer) withSASL(readerCfg *kafka.ReaderConfig, cfg Config) er
 	return nil
 }
 
-func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, string, error) {
+func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, []byte, error) {
 	msg, err := c.reader.FetchMessage(ctx)
 	if err != nil {
-		return nil, "", fmt.Errorf("couldn't read message: %w", err)
+		return nil, nil, fmt.Errorf("couldn't read message: %w", err)
 	}
+
+	position, err := c.positionOf(&msg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't get message's position: %w", err)
+	}
+
 	c.lastMsgRead = &msg
-	return &msg, c.readerID(), nil
+	return &msg, position, nil
+}
+
+func (c *segmentConsumer) positionOf(m *kafka.Message) ([]byte, error) {
+	p := position{
+		GroupID:   c.readerID(),
+		Topic:     m.Topic,
+		Partition: m.Partition,
+		Offset:    m.Offset,
+	}
+	return p.json()
 }
 
 func (c *segmentConsumer) Ack() error {

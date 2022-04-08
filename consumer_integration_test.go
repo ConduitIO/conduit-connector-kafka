@@ -101,10 +101,10 @@ func TestConsumer_Get_OnlyNew(t *testing.T) {
 	is.Equal(0, len(messagesUnseen))
 }
 
-func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Message, string, error) {
+func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Message, []byte, error) {
 	c := make(chan struct {
 		msg *skafka.Message
-		pos string
+		pos []byte
 		err error
 	})
 
@@ -112,7 +112,7 @@ func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Mes
 		msg, pos, err := consumer.Get(context.Background())
 		c <- struct {
 			msg *skafka.Message
-			pos string
+			pos []byte
 			err error
 		}{msg: msg, pos: pos, err: err}
 	}()
@@ -121,7 +121,7 @@ func waitForMessage(consumer kafka.Consumer, timeout time.Duration) (*skafka.Mes
 	case r := <-c:
 		return r.msg, r.pos, r.err // completed normally
 	case <-time.After(timeout):
-		return nil, "", errors.New("timed out while waiting for message") // timed out
+		return nil, nil, errors.New("timed out while waiting for message") // timed out
 	}
 }
 

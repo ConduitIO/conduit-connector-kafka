@@ -90,9 +90,9 @@ func (s *Source) startFrom(position sdk.Position) error {
 	return nil
 }
 
-func toRecord(message *kafka.Message, position string) (sdk.Record, error) {
+func toRecord(message *kafka.Message, position []byte) (sdk.Record, error) {
 	return sdk.Record{
-		Position:  []byte(position),
+		Position:  position,
 		CreatedAt: message.Time,
 		Key:       sdk.RawData(message.Key),
 		Payload:   sdk.RawData(message.Value),

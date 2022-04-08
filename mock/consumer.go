@@ -65,11 +65,11 @@ func (mr *ConsumerMockRecorder) Close() *gomock.Call {
 }
 
 // Get mocks base method.
-func (m *Consumer) Get(arg0 context.Context) (*kafka0.Message, string, error) {
+func (m *Consumer) Get(arg0 context.Context) (*kafka0.Message, []byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0)
 	ret0, _ := ret[0].(*kafka0.Message)
-	ret1, _ := ret[1].(string)
+	ret1, _ := ret[1].([]byte)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
