@@ -20,14 +20,13 @@ import (
 	"testing"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/google/uuid"
 	"github.com/matryer/is"
 )
 
 func TestSource_Restart(t *testing.T) {
 	is := is.New(t)
 
-	cfgMap := integrationCfgMap()
+	cfgMap := testConfigMap()
 	cfg, err := Parse(cfgMap)
 	is.NoErr(err)
 	createTopic(t, cfg.Topic)
@@ -62,12 +61,4 @@ func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to i
 	}
 
 	return lastPos
-}
-
-func integrationCfgMap() map[string]string {
-	return map[string]string{
-		Servers:           "localhost:9092",
-		Topic:             "test-topic-" + uuid.NewString(),
-		ReadFromBeginning: "true",
-	}
 }

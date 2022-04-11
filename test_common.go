@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/matryer/is"
 	skafka "github.com/segmentio/kafka-go"
 )
@@ -64,5 +65,9 @@ func testConfig() Config {
 }
 
 func testConfigMap() map[string]string {
-	return map[string]string{Servers: "localhost:9092", Topic: "test"}
+	return map[string]string{
+		Servers:           "localhost:9092",
+		Topic:             "test-topic-" + uuid.NewString(),
+		ReadFromBeginning: "true",
+	}
 }
