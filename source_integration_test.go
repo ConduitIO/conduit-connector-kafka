@@ -17,10 +17,10 @@ package kafka
 import (
 	"context"
 	"fmt"
-	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/google/uuid"
 	"testing"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/google/uuid"
 	"github.com/matryer/is"
 )
 
@@ -43,7 +43,7 @@ func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to i
 	sendTestMessages(t, cfg, from, to)
 
 	underTest := NewSource()
-	defer underTest.Teardown(ctx)
+	defer underTest.Teardown(ctx) //nolint:errcheck // not interested at this point
 
 	err := underTest.Configure(ctx, cfgMap)
 	is.NoErr(err)
@@ -55,8 +55,10 @@ func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to i
 		rec, err := underTest.Read(ctx)
 		is.NoErr(err)
 		is.Equal(fmt.Sprintf("test-key-%d", i), string(rec.Key.Bytes()))
+
 		lastPos = rec.Position
-		underTest.Ack(ctx, lastPos)
+		err = underTest.Ack(ctx, lastPos)
+		is.NoErr(err)
 	}
 
 	err = underTest.Teardown(ctx)
