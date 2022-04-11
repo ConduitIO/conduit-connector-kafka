@@ -61,8 +61,6 @@ func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to i
 		is.NoErr(err)
 	}
 
-	err = underTest.Teardown(ctx)
-	is.NoErr(err)
 	return lastPos
 }
 
