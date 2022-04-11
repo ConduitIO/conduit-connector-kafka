@@ -57,3 +57,12 @@ func sendTestMessage(writer *skafka.Writer, key string, payload string) error {
 		},
 	)
 }
+
+func testConfig() Config {
+	cfg, _ := Parse(testConfigMap())
+	return cfg
+}
+
+func testConfigMap() map[string]string {
+	return map[string]string{Servers: "localhost:9092", Topic: "test"}
+}

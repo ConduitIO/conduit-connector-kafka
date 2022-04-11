@@ -53,7 +53,7 @@ func TestSegmentConsumer_StartFrom_NilPos(t *testing.T) {
 	is := is.New(t)
 
 	underTest := segmentConsumer{}
-	err := underTest.StartFrom(connectorCfg(), nil)
+	err := underTest.StartFrom(testConfig(), nil)
 	is.NoErr(err)
 }
 
@@ -64,7 +64,7 @@ func TestSegmentConsumer_StartFrom_ValidPos(t *testing.T) {
 	pos := position{GroupID: "foo"}
 	posBytes, _ := pos.json()
 
-	err := underTest.StartFrom(connectorCfg(), posBytes)
+	err := underTest.StartFrom(testConfig(), posBytes)
 	is.NoErr(err)
 
 	is.Equal("foo", underTest.reader.Config().GroupID)
@@ -75,7 +75,7 @@ func TestSegmentConsumer_StartFrom_InvalidPos(t *testing.T) {
 
 	underTest := segmentConsumer{}
 
-	err := underTest.StartFrom(connectorCfg(), []byte("hello, error!"))
+	err := underTest.StartFrom(testConfig(), []byte("hello, error!"))
 	is.True(err != nil)
 	var jsonError *json.SyntaxError
 	is.True(errors.As(err, &jsonError))
@@ -207,14 +207,4 @@ func TestReaderConfig_SASL_SCRAM_SHA_512(t *testing.T) {
 	mechanism := underTest.Config().Dialer.SASLMechanism
 	is.True(mechanism != nil)
 	is.Equal("SCRAM-SHA-512", mechanism.Name())
-}
-
-// todo reuse from destination_test.go
-func connectorCfg() Config {
-	cfg, _ := Parse(configMap())
-	return cfg
-}
-
-func configMap() map[string]string {
-	return map[string]string{Servers: "localhost:9092", Topic: "test"}
 }
