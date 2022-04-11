@@ -17,11 +17,11 @@ package kafka
 import (
 	"encoding/json"
 	"errors"
-	"github.com/segmentio/kafka-go/sasl/plain"
 	"testing"
 
 	"github.com/matryer/is"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 func TestSegmentConsumer_MessagePosition(t *testing.T) {
