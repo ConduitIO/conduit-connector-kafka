@@ -16,6 +16,8 @@ package kafka
 
 import (
 	"context"
+	"fmt"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"testing"
 
@@ -25,23 +27,47 @@ import (
 func TestSource_Restart(t *testing.T) {
 	is := is.New(t)
 
+	cfgMap := integrationCfgMap()
+	cfg, err := Parse(cfgMap)
+	is.NoErr(err)
+	createTopic(t, cfg.Topic)
+
+	pos := testRead(t, cfg, cfgMap, 1, 3, nil)
+	// Restart
+	testRead(t, cfg, cfgMap, 4, 6, pos)
+}
+
+func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to int, pos sdk.Position) sdk.Position {
+	is := is.New(t)
 	ctx := context.Background()
+	sendTestMessages(t, cfg, from, to)
+
 	underTest := NewSource()
 	defer underTest.Teardown(ctx)
 
-	err := underTest.Configure(ctx, integrationCfgMap())
+	err := underTest.Configure(ctx, cfgMap)
+	is.NoErr(err)
+	err = underTest.Open(ctx, pos)
 	is.NoErr(err)
 
-	err = underTest.Open(ctx, nil)
-	is.NoErr(err)
+	var lastPos sdk.Position
+	for i := from; i <= to; i++ {
+		rec, err := underTest.Read(ctx)
+		is.NoErr(err)
+		is.Equal(fmt.Sprintf("test-key-%d", i), string(rec.Key.Bytes()))
+		lastPos = rec.Position
+		underTest.Ack(ctx, lastPos)
+	}
 
-	rec, err := underTest.Read(ctx)
+	err = underTest.Teardown(ctx)
+	is.NoErr(err)
+	return lastPos
 }
 
 func integrationCfgMap() map[string]string {
 	return map[string]string{
 		Servers:           "localhost:9092",
-		Topic:             uuid.NewString(),
+		Topic:             "test-topic-" + uuid.NewString(),
 		ReadFromBeginning: "true",
 	}
 }

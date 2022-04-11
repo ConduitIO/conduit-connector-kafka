@@ -15,8 +15,12 @@
 package kafka
 
 import (
+	"context"
 	"io/ioutil"
 	"testing"
+
+	"github.com/matryer/is"
+	skafka "github.com/segmentio/kafka-go"
 )
 
 func readFile(filename string, t *testing.T) string {
@@ -25,4 +29,31 @@ func readFile(filename string, t *testing.T) string {
 		t.Fatal(err)
 	}
 	return string(bytes)
+}
+
+// createTopic creates a topic and waits until its actually created.
+// Having topics auto-created is not an option since the writer
+// again doesn't wait for the topic to be actually created.
+// Also see: https://github.com/segmentio/kafka-go/issues/219
+func createTopic(t *testing.T, topic string) {
+	is := is.New(t)
+
+	client := skafka.Client{Addr: skafka.TCP("localhost:9092")}
+	_, err := client.CreateTopics(
+		context.Background(),
+		&skafka.CreateTopicsRequest{Topics: []skafka.TopicConfig{
+			{Topic: topic, NumPartitions: 1, ReplicationFactor: 1},
+		}},
+	)
+	is.NoErr(err)
+}
+
+func sendTestMessage(writer *skafka.Writer, key string, payload string) error {
+	return writer.WriteMessages(
+		context.Background(),
+		skafka.Message{
+			Key:   []byte(key),
+			Value: []byte(payload),
+		},
+	)
 }
