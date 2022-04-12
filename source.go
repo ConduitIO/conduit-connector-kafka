@@ -53,7 +53,7 @@ func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 
 	err = s.Consumer.StartFrom(s.Config, pos)
 	if err != nil {
-		return fmt.Errorf("couldn't start from given position %v: %w", string(pos), err)
+		return fmt.Errorf("couldn't open source at position %v: %w", string(pos), err)
 	}
 
 	return nil
