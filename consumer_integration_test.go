@@ -17,7 +17,6 @@ package kafka
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -121,27 +120,6 @@ func waitForMessage(consumer Consumer, timeout time.Duration) (*skafka.Message, 
 		return r.msg, r.pos, r.err // completed normally
 	case <-time.After(timeout):
 		return nil, nil, errors.New("timed out while waiting for message") // timed out
-	}
-}
-
-func sendTestMessages(t *testing.T, cfg Config, from int, to int) {
-	is := is.New(t)
-	writer := skafka.Writer{
-		Addr:         skafka.TCP(cfg.Servers...),
-		Topic:        cfg.Topic,
-		BatchSize:    1,
-		BatchTimeout: 10 * time.Millisecond,
-		MaxAttempts:  2,
-	}
-	defer writer.Close()
-
-	for i := from; i <= to; i++ {
-		err := sendTestMessage(
-			&writer,
-			fmt.Sprintf("test-key-%d", i),
-			fmt.Sprintf("test-payload-%d", i),
-		)
-		is.NoErr(err)
 	}
 }
 

@@ -25,9 +25,8 @@ import (
 type Source struct {
 	sdk.UnimplementedSource
 
-	Consumer         Consumer
-	Config           Config
-	lastPositionRead sdk.Position
+	Consumer Consumer
+	Config   Config
 }
 
 func NewSource() sdk.Source {
@@ -54,7 +53,7 @@ func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 
 	err = s.Consumer.StartFrom(s.Config, pos)
 	if err != nil {
-		return fmt.Errorf("couldn't start from given position %v due to %w", string(pos), err)
+		return fmt.Errorf("couldn't start from given position %v: %w", string(pos), err)
 	}
 
 	return nil
@@ -72,7 +71,6 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 	if err != nil {
 		return sdk.Record{}, fmt.Errorf("couldn't transform record %w", err)
 	}
-	s.lastPositionRead = rec.Position
 	return rec, nil
 }
 

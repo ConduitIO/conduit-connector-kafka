@@ -16,8 +16,10 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/matryer/is"
@@ -47,6 +49,27 @@ func createTopic(t *testing.T, topic string) {
 		}},
 	)
 	is.NoErr(err)
+}
+
+func sendTestMessages(t *testing.T, cfg Config, from int, to int) {
+	is := is.New(t)
+	writer := skafka.Writer{
+		Addr:         skafka.TCP(cfg.Servers...),
+		Topic:        cfg.Topic,
+		BatchSize:    1,
+		BatchTimeout: 10 * time.Millisecond,
+		MaxAttempts:  2,
+	}
+	defer writer.Close()
+
+	for i := from; i <= to; i++ {
+		err := sendTestMessage(
+			&writer,
+			fmt.Sprintf("test-key-%d", i),
+			fmt.Sprintf("test-payload-%d", i),
+		)
+		is.NoErr(err)
+	}
 }
 
 func sendTestMessage(writer *skafka.Writer, key string, payload string) error {
