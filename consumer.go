@@ -54,7 +54,7 @@ type position struct {
 	Offset    int64  `json:"offset"`
 }
 
-func (p *position) json() ([]byte, error) {
+func (p position) json() ([]byte, error) {
 	bytes, err := json.Marshal(p)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform position into json: %w", err)
