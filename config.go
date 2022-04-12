@@ -78,10 +78,6 @@ func (c *Config) saslEnabled() bool {
 	return c.SASLUsername != "" && c.SASLPassword != ""
 }
 
-func (c *Config) tlsEnabled() bool {
-	return c.ClientCert != "" || c.CACert != ""
-}
-
 func Parse(cfg map[string]string) (Config, error) {
 	err := checkRequired(cfg)
 	// todo check if values are valid, e.g. hosts are valid etc.
