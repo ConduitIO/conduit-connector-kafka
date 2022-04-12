@@ -39,8 +39,8 @@ func TestSegmentConsumer_MessagePosition(t *testing.T) {
 	pos, err := c.positionOf(msg)
 	is.NoErr(err)
 
-	positionParsed := &position{}
-	err = json.Unmarshal(pos, positionParsed)
+	var positionParsed position
+	err = json.Unmarshal(pos, &positionParsed)
 	is.NoErr(err)
 
 	is.Equal("abc", positionParsed.GroupID)
