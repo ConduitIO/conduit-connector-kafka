@@ -92,9 +92,11 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 		readerCfg.StartOffset = kafka.LastOffset
 	}
 	// TLS config
-	err := c.withTLS(&readerCfg, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to set up TLS: %w", err)
+	if cfg.useTLS() {
+		err := c.withTLS(&readerCfg, cfg)
+		if err != nil {
+			return fmt.Errorf("failed to set up TLS: %w", err)
+		}
 	}
 	// SASL
 	if cfg.saslEnabled() {

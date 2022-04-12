@@ -15,8 +15,10 @@
 package kafka
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -72,6 +74,21 @@ type Config struct {
 	SASLMechanism string
 	SASLUsername  string
 	SASLPassword  string
+}
+
+func (c *Config) useTLS() bool {
+	return c.ClientCert != "" || c.CACert != "" || c.serverUsesTLS()
+}
+
+func (c *Config) serverUsesTLS() bool {
+	conn, err := net.Dial("tcp", c.Servers[0])
+	if err != nil {
+		return false
+	}
+	cfg, err := newTLSConfig("", "", "", true)
+	client := tls.Client(conn, cfg)
+	err = client.Handshake()
+	return err == nil
 }
 
 func (c *Config) saslEnabled() bool {
