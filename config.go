@@ -77,10 +77,12 @@ type Config struct {
 }
 
 func (c *Config) useTLS() bool {
-	return c.ClientCert != "" || c.CACert != "" || c.serverUsesTLS()
+	return c.ClientCert != "" || c.CACert != "" || c.brokerHasCACert()
 }
 
-func (c *Config) serverUsesTLS() bool {
+// brokerHasCACert determines if the broker's certificate has been
+// signed by a CA. Returns `false` if we cannot connect to the server at all.
+func (c *Config) brokerHasCACert() bool {
 	conn, err := net.Dial("tcp", c.Servers[0])
 	if err != nil {
 		return false
