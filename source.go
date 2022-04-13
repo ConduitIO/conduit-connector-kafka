@@ -15,7 +15,6 @@
 package kafka
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -26,9 +25,8 @@ import (
 type Source struct {
 	sdk.UnimplementedSource
 
-	Consumer         Consumer
-	Config           Config
-	lastPositionRead sdk.Position
+	Consumer Consumer
+	Config   Config
 }
 
 func NewSource() sdk.Source {
@@ -36,7 +34,7 @@ func NewSource() sdk.Source {
 }
 
 func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
-	sdk.Logger(ctx).Info().Msg("Configuring a Kafka Source...")
+	sdk.Logger(ctx).Info().Msg("Configuring a source...")
 	parsed, err := Parse(cfg)
 	if err != nil {
 		return fmt.Errorf("config is invalid: %w", err)
@@ -46,53 +44,39 @@ func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
 }
 
 func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
+	sdk.Logger(ctx).Info().Bytes("position", pos).Msg("Opening a source...")
 	client, err := NewConsumer()
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 	s.Consumer = client
 
-	err = s.startFrom(pos)
+	err = s.Consumer.StartFrom(s.Config, pos)
 	if err != nil {
-		return fmt.Errorf("couldn't start from position: %w", err)
+		return fmt.Errorf("couldn't open source at position %v: %w", string(pos), err)
 	}
 
 	return nil
 }
 
 func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
-	message, kafkaPos, err := s.Consumer.Get(ctx)
+	message, pos, err := s.Consumer.Get(ctx)
 	if err != nil {
 		return sdk.Record{}, fmt.Errorf("failed getting a message %w", err)
 	}
 	if message == nil {
 		return sdk.Record{}, sdk.ErrBackoffRetry
 	}
-	rec, err := toRecord(message, kafkaPos)
+	rec, err := toRecord(message, pos)
 	if err != nil {
 		return sdk.Record{}, fmt.Errorf("couldn't transform record %w", err)
 	}
-	s.lastPositionRead = rec.Position
 	return rec, nil
 }
 
-func (s *Source) startFrom(position sdk.Position) error {
-	// The check is in place, to avoid reconstructing the Kafka consumer.
-	if s.lastPositionRead != nil && bytes.Equal(s.lastPositionRead, position) {
-		return nil
-	}
-
-	err := s.Consumer.StartFrom(s.Config, string(position))
-	if err != nil {
-		return fmt.Errorf("couldn't start from given position %v due to %w", string(position), err)
-	}
-	s.lastPositionRead = position
-	return nil
-}
-
-func toRecord(message *kafka.Message, position string) (sdk.Record, error) {
+func toRecord(message *kafka.Message, position []byte) (sdk.Record, error) {
 	return sdk.Record{
-		Position:  []byte(position),
+		Position:  position,
 		CreatedAt: message.Time,
 		Key:       sdk.RawData(message.Key),
 		Payload:   sdk.RawData(message.Value),

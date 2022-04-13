@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka_test
+package kafka
 
 import (
 	"context"
@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	kafka "github.com/conduitio/conduit-connector-kafka"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"github.com/matryer/is"
@@ -32,7 +31,7 @@ func TestDestination_Write_Simple(t *testing.T) {
 	is := is.New(t)
 	// prepare test data
 	cfg := newTestConfig(t)
-	createTopic(t, cfg[kafka.Topic])
+	createTopic(t, cfg[Topic])
 	testWriteSimple(cfg, is)
 }
 
@@ -47,12 +46,12 @@ func testWriteSimple(cfg map[string]string, is *is.I) {
 	record := testRecord()
 
 	// prepare SUT
-	underTest := kafka.Destination{}
+	underTest := Destination{}
 	err := underTest.Configure(context.Background(), cfg)
 	is.NoErr(err)
 
 	err = underTest.Open(context.Background())
-	defer func(underTest *kafka.Destination, ctx context.Context) {
+	defer func(underTest *Destination, ctx context.Context) {
 		err := underTest.Teardown(ctx)
 		is.NoErr(err)
 	}(&underTest, context.Background())
@@ -62,7 +61,7 @@ func testWriteSimple(cfg map[string]string, is *is.I) {
 	err = underTest.Write(context.Background(), record)
 	is.NoErr(err)
 
-	message, err := waitForReaderMessage(cfg[kafka.Topic], 15*time.Second)
+	message, err := waitForReaderMessage(cfg[Topic], 15*time.Second)
 	is.NoErr(err)
 	is.Equal(record.Payload.Bytes(), message.Value)
 }
@@ -79,8 +78,8 @@ func waitForReaderMessage(topic string, timeout time.Duration) (skafka.Message, 
 
 func newTestConfig(t *testing.T) map[string]string {
 	return map[string]string{
-		kafka.Servers: "localhost:9092",
-		kafka.Topic:   t.Name() + uuid.NewString(),
+		Servers: "localhost:9092",
+		Topic:   t.Name() + uuid.NewString(),
 	}
 }
 
