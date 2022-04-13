@@ -80,8 +80,9 @@ func (c *Config) useTLS() bool {
 	return c.ClientCert != "" || c.CACert != "" || c.brokerHasCACert()
 }
 
-// brokerHasCACert determines if the broker's certificate has been
-// signed by a CA. Returns `false` if we cannot connect to the server at all.
+// brokerHasCACert determines if the broker's certificate has been signed by a CA.
+// Returns `true` if we are confident that the broker uses a CA-signed cert.
+// Returns `false` otherwise, which includes cases where we are not sure (e.g. server offline).
 func (c *Config) brokerHasCACert() bool {
 	conn, err := net.Dial("tcp", c.Servers[0])
 	if err != nil {
@@ -92,8 +93,7 @@ func (c *Config) brokerHasCACert() bool {
 		return false
 	}
 	client := tls.Client(conn, cfg)
-	err = client.Handshake()
-	return err == nil
+	return client.Handshake() == nil
 }
 
 func (c *Config) saslEnabled() bool {
