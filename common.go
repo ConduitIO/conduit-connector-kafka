@@ -56,7 +56,6 @@ func buildCertPool(caCert string) (*x509.CertPool, error) {
 	}
 	if caCert != "" {
 		rootCAs.AppendCertsFromPEM([]byte(caCert))
-
 	}
 	return rootCAs, nil
 }

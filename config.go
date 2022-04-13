@@ -88,6 +88,9 @@ func (c *Config) brokerHasCACert() bool {
 		return false
 	}
 	cfg, err := newTLSConfig("", "", "", true)
+	if err != nil {
+		return false
+	}
 	client := tls.Client(conn, cfg)
 	err = client.Handshake()
 	return err == nil
