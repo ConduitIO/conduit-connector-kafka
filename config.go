@@ -79,7 +79,7 @@ type Config struct {
 	SASLPassword  string
 }
 
-func (c *Config) Validate(ctx context.Context) error {
+func (c *Config) Test(ctx context.Context) error {
 	conn, err := net.Dial("tcp", c.Servers[0])
 	if err != nil {
 		return fmt.Errorf("failed connecting to broker at %v: %w", c.Servers[0], err)
