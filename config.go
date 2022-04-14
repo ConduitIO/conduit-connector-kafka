@@ -15,7 +15,9 @@
 package kafka
 
 import (
+	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -23,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -76,8 +79,29 @@ type Config struct {
 	SASLPassword  string
 }
 
+func (c *Config) Validate(ctx context.Context) error {
+	conn, err := net.Dial("tcp", c.Servers[0])
+	if err != nil {
+		return fmt.Errorf("failed connecting to broker at %v: %w", c.Servers[0], err)
+	}
+	defer conn.Close()
+
+	_, err = x509.SystemCertPool()
+	if err != nil {
+		sdk.Logger(ctx).Warn().
+			Err(err).
+			Msg("failed to load system's cert. pool, this can issues later on")
+	}
+
+	return nil
+}
+
 func (c *Config) useTLS() bool {
-	return c.ClientCert != "" || c.CACert != "" || c.brokerHasCACert()
+	return c.tlsConfigured() || c.brokerHasCACert()
+}
+
+func (c *Config) tlsConfigured() bool {
+	return c.ClientCert != "" || c.CACert != ""
 }
 
 // brokerHasCACert determines if the broker's certificate has been signed by a CA.
@@ -88,6 +112,8 @@ func (c *Config) brokerHasCACert() bool {
 	if err != nil {
 		return false
 	}
+	defer conn.Close()
+
 	cfg, err := newTLSConfig("", "", "", true)
 	if err != nil {
 		return false
