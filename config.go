@@ -90,7 +90,7 @@ func (c *Config) Validate(ctx context.Context) error {
 	if err != nil {
 		sdk.Logger(ctx).Warn().
 			Err(err).
-			Msg("failed to load system's cert. pool, this can issues later on")
+			Msg("failed to load system's cert. pool, this can cause issues later on")
 	}
 
 	return nil
