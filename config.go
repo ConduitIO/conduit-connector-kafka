@@ -15,12 +15,17 @@
 package kafka
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -74,12 +79,51 @@ type Config struct {
 	SASLPassword  string
 }
 
-func (c *Config) saslEnabled() bool {
-	return c.SASLUsername != "" && c.SASLPassword != ""
+func (c *Config) Test(ctx context.Context) error {
+	conn, err := net.Dial("tcp", c.Servers[0])
+	if err != nil {
+		return fmt.Errorf("failed connecting to broker at %v: %w", c.Servers[0], err)
+	}
+	defer conn.Close()
+
+	_, err = x509.SystemCertPool()
+	if err != nil {
+		sdk.Logger(ctx).Warn().
+			Err(err).
+			Msg("failed to load system's cert. pool, this can cause issues later on")
+	}
+
+	return nil
 }
 
-func (c *Config) tlsEnabled() bool {
+func (c *Config) useTLS() bool {
+	return c.tlsConfigured() || c.brokerHasCACert()
+}
+
+func (c *Config) tlsConfigured() bool {
 	return c.ClientCert != "" || c.CACert != ""
+}
+
+// brokerHasCACert determines if the broker's certificate has been signed by a CA.
+// Returns `true` if we are confident that the broker uses a CA-signed cert.
+// Returns `false` otherwise, which includes cases where we are not sure (e.g. server offline).
+func (c *Config) brokerHasCACert() bool {
+	conn, err := net.Dial("tcp", c.Servers[0])
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	cfg, err := newTLSConfig("", "", "", true)
+	if err != nil {
+		return false
+	}
+	client := tls.Client(conn, cfg)
+	return client.Handshake() == nil
+}
+
+func (c *Config) saslEnabled() bool {
+	return c.SASLUsername != "" && c.SASLPassword != ""
 }
 
 func Parse(cfg map[string]string) (Config, error) {

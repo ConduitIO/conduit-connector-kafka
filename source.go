@@ -45,6 +45,12 @@ func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
 
 func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 	sdk.Logger(ctx).Info().Bytes("position", pos).Msg("Opening a source...")
+
+	err := s.Config.Test(ctx)
+	if err != nil {
+		return fmt.Errorf("config validation failed: %w", err)
+	}
+
 	client, err := NewConsumer()
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka client: %w", err)

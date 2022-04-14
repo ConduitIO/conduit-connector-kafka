@@ -47,6 +47,11 @@ func (d *Destination) Configure(ctx context.Context, cfg map[string]string) erro
 }
 
 func (d *Destination) Open(ctx context.Context) error {
+	err := d.Config.Test(ctx)
+	if err != nil {
+		return fmt.Errorf("config validation failed: %w", err)
+	}
+
 	client, err := NewProducer(d.Config)
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka client: %w", err)

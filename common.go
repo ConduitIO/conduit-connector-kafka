@@ -33,12 +33,31 @@ func newTLSConfig(clientCert, clientKey, caCert string, serverNoVerify bool) (*t
 		return nil, fmt.Errorf("couldn't confligure client TLS: %w", err)
 	}
 
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(caCert))
+	caCertPool, err := buildCertPool(caCert)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't build root CAs pool: %w", err)
+	}
 	tlsConfig.RootCAs = caCertPool
 
 	tlsConfig.InsecureSkipVerify = serverNoVerify
 	return tlsConfig, err
+}
+
+// buildCertPool builds a cert pool with the given CA cert.
+// The basis for it is a copy of the system's cert pool, if present.
+// Otherwise, a new cert pool is created.
+func buildCertPool(caCert string) (*x509.CertPool, error) {
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get system cert pool: %w", err)
+	}
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+	if caCert != "" {
+		rootCAs.AppendCertsFromPEM([]byte(caCert))
+	}
+	return rootCAs, nil
 }
 
 func loadClientCert(tlsConfig *tls.Config, clientCert string, clientKey string) error {

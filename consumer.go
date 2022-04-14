@@ -125,10 +125,10 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 		readerCfg.StartOffset = kafka.LastOffset
 	}
 	// TLS config
-	if cfg.tlsEnabled() {
+	if cfg.useTLS() {
 		err := c.withTLS(&readerCfg, cfg)
 		if err != nil {
-			return fmt.Errorf("couldn't create dialer: %w", err)
+			return fmt.Errorf("failed to set up TLS: %w", err)
 		}
 	}
 	// SASL
