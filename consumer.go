@@ -215,7 +215,7 @@ func (c *segmentConsumer) Ack(position sdk.Position) error {
 
 func (c *segmentConsumer) canAck(position sdk.Position) error {
 	if len(c.unackMessages) == 0 {
-		return errors.New("no unacknowledged messages found")
+		return fmt.Errorf("requested ack for %q but no unacknowledged messages found", position)
 	}
 	pos, err := c.positionOf(c.unackMessages[0])
 	if err != nil {
