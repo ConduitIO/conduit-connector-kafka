@@ -57,6 +57,7 @@ func TestSource_Ack(t *testing.T) {
 
 // testRead reads and acks messages in range [from,to].
 // If `ackFirst`, only the first message will be acknowledged.
+// Returns the position of the last message read.
 func testRead(t *testing.T, cfgMap map[string]string, from int, to int, pos sdk.Position, ackFirstOnly bool) sdk.Position {
 	is := is.New(t)
 	ctx := context.Background()
