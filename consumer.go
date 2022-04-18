@@ -212,12 +212,14 @@ func (c *segmentConsumer) Ack(position sdk.Position) error {
 
 func (c *segmentConsumer) canAck(position sdk.Position) error {
 	if len(c.unackMessages) == 0 {
-		return errors.New("ack called, but no unacknowledged messages found")
+		return errors.New("no unacknowledged messages found")
 	}
 	pos, err := c.positionOf(c.unackMessages[0])
 	if err != nil {
 		return fmt.Errorf("failed to get position of first unacknowledged message: %w", err)
 	}
+	// We're going to yell at Conduit for not keeping its promise:
+	// acks should be requested in the same order reads were done.
 	if bytes.Compare(pos, position) != 0 {
 		return fmt.Errorf("ack is out-of-order, requested ack for %q, but first unack. message is %q", position, pos)
 	}
