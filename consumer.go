@@ -198,8 +198,21 @@ func (c *segmentConsumer) positionOf(m *kafka.Message) ([]byte, error) {
 }
 
 func (c *segmentConsumer) Ack(position sdk.Position) error {
+	err := c.canAck(position)
+	if err != nil {
+		return fmt.Errorf("ack not possible: %w", err)
+	}
+	err = c.reader.CommitMessages(context.Background(), *c.unackMessages[0])
+	if err != nil {
+		return fmt.Errorf("couldn't commit messages: %w", err)
+	}
+	c.unackMessages = c.unackMessages[1:]
+	return nil
+}
+
+func (c *segmentConsumer) canAck(position sdk.Position) error {
 	if len(c.unackMessages) == 0 {
-		return fmt.Errorf("ack called, but no unacknowledged messages found")
+		return errors.New("ack called, but no unacknowledged messages found")
 	}
 	pos, err := c.positionOf(c.unackMessages[0])
 	if err != nil {
@@ -208,12 +221,7 @@ func (c *segmentConsumer) Ack(position sdk.Position) error {
 	if bytes.Compare(pos, position) != 0 {
 		return fmt.Errorf("ack is out-of-order, requested ack for %q, but first unack. message is %q", position, pos)
 	}
-	err = c.reader.CommitMessages(context.Background(), *c.unackMessages[0])
-	if err != nil {
-		return fmt.Errorf("couldn't commit messages: %w", err)
-	}
-	c.unackMessages = c.unackMessages[1:]
-	return nil
+	return err
 }
 
 func (c *segmentConsumer) Close() error {
