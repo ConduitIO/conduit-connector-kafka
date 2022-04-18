@@ -24,6 +24,7 @@ import (
 )
 
 func TestSource_Restart(t *testing.T) {
+	t.Parallel()
 	is := is.New(t)
 
 	cfgMap := testConfigMap()
@@ -31,15 +32,34 @@ func TestSource_Restart(t *testing.T) {
 	is.NoErr(err)
 	createTopic(t, cfg.Topic)
 
-	pos := testRead(t, cfg, cfgMap, 1, 3, nil)
+	sendTestMessages(t, cfg, 1, 3)
+	pos := testRead(t, cfgMap, 1, 3, nil, false)
 	// Restart
-	testRead(t, cfg, cfgMap, 4, 6, pos)
+	sendTestMessages(t, cfg, 4, 6)
+	testRead(t, cfgMap, 4, 6, pos, false)
 }
 
-func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to int, pos sdk.Position) sdk.Position {
+func TestSource_Ack(t *testing.T) {
+	t.Parallel()
+	is := is.New(t)
+
+	cfgMap := testConfigMap()
+	cfg, err := Parse(cfgMap)
+	is.NoErr(err)
+	createTopic(t, cfg.Topic)
+
+	sendTestMessages(t, cfg, 1, 3)
+	pos := testRead(t, cfgMap, 1, 3, nil, true)
+	// Restart
+	sendTestMessages(t, cfg, 4, 6)
+	testRead(t, cfgMap, 2, 6, pos, false)
+}
+
+// testRead reads and acks messages in range [from,to].
+// If `ackFirst`, only the first message will be acknowledged.
+func testRead(t *testing.T, cfgMap map[string]string, from int, to int, pos sdk.Position, ackFirstOnly bool) sdk.Position {
 	is := is.New(t)
 	ctx := context.Background()
-	sendTestMessages(t, cfg, from, to)
 
 	underTest := NewSource()
 	defer underTest.Teardown(ctx) //nolint:errcheck // not interested at this point
@@ -49,16 +69,22 @@ func testRead(t *testing.T, cfg Config, cfgMap map[string]string, from int, to i
 	err = underTest.Open(ctx, pos)
 	is.NoErr(err)
 
-	var lastPos sdk.Position
+	var positions []sdk.Position
 	for i := from; i <= to; i++ {
 		rec, err := underTest.Read(ctx)
 		is.NoErr(err)
 		is.Equal(fmt.Sprintf("test-key-%d", i), string(rec.Key.Bytes()))
 
-		lastPos = rec.Position
-		err = underTest.Ack(ctx, lastPos)
+		positions = append(positions, rec.Position)
+	}
+
+	for i, p := range positions {
+		if i > 0 && ackFirstOnly {
+			continue
+		}
+		err = underTest.Ack(ctx, p)
 		is.NoErr(err)
 	}
 
-	return lastPos
+	return positions[len(positions)-1]
 }
