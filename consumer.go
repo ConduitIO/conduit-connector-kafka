@@ -77,7 +77,9 @@ func parsePosition(bytes []byte) (position, error) {
 }
 
 type segmentConsumer struct {
-	reader        *kafka.Reader
+	reader *kafka.Reader
+	// unackMessages represents all messages which have been read but not acknowledged.
+	// They are ordered in the way they were read.
 	unackMessages []*kafka.Message
 }
 
@@ -206,6 +208,7 @@ func (c *segmentConsumer) Ack(position sdk.Position) error {
 	if err != nil {
 		return fmt.Errorf("couldn't commit messages: %w", err)
 	}
+	// remove the message from slice of unacknowledged messages
 	c.unackMessages = c.unackMessages[1:]
 	return nil
 }
