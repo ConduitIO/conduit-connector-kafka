@@ -43,7 +43,7 @@ type Consumer interface {
 	// Returns: a message (if available), the message's position and an error (if there was one).
 	Get(ctx context.Context) (*kafka.Message, []byte, error)
 
-	Ack(ctx context.Context, position sdk.Position) error
+	Ack(position sdk.Position) error
 
 	// Close this consumer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -197,7 +197,7 @@ func (c *segmentConsumer) positionOf(m *kafka.Message) ([]byte, error) {
 	return p.json()
 }
 
-func (c *segmentConsumer) Ack(ctx context.Context, position sdk.Position) error {
+func (c *segmentConsumer) Ack(position sdk.Position) error {
 	if len(c.unackMessages) == 0 {
 		return fmt.Errorf("ack called, but no unacknowledged messages found")
 	}

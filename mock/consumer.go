@@ -38,17 +38,17 @@ func (m *Consumer) EXPECT() *ConsumerMockRecorder {
 }
 
 // Ack mocks base method.
-func (m *Consumer) Ack(arg0 context.Context, arg1 sdk.Position) error {
+func (m *Consumer) Ack(arg0 sdk.Position) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ack", arg0, arg1)
+	ret := m.ctrl.Call(m, "Ack", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Ack indicates an expected call of Ack.
-func (mr *ConsumerMockRecorder) Ack(arg0, arg1 interface{}) *gomock.Call {
+func (mr *ConsumerMockRecorder) Ack(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ack", reflect.TypeOf((*Consumer)(nil).Ack), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ack", reflect.TypeOf((*Consumer)(nil).Ack), arg0)
 }
 
 // Close mocks base method.
