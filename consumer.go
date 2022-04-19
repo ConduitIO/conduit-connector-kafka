@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
@@ -81,6 +82,8 @@ type segmentConsumer struct {
 	// unackMessages represents all messages which have been read but not acknowledged.
 	// They are ordered in the way they were read.
 	unackMessages []*kafka.Message
+	// umm is used to guard access to unackMessages
+	umm sync.Mutex
 }
 
 // NewConsumer creates a new Kafka consumer. The consumer needs to be started
@@ -185,6 +188,8 @@ func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, []byte, erro
 		return nil, nil, fmt.Errorf("couldn't get message's position: %w", err)
 	}
 
+	c.umm.Lock()
+	defer c.umm.Unlock()
 	c.unackMessages = append(c.unackMessages, &msg)
 	return &msg, position, nil
 }
@@ -200,6 +205,9 @@ func (c *segmentConsumer) positionOf(m *kafka.Message) ([]byte, error) {
 }
 
 func (c *segmentConsumer) Ack(position sdk.Position) error {
+	c.umm.Lock()
+	defer c.umm.Unlock()
+
 	err := c.canAck(position)
 	if err != nil {
 		return fmt.Errorf("ack not possible: %w", err)
