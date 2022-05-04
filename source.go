@@ -90,7 +90,7 @@ func toRecord(message *kafka.Message, position []byte) (sdk.Record, error) {
 }
 
 func (s *Source) Ack(ctx context.Context, position sdk.Position) error {
-	return s.Consumer.Ack()
+	return s.Consumer.Ack(position)
 }
 
 func (s *Source) Teardown(ctx context.Context) error {

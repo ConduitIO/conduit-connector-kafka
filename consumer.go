@@ -17,11 +17,14 @@
 package kafka
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -41,7 +44,7 @@ type Consumer interface {
 	// Returns: a message (if available), the message's position and an error (if there was one).
 	Get(ctx context.Context) (*kafka.Message, []byte, error)
 
-	Ack() error
+	Ack(position sdk.Position) error
 
 	// Close this consumer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -75,8 +78,12 @@ func parsePosition(bytes []byte) (position, error) {
 }
 
 type segmentConsumer struct {
-	reader      *kafka.Reader
-	lastMsgRead *kafka.Message
+	reader *kafka.Reader
+	// unackMessages represents all messages which have been read but not acknowledged.
+	// They are ordered in the way they were read.
+	unackMessages []*kafka.Message
+	// umm is used to guard access to unackMessages
+	umm sync.Mutex
 }
 
 // NewConsumer creates a new Kafka consumer. The consumer needs to be started
@@ -181,7 +188,9 @@ func (c *segmentConsumer) Get(ctx context.Context) (*kafka.Message, []byte, erro
 		return nil, nil, fmt.Errorf("couldn't get message's position: %w", err)
 	}
 
-	c.lastMsgRead = &msg
+	c.umm.Lock()
+	defer c.umm.Unlock()
+	c.unackMessages = append(c.unackMessages, &msg)
 	return &msg, position, nil
 }
 
@@ -195,13 +204,37 @@ func (c *segmentConsumer) positionOf(m *kafka.Message) ([]byte, error) {
 	return p.json()
 }
 
-func (c *segmentConsumer) Ack() error {
-	// See issue related to this: https://github.com/ConduitIO/conduit-connector-kafka/issues/23
-	err := c.reader.CommitMessages(context.Background(), *c.lastMsgRead)
+func (c *segmentConsumer) Ack(position sdk.Position) error {
+	c.umm.Lock()
+	defer c.umm.Unlock()
+
+	err := c.canAck(position)
+	if err != nil {
+		return fmt.Errorf("ack not possible: %w", err)
+	}
+	err = c.reader.CommitMessages(context.Background(), *c.unackMessages[0])
 	if err != nil {
 		return fmt.Errorf("couldn't commit messages: %w", err)
 	}
+	// remove the message from slice of unacknowledged messages
+	c.unackMessages = c.unackMessages[1:]
 	return nil
+}
+
+func (c *segmentConsumer) canAck(position sdk.Position) error {
+	if len(c.unackMessages) == 0 {
+		return fmt.Errorf("requested ack for %q but no unacknowledged messages found", position)
+	}
+	pos, err := c.positionOf(c.unackMessages[0])
+	if err != nil {
+		return fmt.Errorf("failed to get position of first unacknowledged message: %w", err)
+	}
+	// We're going to yell at Conduit for not keeping its promise:
+	// acks should be requested in the same order reads were done.
+	if bytes.Compare(pos, position) != 0 {
+		return fmt.Errorf("ack is out-of-order, requested ack for %q, but first unack. message is %q", position, pos)
+	}
+	return err
 }
 
 func (c *segmentConsumer) Close() error {

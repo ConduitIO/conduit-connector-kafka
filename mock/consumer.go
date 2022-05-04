@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	kafka "github.com/conduitio/conduit-connector-kafka"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	gomock "github.com/golang/mock/gomock"
 	kafka0 "github.com/segmentio/kafka-go"
 )
@@ -37,17 +38,17 @@ func (m *Consumer) EXPECT() *ConsumerMockRecorder {
 }
 
 // Ack mocks base method.
-func (m *Consumer) Ack() error {
+func (m *Consumer) Ack(arg0 sdk.Position) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ack")
+	ret := m.ctrl.Call(m, "Ack", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Ack indicates an expected call of Ack.
-func (mr *ConsumerMockRecorder) Ack() *gomock.Call {
+func (mr *ConsumerMockRecorder) Ack(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ack", reflect.TypeOf((*Consumer)(nil).Ack))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ack", reflect.TypeOf((*Consumer)(nil).Ack), arg0)
 }
 
 // Close mocks base method.
