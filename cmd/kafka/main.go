@@ -20,9 +20,9 @@ import (
 )
 
 func main() {
-	sdk.Serve(
-		kafka.Specification,
-		kafka.NewSource,
-		kafka.NewDestination,
-	)
+	sdk.Serve(sdk.Connector{
+		NewSpecification: kafka.Specification,
+		NewSource:        kafka.NewSource,
+		NewDestination:   kafka.NewDestination,
+	})
 }

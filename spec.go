@@ -24,7 +24,7 @@ func Specification() sdk.Specification {
 	return sdk.Specification{
 		Name:        "kafka",
 		Summary:     "A Kafka source and destination plugin for Conduit, written in Go.",
-		Description: "",
+		Description: "A Kafka source and destination plugin for Conduit, written in Go.",
 		Version:     "v0.1.0",
 		Author:      "Meroxa, Inc.",
 		DestinationParams: map[string]sdk.Parameter{
