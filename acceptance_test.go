@@ -35,11 +35,7 @@ func TestAcceptance(t *testing.T) {
 	sdk.AcceptanceTest(t, driver{
 		ConfigurableAcceptanceTestDriver: sdk.ConfigurableAcceptanceTestDriver{
 			Config: sdk.ConfigurableAcceptanceTestDriverConfig{
-				Connector: sdk.Connector{
-					NewSpecification: Specification,
-					NewSource:        NewSource,
-					NewDestination:   NewDestination,
-				},
+				Connector:         Connector,
 				SourceConfig:      cfg,
 				DestinationConfig: cfg,
 
