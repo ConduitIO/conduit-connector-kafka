@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// Package kafka contains implementations for Kafka source and destination
+// connectors for Conduit.
+package kafka
 
 import (
-	kafka "github.com/conduitio/conduit-connector-kafka"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
-func main() {
-	sdk.Serve(kafka.Connector)
+var Connector = sdk.Connector{
+	NewSpecification: Specification,
+	NewSource:        NewSource,
+	NewDestination:   NewDestination,
 }

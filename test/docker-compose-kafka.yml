@@ -8,12 +8,14 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.0.0
+    volumes:
+      - ./kafka-test.sh:/kafka-test.sh
     healthcheck:
-      test: kafka-topics --list --bootstrap-server localhost:9092
+      test: /kafka-test.sh
       # health checks happen every 10s, failures in the first 30s are not counted toward the maximum number of retries,
       # after 3 failed health checks the service is marked as unhealthy
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 3
       start_period: 30s
     depends_on:
@@ -28,4 +30,3 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-
