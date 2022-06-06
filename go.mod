@@ -8,7 +8,8 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/matryer/is v1.4.0
-	github.com/segmentio/kafka-go v0.4.31
+	github.com/segmentio/kafka-go v0.4.32
+	go.uber.org/goleak v1.1.12
 )
 
 require (
@@ -31,7 +32,6 @@ require (
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.buf.build/library/go-grpc/conduitio/conduit-connector-protocol v1.4.1 // indirect
-	go.uber.org/goleak v1.1.12 // indirect
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
 	golang.org/x/sys v0.0.0-20220405052023-b1e9470b6e64 // indirect
