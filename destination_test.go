@@ -81,7 +81,6 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	rec := testRec()
-	ackFunc := sdk.AckFunc(func(err error) error { return nil })
 	producerMock := mock.NewProducer(ctrl)
 	producerMock.
 		EXPECT().
@@ -89,7 +88,7 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 			gomock.Eq(rec.Key.Bytes()),
 			gomock.Eq(rec.Payload.Bytes()),
 			gomock.Eq(rec.Position),
-			gomock.Eq(ackFunc),
+			gomock.Any(),
 		).
 		Return(nil)
 
@@ -98,7 +97,7 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 	err := underTest.WriteAsync(
 		context.Background(),
 		rec,
-		ackFunc,
+		func(err error) error { return nil }, // an sdk.AckFunc
 	)
 	is.NoErr(err)
 }
