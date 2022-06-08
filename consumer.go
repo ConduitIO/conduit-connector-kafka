@@ -231,7 +231,7 @@ func (c *segmentConsumer) canAck(position sdk.Position) error {
 	}
 	// We're going to yell at Conduit for not keeping its promise:
 	// acks should be requested in the same order reads were done.
-	if bytes.Compare(pos, position) != 0 {
+	if !bytes.Equal(pos, position) {
 		return fmt.Errorf("ack is out-of-order, requested ack for %q, but first unack. message is %q", position, pos)
 	}
 	return err

@@ -19,8 +19,8 @@ package kafka
 import (
 	"context"
 	"fmt"
-	sdk "github.com/conduitio/conduit-connector-sdk"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
 )
 
