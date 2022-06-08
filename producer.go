@@ -19,6 +19,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
@@ -38,6 +39,7 @@ type Producer interface {
 type segmentProducer struct {
 	writer   *kafka.Writer
 	ackFuncs map[string]sdk.AckFunc
+	m        sync.Mutex
 }
 
 // NewProducer creates a new Kafka producer.
@@ -84,7 +86,11 @@ func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error)
 		return
 	}
 	for _, m := range messages {
+		p.m.Lock()
 		ackFunc, ok := p.ackFuncs[p.getID(m)]
+		delete(p.ackFuncs, p.getID(m))
+		p.m.Unlock()
+
 		if !ok {
 			// todo we probably need something better
 			// this will the kafka writer panic too, which will terminate the whole program
@@ -124,7 +130,10 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 }
 
 func (p *segmentProducer) Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	p.m.Lock()
 	p.ackFuncs[string(id)] = ackFunc
+	p.m.Unlock()
+
 	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
