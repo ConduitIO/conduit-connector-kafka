@@ -52,12 +52,12 @@ func (d *Destination) Open(ctx context.Context) error {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
 
-	client, err := NewProducer(d.Config)
+	producer, err := NewProducer(d.Config)
 	if err != nil {
-		return fmt.Errorf("failed to create Kafka client: %w", err)
+		return fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
 
-	d.Producer = client
+	d.Producer = producer
 	return nil
 }
 
