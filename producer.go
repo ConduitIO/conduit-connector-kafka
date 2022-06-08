@@ -19,6 +19,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -26,14 +27,15 @@ import (
 type Producer interface {
 	// Send synchronously delivers a message.
 	// Returns an error, if the message could not be delivered.
-	Send(key []byte, payload []byte) error
+	Send(key []byte, payload []byte, id []byte) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
 }
 
 type segmentProducer struct {
-	writer *kafka.Writer
+	writer   *kafka.Writer
+	ackFuncs map[string]sdk.AckFunc
 }
 
 // NewProducer creates a new Kafka producer.
@@ -63,12 +65,27 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 		RequiredAcks:           cfg.Acks,
 		MaxAttempts:            3,
 		AllowAutoTopicCreation: true,
+		Async:                  true,
+		Completion:             p.onMessageDelivery,
 	}
 	err := p.configureSecurity(cfg)
 	if err != nil {
 		return fmt.Errorf("couldn't configure security: %w", err)
 	}
 	return nil
+}
+
+func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error) {
+	if len(messages) == 0 {
+		return
+	}
+	for _, m := range messages {
+		ackFunc := p.ackFuncs[p.getID(m)]
+		// todo handle other case
+		if ackFunc != nil {
+			ackFunc(err)
+		}
+	}
 }
 
 func (p *segmentProducer) configureSecurity(cfg Config) error {
@@ -95,12 +112,19 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	return nil
 }
 
-func (p *segmentProducer) Send(key []byte, payload []byte) error {
+// todo id -- make string
+func (p *segmentProducer) Send(key []byte, payload []byte, id []byte) error {
 	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
 			Key:   key,
 			Value: payload,
+			Headers: []kafka.Header{
+				{
+					Key:   "conduit-id",
+					Value: id,
+				},
+			},
 		},
 	)
 
@@ -121,4 +145,13 @@ func (p *segmentProducer) Close() error {
 	}
 
 	return nil
+}
+
+func (p *segmentProducer) getID(m kafka.Message) string {
+	for _, h := range m.Headers {
+		if h.Key == "conduit-id" {
+			return string(h.Value)
+		}
+	}
+	return ""
 }

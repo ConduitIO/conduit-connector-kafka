@@ -53,8 +53,8 @@ func TestConfigureDestination_KafkaProducerCreated(t *testing.T) {
 
 	err = underTest.Open(context.Background())
 	is.NoErr(err)
-	is.True(underTest.Client != nil)
-	defer underTest.Client.Close()
+	is.True(underTest.Producer != nil)
+	defer underTest.Producer.Close()
 }
 
 func TestTeardown_ClosesClient(t *testing.T) {
@@ -67,7 +67,7 @@ func TestTeardown_ClosesClient(t *testing.T) {
 		Close().
 		Return(nil)
 
-	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
+	underTest := kafka.Destination{Producer: clientMock, Config: connectorCfg()}
 	is.NoErr(underTest.Teardown(context.Background()))
 }
 func TestTeardown_NoOpen(t *testing.T) {
@@ -91,7 +91,7 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 		).
 		Return(nil)
 
-	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
+	underTest := kafka.Destination{Producer: clientMock, Config: connectorCfg()}
 
 	err := underTest.Write(context.Background(), rec)
 	is.NoErr(err)

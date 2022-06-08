@@ -28,8 +28,8 @@ import (
 type Destination struct {
 	sdk.UnimplementedDestination
 
-	Client Producer
-	Config Config
+	Producer Producer
+	Config   Config
 }
 
 func NewDestination() sdk.Destination {
@@ -57,7 +57,7 @@ func (d *Destination) Open(ctx context.Context) error {
 		return fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 
-	d.Client = client
+	d.Producer = client
 	return nil
 }
 
@@ -83,10 +83,11 @@ func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
 	)
 }
 
-func (d *Destination) writeInternal(ctx context.Context, record sdk.Record) error {
-	err := d.Client.Send(
+func (d *Destination) writeInternal(_ context.Context, record sdk.Record) error {
+	err := d.Producer.Send(
 		record.Key.Bytes(),
 		record.Payload.Bytes(),
+		record.Position,
 	)
 	if err != nil {
 		return fmt.Errorf("message not delivered %w", err)
@@ -101,8 +102,8 @@ func (d *Destination) Flush(context.Context) error {
 // Teardown shuts down the Kafka client.
 func (d *Destination) Teardown(ctx context.Context) error {
 	sdk.Logger(ctx).Info().Msg("Tearing down a Kafka Destination...")
-	if d.Client != nil {
-		d.Client.Close()
+	if d.Producer != nil {
+		d.Producer.Close()
 	}
 	return nil
 }
