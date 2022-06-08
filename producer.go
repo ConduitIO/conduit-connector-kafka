@@ -83,9 +83,14 @@ func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error)
 	}
 	for _, m := range messages {
 		ackFunc := p.ackFuncs[p.getID(m)]
-		// todo handle other case
+		// todo handle case when no ack func registered
 		if ackFunc != nil {
-			ackFunc(err)
+			ackErr := ackFunc(err)
+			if ackErr != nil {
+				sdk.Logger(context.Background()).
+					Err(ackErr).
+					Msg("ack function returned an error")
+			}
 		}
 	}
 }
