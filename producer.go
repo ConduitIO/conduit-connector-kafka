@@ -25,9 +25,11 @@ import (
 )
 
 type Producer interface {
-	// Send synchronously delivers a message.
-	// Returns an error, if the message could not be delivered.
-	Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error
+	// Send sends a message to Kafka asynchronously.
+	// `messageId` parameter uniquely identifies a message.
+	// `callback` is called when the produces actually sends the messages
+	// (successfully or unsuccessfully).
+	Send(key []byte, payload []byte, messageId []byte, callback sdk.AckFunc) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -119,7 +121,6 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	return nil
 }
 
-// todo id -- make string
 func (p *segmentProducer) Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
 	p.ackFuncs[string(id)] = ackFunc
 	err := p.writer.WriteMessages(
