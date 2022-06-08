@@ -27,9 +27,9 @@ import (
 type Producer interface {
 	// Send sends a message to Kafka asynchronously.
 	// `messageId` parameter uniquely identifies a message.
-	// `callback` is called when the produces actually sends the messages
+	// `ackFunc` is called when the produces actually sends the messages
 	// (successfully or unsuccessfully).
-	Send(key []byte, payload []byte, messageId []byte, callback sdk.AckFunc) error
+	Send(key []byte, payload []byte, messageId []byte, ackFunc sdk.AckFunc) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -84,15 +84,17 @@ func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error)
 		return
 	}
 	for _, m := range messages {
-		ackFunc := p.ackFuncs[p.getID(m)]
-		// todo handle case when no ack func registered
-		if ackFunc != nil {
-			ackErr := ackFunc(err)
-			if ackErr != nil {
-				sdk.Logger(context.Background()).
-					Err(ackErr).
-					Msg("ack function returned an error")
-			}
+		ackFunc, ok := p.ackFuncs[p.getID(m)]
+		if !ok {
+			//todo we probably need something better
+			// this will the kafka writer panic too, which will terminate the whole program
+			panic(fmt.Errorf("ack func for %v not registered", p.getID(m)))
+		}
+		ackErr := ackFunc(err)
+		if ackErr != nil {
+			sdk.Logger(context.Background()).
+				Err(ackErr).
+				Msg("ack function returned an error")
 		}
 	}
 }
