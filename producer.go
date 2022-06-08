@@ -25,6 +25,8 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+const kafkaMessageIDHeader = "conduit-id"
+
 type Producer interface {
 	// Send sends a message to Kafka asynchronously.
 	// `messageID` parameter uniquely identifies a message.
@@ -37,9 +39,12 @@ type Producer interface {
 }
 
 type segmentProducer struct {
-	writer   *kafka.Writer
+	writer *kafka.Writer
+	// ackFuncs is a map of message IDs (i.e. Conduit positions)
+	// to respective ack functions.
 	ackFuncs map[string]sdk.AckFunc
-	m        sync.Mutex
+	// m synchronizes access to ackFuncs
+	m sync.Mutex
 }
 
 // NewProducer creates a new Kafka producer.
@@ -81,11 +86,15 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 	return nil
 }
 
+// onMessageDelivery is a callback function for kafka-go's writer
+// which is calling the ack functions for the messages which were
+// (successfully or unsuccessfully) delivered to Kafka.
 func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error) {
 	if len(messages) == 0 {
 		return
 	}
 	for _, m := range messages {
+		// accessed also when in Send(), when messages need to be sent
 		p.m.Lock()
 		ackFunc, ok := p.ackFuncs[p.getID(m)]
 		delete(p.ackFuncs, p.getID(m))
@@ -130,6 +139,8 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 }
 
 func (p *segmentProducer) Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	// accessed also in onMessageDelivery, which is
+	// calling and removing the ack functions
 	p.m.Lock()
 	p.ackFuncs[string(id)] = ackFunc
 	p.m.Unlock()
@@ -141,7 +152,7 @@ func (p *segmentProducer) Send(key []byte, payload []byte, id []byte, ackFunc sd
 			Value: payload,
 			Headers: []kafka.Header{
 				{
-					Key:   "conduit-id",
+					Key:   kafkaMessageIDHeader,
 					Value: id,
 				},
 			},
@@ -169,7 +180,7 @@ func (p *segmentProducer) Close() error {
 
 func (p *segmentProducer) getID(m kafka.Message) string {
 	for _, h := range m.Headers {
-		if h.Key == "conduit-id" {
+		if h.Key == kafkaMessageIDHeader {
 			return string(h.Value)
 		}
 	}
