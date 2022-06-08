@@ -61,10 +61,10 @@ func (d *Destination) Open(ctx context.Context) error {
 	return nil
 }
 
-func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
+func (d *Destination) WriteAsync(ctx context.Context, record sdk.Record, ackFunc sdk.AckFunc) error {
 	return retry.Do(
 		func() error {
-			return d.writeInternal(ctx, record)
+			return d.writeInternal(ctx, record, ackFunc)
 		},
 		retry.RetryIf(func(err error) bool {
 			// this can happen when the topic doesn't exist and the broker has auto-create enabled
@@ -83,11 +83,12 @@ func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
 	)
 }
 
-func (d *Destination) writeInternal(_ context.Context, record sdk.Record) error {
+func (d *Destination) writeInternal(_ context.Context, record sdk.Record, ackFunc sdk.AckFunc) error {
 	err := d.Producer.Send(
 		record.Key.Bytes(),
 		record.Payload.Bytes(),
 		record.Position,
+		ackFunc,
 	)
 	if err != nil {
 		return fmt.Errorf("message not delivered %w", err)

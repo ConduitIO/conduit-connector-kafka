@@ -58,7 +58,13 @@ func testWriteSimple(cfg map[string]string, is *is.I) {
 	is.NoErr(err)
 
 	// act and assert
-	err = underTest.Write(context.Background(), record)
+	err = underTest.WriteAsync(
+		context.Background(),
+		record,
+		func(err error) error {
+			return nil
+		},
+	)
 	is.NoErr(err)
 
 	message, err := waitForReaderMessage(cfg[Topic], 15*time.Second)

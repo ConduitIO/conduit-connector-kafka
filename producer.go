@@ -27,7 +27,7 @@ import (
 type Producer interface {
 	// Send synchronously delivers a message.
 	// Returns an error, if the message could not be delivered.
-	Send(key []byte, payload []byte, id []byte) error
+	Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -48,7 +48,9 @@ func NewProducer(cfg Config) (Producer, error) {
 		return nil, ErrTopicMissing
 	}
 
-	p := &segmentProducer{}
+	p := &segmentProducer{
+		ackFuncs: make(map[string]sdk.AckFunc),
+	}
 	err := p.newWriter(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create writer: %w", err)
@@ -113,7 +115,8 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 }
 
 // todo id -- make string
-func (p *segmentProducer) Send(key []byte, payload []byte, id []byte) error {
+func (p *segmentProducer) Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	p.ackFuncs[string(id)] = ackFunc
 	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
