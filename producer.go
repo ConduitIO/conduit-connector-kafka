@@ -111,6 +111,7 @@ func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error)
 			// that no position (progress) past this will be persisted.
 			// That implies that after a restart, everything after this position
 			// will be redone anyway.
+			// By panicking, we make sure there's no wrong impression of everything being just fine.
 			panic(fmt.Errorf("ack func for %v not registered", p.getID(m)))
 		}
 		ackErr := ackFunc(err)
