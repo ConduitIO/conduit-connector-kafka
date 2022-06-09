@@ -101,17 +101,28 @@ func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error)
 		p.m.Unlock()
 
 		if !ok {
-			sdk.Logger(context.Background()).Error().
+			sdk.Logger(context.Background()).
+				Error().
 				Msgf("no ack function for %v registered", p.getID(m))
-			// todo we probably need something better
-			// this will the kafka writer panic too, which will terminate the whole program
+			// Either Conduit didn't send an AckFunc (pretty unlikely)
+			// or this connector got an AckFunc, but didn't store it.
+			// Either way, without this message being acknowledged,
+			// the source record cannot be ack'd either, which means
+			// that no position (progress) past this will be persisted.
+			// That implies that after a restart, everything after this position
+			// will be redone anyway.
 			panic(fmt.Errorf("ack func for %v not registered", p.getID(m)))
 		}
 		ackErr := ackFunc(err)
+		// This means one of two:
+		// (1) bug in Conduit itself
+		// (2) for standalone plugins: the gRPC stream failed
+		// Either way, it makes sense for the connector to continue working.
 		if ackErr != nil {
 			sdk.Logger(context.Background()).
 				Err(ackErr).
 				Msg("ack function returned an error")
+			panic(fmt.Errorf("ack func for %v failed: %w", p.getID(m), ackErr))
 		}
 	}
 }
