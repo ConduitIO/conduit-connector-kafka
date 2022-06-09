@@ -101,6 +101,8 @@ func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error)
 		p.m.Unlock()
 
 		if !ok {
+			sdk.Logger(context.Background()).Error().
+				Msgf("no ack function for %v registered", p.getID(m))
 			// todo we probably need something better
 			// this will the kafka writer panic too, which will terminate the whole program
 			panic(fmt.Errorf("ack func for %v not registered", p.getID(m)))
