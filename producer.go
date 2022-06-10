@@ -157,19 +157,21 @@ func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, 
 	// If sendErr == nil, the message was successfully added to a batch.
 	// ackFunc will be invoked in a callback, when the batch is actually sent.
 	// Because of that, we invoke ackFunc here only if sendErr != nil.
-	if sendErr != nil {
-		ackErr := ackFunc(sendErr)
-		if ackErr != nil {
-			sdk.Logger(ctx).
-				Err(ackErr).
-				Msgf("ack func failed, called with %v", sendErr)
-
-			return fmt.Errorf("ack func failed: %w", ackErr)
-		}
-		return fmt.Errorf("message not delivered: %w", sendErr)
+	if sendErr == nil {
+		return nil
 	}
 
-	return nil
+	ackErr := ackFunc(sendErr)
+	if ackErr == nil {
+		return fmt.Errorf("message not delivered: %w", sendErr)
+
+	}
+
+	sdk.Logger(ctx).
+		Err(ackErr).
+		Msgf("ack func failed, called with %v", sendErr)
+
+	return fmt.Errorf("ack func failed: %w", ackErr)
 }
 
 func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
