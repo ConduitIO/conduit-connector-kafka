@@ -16,13 +16,9 @@ package kafka
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
-	"github.com/avast/retry-go"
 	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/segmentio/kafka-go"
 )
 
 type Destination struct {
@@ -62,37 +58,18 @@ func (d *Destination) Open(ctx context.Context) error {
 }
 
 func (d *Destination) WriteAsync(ctx context.Context, record sdk.Record, ackFunc sdk.AckFunc) error {
-	return retry.Do(
-		func() error {
-			return d.writeInternal(ctx, record, ackFunc)
-		},
-		retry.RetryIf(func(err error) bool {
-			// this can happen when the topic doesn't exist and the broker has auto-create enabled
-			// we give it some time to process topic metadata and retry
-			return errors.Is(err, kafka.LeaderNotAvailable)
-		}),
-		retry.OnRetry(func(n uint, err error) {
-			sdk.Logger(ctx).
-				Info().
-				Err(err).
-				Msgf("retrying write, attempt #%v", n)
-		}),
-		retry.Delay(time.Second),
-		retry.Attempts(10),
-		retry.LastErrorOnly(true),
-	)
-}
-
-func (d *Destination) writeInternal(_ context.Context, record sdk.Record, ackFunc sdk.AckFunc) error {
 	err := d.Producer.Send(
+		ctx,
 		record.Key.Bytes(),
 		record.Payload.Bytes(),
 		record.Position,
 		ackFunc,
 	)
 	if err != nil {
-		return fmt.Errorf("message not delivered %w", err)
+		// Producer.Send() will call ackFunc, so there's no need to do it here too.
+		return fmt.Errorf("message not delivered: %w", err)
 	}
+
 	return nil
 }
 

@@ -79,12 +79,14 @@ func TestTeardown_NoOpen(t *testing.T) {
 func TestWrite_ClientSendsMessage(t *testing.T) {
 	is := is.New(t)
 	ctrl := gomock.NewController(t)
+	ctx := context.Background()
 
 	rec := testRec()
 	producerMock := mock.NewProducer(ctrl)
 	producerMock.
 		EXPECT().
 		Send(
+			gomock.Eq(ctx),
 			gomock.Eq(rec.Key.Bytes()),
 			gomock.Eq(rec.Payload.Bytes()),
 			gomock.Eq(rec.Position),
@@ -95,7 +97,7 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 	underTest := kafka.Destination{Producer: producerMock, Config: connectorCfg()}
 
 	err := underTest.WriteAsync(
-		context.Background(),
+		ctx,
 		rec,
 		func(err error) error { return nil }, // an sdk.AckFunc
 	)

@@ -18,9 +18,12 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/avast/retry-go"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
 )
@@ -32,7 +35,7 @@ type Producer interface {
 	// `messageID` parameter uniquely identifies a message.
 	// `ackFunc` is called when the produces actually sends the messages
 	// (successfully or unsuccessfully).
-	Send(key []byte, payload []byte, messageID []byte, ackFunc sdk.AckFunc) error
+	Send(ctx context.Context, key []byte, payload []byte, messageID []byte, ackFunc sdk.AckFunc) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -90,9 +93,6 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 // which is calling the ack functions for the messages which were
 // (successfully or unsuccessfully) delivered to Kafka.
 func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error) {
-	if len(messages) == 0 {
-		return
-	}
 	for _, m := range messages {
 		// accessed also when in Send(), when messages need to be sent
 		p.m.Lock()
@@ -152,7 +152,49 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	return nil
 }
 
-func (p *segmentProducer) Send(key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	sendErr := p.sendRetryable(ctx, key, payload, id, ackFunc)
+	// If sendErr == nil, the message was successfully added to a batch.
+	// ackFunc will be invoked in a callback, when the batch is actually sent.
+	// Because of that, we invoke ackFunc here only if sendErr != nil.
+	if sendErr != nil {
+		ackErr := ackFunc(sendErr)
+		if ackErr != nil {
+			sdk.Logger(ctx).
+				Err(ackErr).
+				Msgf("ack func failed, called with %v", sendErr)
+
+			return fmt.Errorf("ack func failed: %w", ackErr)
+		}
+		return fmt.Errorf("message not delivered: %w", sendErr)
+	}
+
+	return nil
+}
+
+func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	return retry.Do(
+		func() error {
+			return p.sendOnce(id, ackFunc, key, payload)
+		},
+		retry.RetryIf(func(err error) bool {
+			// this can happen when the topic doesn't exist and the broker has auto-create enabled
+			// we give it some time to process topic metadata and retry
+			return errors.Is(err, kafka.LeaderNotAvailable)
+		}),
+		retry.OnRetry(func(n uint, err error) {
+			sdk.Logger(ctx).
+				Info().
+				Err(err).
+				Msgf("retrying write, attempt #%v", n)
+		}),
+		retry.Delay(time.Second),
+		retry.Attempts(10),
+		retry.LastErrorOnly(true),
+	)
+}
+
+func (p *segmentProducer) sendOnce(id []byte, ackFunc sdk.AckFunc, key []byte, payload []byte) error {
 	// accessed also in onMessageDelivery, which is
 	// calling and removing the ack functions
 	p.m.Lock()
