@@ -74,7 +74,6 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 	p.writer = &kafka.Writer{
 		Addr:                   kafka.TCP(cfg.Servers...),
 		Topic:                  cfg.Topic,
-		BatchSize:              1,
 		WriteTimeout:           cfg.DeliveryTimeout,
 		RequiredAcks:           cfg.Acks,
 		MaxAttempts:            3,
