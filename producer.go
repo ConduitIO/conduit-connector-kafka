@@ -153,9 +153,10 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 
 func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
 	sendErr := p.sendRetryable(ctx, key, payload, id, ackFunc)
-	// If sendErr == nil, the message was successfully added to a batch.
-	// ackFunc will be invoked in a callback, when the batch is actually sent.
+	// If sendErr == nil, the message was successfully added to a batch,
+	// i.e. not actually sent.
 	// Because of that, we invoke ackFunc here only if sendErr != nil.
+	// NB: ackFunc will be invoked in a callback, when the batch is actually sent.
 	if sendErr == nil {
 		return nil
 	}
