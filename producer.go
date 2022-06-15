@@ -165,6 +165,9 @@ func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, 
 	if ackErr == nil {
 		return fmt.Errorf("message not delivered: %w", sendErr)
 	}
+	p.m.Lock()
+	delete(p.ackFuncs, string(id))
+	p.m.Unlock()
 
 	sdk.Logger(ctx).
 		Err(ackErr).
