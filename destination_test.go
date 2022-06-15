@@ -70,6 +70,7 @@ func TestTeardown_ClosesClient(t *testing.T) {
 	underTest := kafka.Destination{Producer: clientMock, Config: connectorCfg()}
 	is.NoErr(underTest.Teardown(context.Background()))
 }
+
 func TestTeardown_NoOpen(t *testing.T) {
 	is := is.New(t)
 	underTest := kafka.NewDestination()
