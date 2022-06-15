@@ -96,7 +96,11 @@ func (s *Source) Ack(ctx context.Context, position sdk.Position) error {
 func (s *Source) Teardown(ctx context.Context) error {
 	sdk.Logger(ctx).Info().Msg("Tearing down a Kafka Source...")
 	if s.Consumer != nil {
-		return s.Consumer.Close()
+		err := s.Consumer.Close()
+		if err != nil {
+			return fmt.Errorf("failed closing Kafka consumer: %w", err)
+		}
+		return nil
 	}
 	return nil
 }
