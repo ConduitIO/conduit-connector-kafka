@@ -16,20 +16,16 @@ package kafka
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
-	"github.com/avast/retry-go"
 	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/segmentio/kafka-go"
 )
 
 type Destination struct {
 	sdk.UnimplementedDestination
 
-	Client Producer
-	Config Config
+	Producer Producer
+	Config   Config
 }
 
 func NewDestination() sdk.Destination {
@@ -52,45 +48,28 @@ func (d *Destination) Open(ctx context.Context) error {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
 
-	client, err := NewProducer(d.Config)
+	producer, err := NewProducer(d.Config)
 	if err != nil {
-		return fmt.Errorf("failed to create Kafka client: %w", err)
+		return fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
 
-	d.Client = client
+	d.Producer = producer
 	return nil
 }
 
-func (d *Destination) Write(ctx context.Context, record sdk.Record) error {
-	return retry.Do(
-		func() error {
-			return d.writeInternal(ctx, record)
-		},
-		retry.RetryIf(func(err error) bool {
-			// this can happen when the topic doesn't exist and the broker has auto-create enabled
-			// we give it some time to process topic metadata and retry
-			return errors.Is(err, kafka.LeaderNotAvailable)
-		}),
-		retry.OnRetry(func(n uint, err error) {
-			sdk.Logger(ctx).
-				Info().
-				Err(err).
-				Msgf("retrying write, attempt #%v", n)
-		}),
-		retry.Delay(time.Second),
-		retry.Attempts(10),
-		retry.LastErrorOnly(true),
-	)
-}
-
-func (d *Destination) writeInternal(ctx context.Context, record sdk.Record) error {
-	err := d.Client.Send(
+func (d *Destination) WriteAsync(ctx context.Context, record sdk.Record, ackFunc sdk.AckFunc) error {
+	err := d.Producer.Send(
+		ctx,
 		record.Key.Bytes(),
 		record.Payload.Bytes(),
+		record.Position,
+		ackFunc,
 	)
 	if err != nil {
-		return fmt.Errorf("message not delivered %w", err)
+		// Producer.Send() will call ackFunc, so there's no need to do it here too.
+		return fmt.Errorf("message not delivered: %w", err)
 	}
+
 	return nil
 }
 
@@ -101,8 +80,8 @@ func (d *Destination) Flush(context.Context) error {
 // Teardown shuts down the Kafka client.
 func (d *Destination) Teardown(ctx context.Context) error {
 	sdk.Logger(ctx).Info().Msg("Tearing down a Kafka Destination...")
-	if d.Client != nil {
-		d.Client.Close()
+	if d.Producer != nil {
+		_ = d.Producer.Close()
 	}
 	return nil
 }

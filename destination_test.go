@@ -53,8 +53,8 @@ func TestConfigureDestination_KafkaProducerCreated(t *testing.T) {
 
 	err = underTest.Open(context.Background())
 	is.NoErr(err)
-	is.True(underTest.Client != nil)
-	defer underTest.Client.Close()
+	is.True(underTest.Producer != nil)
+	defer underTest.Producer.Close()
 }
 
 func TestTeardown_ClosesClient(t *testing.T) {
@@ -67,7 +67,7 @@ func TestTeardown_ClosesClient(t *testing.T) {
 		Close().
 		Return(nil)
 
-	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
+	underTest := kafka.Destination{Producer: clientMock, Config: connectorCfg()}
 	is.NoErr(underTest.Teardown(context.Background()))
 }
 func TestTeardown_NoOpen(t *testing.T) {
@@ -79,21 +79,28 @@ func TestTeardown_NoOpen(t *testing.T) {
 func TestWrite_ClientSendsMessage(t *testing.T) {
 	is := is.New(t)
 	ctrl := gomock.NewController(t)
+	ctx := context.Background()
 
 	rec := testRec()
-
-	clientMock := mock.NewProducer(ctrl)
-	clientMock.
+	producerMock := mock.NewProducer(ctrl)
+	producerMock.
 		EXPECT().
 		Send(
+			gomock.Eq(ctx),
 			gomock.Eq(rec.Key.Bytes()),
 			gomock.Eq(rec.Payload.Bytes()),
+			gomock.Eq(rec.Position),
+			gomock.Any(),
 		).
 		Return(nil)
 
-	underTest := kafka.Destination{Client: clientMock, Config: connectorCfg()}
+	underTest := kafka.Destination{Producer: producerMock, Config: connectorCfg()}
 
-	err := underTest.Write(context.Background(), rec)
+	err := underTest.WriteAsync(
+		ctx,
+		rec,
+		func(err error) error { return nil }, // an sdk.AckFunc
+	)
 	is.NoErr(err)
 }
 

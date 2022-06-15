@@ -18,15 +18,24 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
+	"time"
 
+	"github.com/avast/retry-go"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
 )
 
+const kafkaMessageIDHeader = "conduit-id"
+
 type Producer interface {
-	// Send synchronously delivers a message.
-	// Returns an error, if the message could not be delivered.
-	Send(key []byte, payload []byte) error
+	// Send sends a message to Kafka asynchronously.
+	// `messageID` parameter uniquely identifies a message.
+	// `ackFunc` is called when the produces actually sends the messages
+	// (successfully or unsuccessfully).
+	Send(ctx context.Context, key []byte, payload []byte, messageID []byte, ackFunc sdk.AckFunc) error
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
@@ -34,6 +43,11 @@ type Producer interface {
 
 type segmentProducer struct {
 	writer *kafka.Writer
+	// ackFuncs is a map of message IDs (i.e. Conduit positions)
+	// to respective ack functions.
+	ackFuncs map[string]sdk.AckFunc
+	// m synchronizes access to ackFuncs
+	m sync.Mutex
 }
 
 // NewProducer creates a new Kafka producer.
@@ -46,7 +60,9 @@ func NewProducer(cfg Config) (Producer, error) {
 		return nil, ErrTopicMissing
 	}
 
-	p := &segmentProducer{}
+	p := &segmentProducer{
+		ackFuncs: make(map[string]sdk.AckFunc),
+	}
 	err := p.newWriter(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create writer: %w", err)
@@ -58,17 +74,57 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 	p.writer = &kafka.Writer{
 		Addr:                   kafka.TCP(cfg.Servers...),
 		Topic:                  cfg.Topic,
-		BatchSize:              1,
 		WriteTimeout:           cfg.DeliveryTimeout,
 		RequiredAcks:           cfg.Acks,
 		MaxAttempts:            3,
 		AllowAutoTopicCreation: true,
+		Async:                  true,
+		Completion:             p.onMessageDelivery,
 	}
 	err := p.configureSecurity(cfg)
 	if err != nil {
 		return fmt.Errorf("couldn't configure security: %w", err)
 	}
 	return nil
+}
+
+// onMessageDelivery is a callback function for kafka-go's writer
+// which is calling the ack functions for the messages which were
+// (successfully or unsuccessfully) delivered to Kafka.
+func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error) {
+	for _, m := range messages {
+		// accessed also when in Send(), when messages need to be sent
+		p.m.Lock()
+		ackFunc, ok := p.ackFuncs[p.getID(m)]
+		delete(p.ackFuncs, p.getID(m))
+		p.m.Unlock()
+
+		if !ok {
+			sdk.Logger(context.Background()).
+				Error().
+				Msgf("no ack function for %v registered", p.getID(m))
+			// Either Conduit didn't send an AckFunc (pretty unlikely)
+			// or this connector got an AckFunc, but didn't store it.
+			// Either way, without this message being acknowledged,
+			// the source record cannot be ack'd either, which means
+			// that no position (progress) past this will be persisted.
+			// That implies that after a restart, everything after this position
+			// will be redone anyway.
+			// By panicking, we make sure there's no wrong impression of everything being just fine.
+			panic(fmt.Errorf("ack func for %v not registered", p.getID(m)))
+		}
+		ackErr := ackFunc(err)
+		// This means one of two:
+		// (1) bug in Conduit itself
+		// (2) for standalone plugins: the gRPC stream failed
+		// Either way, it makes sense for the connector to continue working.
+		if ackErr != nil {
+			sdk.Logger(context.Background()).
+				Err(ackErr).
+				Msg("ack function returned an error")
+			panic(fmt.Errorf("ack func for %v failed: %w", p.getID(m), ackErr))
+		}
+	}
 }
 
 func (p *segmentProducer) configureSecurity(cfg Config) error {
@@ -95,12 +151,72 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	return nil
 }
 
-func (p *segmentProducer) Send(key []byte, payload []byte) error {
+func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	// accessed also in onMessageDelivery, which is
+	// calling and removing the ack functions
+	p.m.Lock()
+	p.ackFuncs[string(id)] = ackFunc
+	p.m.Unlock()
+
+	sendErr := p.sendRetryable(ctx, key, payload, id)
+	// If sendErr == nil, the message was successfully added to a batch,
+	// i.e. not actually sent.
+	// Because of that, we invoke ackFunc here only if sendErr != nil.
+	// NB: ackFunc will be invoked in a callback, when the batch is actually sent.
+	if sendErr != nil {
+		p.m.Lock()
+		delete(p.ackFuncs, string(id))
+		p.m.Unlock()
+
+		ackErr := ackFunc(sendErr)
+		if ackErr == nil {
+			return fmt.Errorf("message not delivered: %w", sendErr)
+		}
+
+		sdk.Logger(ctx).
+			Err(ackErr).
+			Msgf("ack func failed, called with %v", sendErr)
+
+		return fmt.Errorf("ack func failed: %w", ackErr)
+	}
+
+	return nil
+}
+
+func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload []byte, id []byte) error {
+	return retry.Do(
+		func() error {
+			return p.sendOnce(id, key, payload)
+		},
+		retry.RetryIf(func(err error) bool {
+			// this can happen when the topic doesn't exist and the broker has auto-create enabled
+			// we give it some time to process topic metadata and retry
+			return errors.Is(err, kafka.LeaderNotAvailable)
+		}),
+		retry.OnRetry(func(n uint, err error) {
+			sdk.Logger(ctx).
+				Info().
+				Err(err).
+				Msgf("retrying write, attempt #%v", n)
+		}),
+		retry.Delay(time.Second),
+		retry.Attempts(10),
+		retry.LastErrorOnly(true),
+	)
+}
+
+func (p *segmentProducer) sendOnce(id []byte, key []byte, payload []byte) error {
 	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
 			Key:   key,
 			Value: payload,
+			Headers: []kafka.Header{
+				{
+					Key:   kafkaMessageIDHeader,
+					Value: id,
+				},
+			},
 		},
 	)
 
@@ -121,4 +237,13 @@ func (p *segmentProducer) Close() error {
 	}
 
 	return nil
+}
+
+func (p *segmentProducer) getID(m kafka.Message) string {
+	for _, h := range m.Headers {
+		if h.Key == kafkaMessageIDHeader {
+			return string(h.Value)
+		}
+	}
+	return ""
 }
