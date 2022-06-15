@@ -152,6 +152,12 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 }
 
 func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+	// accessed also in onMessageDelivery, which is
+	// calling and removing the ack functions
+	p.m.Lock()
+	p.ackFuncs[string(id)] = ackFunc
+	p.m.Unlock()
+
 	sendErr := p.sendRetryable(ctx, key, payload, id, ackFunc)
 	// If sendErr == nil, the message was successfully added to a batch,
 	// i.e. not actually sent.
@@ -161,13 +167,14 @@ func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, 
 		return nil
 	}
 
+	p.m.Lock()
+	delete(p.ackFuncs, string(id))
+	p.m.Unlock()
+
 	ackErr := ackFunc(sendErr)
 	if ackErr == nil {
 		return fmt.Errorf("message not delivered: %w", sendErr)
 	}
-	p.m.Lock()
-	delete(p.ackFuncs, string(id))
-	p.m.Unlock()
 
 	sdk.Logger(ctx).
 		Err(ackErr).
@@ -199,12 +206,6 @@ func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload
 }
 
 func (p *segmentProducer) sendOnce(id []byte, ackFunc sdk.AckFunc, key []byte, payload []byte) error {
-	// accessed also in onMessageDelivery, which is
-	// calling and removing the ack functions
-	p.m.Lock()
-	p.ackFuncs[string(id)] = ackFunc
-	p.m.Unlock()
-
 	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
