@@ -158,7 +158,7 @@ func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, 
 	p.ackFuncs[string(id)] = ackFunc
 	p.m.Unlock()
 
-	sendErr := p.sendRetryable(ctx, key, payload, id, ackFunc)
+	sendErr := p.sendRetryable(ctx, key, payload, id)
 	// If sendErr == nil, the message was successfully added to a batch,
 	// i.e. not actually sent.
 	// Because of that, we invoke ackFunc here only if sendErr != nil.
@@ -183,10 +183,10 @@ func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, 
 	return fmt.Errorf("ack func failed: %w", ackErr)
 }
 
-func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
+func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload []byte, id []byte) error {
 	return retry.Do(
 		func() error {
-			return p.sendOnce(id, ackFunc, key, payload)
+			return p.sendOnce(id, key, payload)
 		},
 		retry.RetryIf(func(err error) bool {
 			// this can happen when the topic doesn't exist and the broker has auto-create enabled
@@ -205,7 +205,7 @@ func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload
 	)
 }
 
-func (p *segmentProducer) sendOnce(id []byte, ackFunc sdk.AckFunc, key []byte, payload []byte) error {
+func (p *segmentProducer) sendOnce(id []byte, key []byte, payload []byte) error {
 	err := p.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{
