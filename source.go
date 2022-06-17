@@ -100,7 +100,6 @@ func (s *Source) Teardown(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed closing Kafka consumer: %w", err)
 		}
-		return nil
 	}
 	return nil
 }

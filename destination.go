@@ -85,7 +85,6 @@ func (d *Destination) Teardown(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed closing Kafka producer: %w", err)
 		}
-		return nil
 	}
 	return nil
 }
