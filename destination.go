@@ -81,7 +81,10 @@ func (d *Destination) Flush(context.Context) error {
 func (d *Destination) Teardown(ctx context.Context) error {
 	sdk.Logger(ctx).Info().Msg("Tearing down a Kafka Destination...")
 	if d.Producer != nil {
-		_ = d.Producer.Close()
+		err := d.Producer.Close()
+		if err != nil {
+			return fmt.Errorf("failed closing Kafka producer: %w", err)
+		}
 	}
 	return nil
 }
