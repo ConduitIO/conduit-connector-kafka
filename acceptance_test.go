@@ -22,33 +22,25 @@ import (
 	"testing"
 )
 
-type driver struct {
-	sdk.ConfigurableAcceptanceTestDriver
-}
-
 func TestAcceptance(t *testing.T) {
 	cfg := map[string]string{
 		Servers:           "localhost:9092",
 		ReadFromBeginning: "true",
 	}
 
-	sdk.AcceptanceTest(t, driver{
-		ConfigurableAcceptanceTestDriver: sdk.ConfigurableAcceptanceTestDriver{
-			Config: sdk.ConfigurableAcceptanceTestDriverConfig{
-				Connector:         Connector,
-				SourceConfig:      cfg,
-				DestinationConfig: cfg,
+	sdk.AcceptanceTest(t, sdk.ConfigurableAcceptanceTestDriver{
+		Config: sdk.ConfigurableAcceptanceTestDriverConfig{
+			Connector:         Connector,
+			SourceConfig:      cfg,
+			DestinationConfig: cfg,
 
-				BeforeTest: func(t *testing.T) {
-					cfg[Topic] = "TestAcceptance-" + uuid.NewString()
-				},
-				AfterTest: func(t *testing.T) {
-				},
-				GoleakOptions: []goleak.Option{
-					// kafka.DefaultTransport starts some goroutines: https://github.com/segmentio/kafka-go/issues/599
-					goleak.IgnoreTopFunction("github.com/segmentio/kafka-go.(*connPool).discover"),
-					goleak.IgnoreTopFunction("github.com/segmentio/kafka-go.(*conn).run"),
-				},
+			BeforeTest: func(t *testing.T) {
+				cfg[Topic] = "TestAcceptance-" + uuid.NewString()
+			},
+			GoleakOptions: []goleak.Option{
+				// kafka.DefaultTransport starts some goroutines: https://github.com/segmentio/kafka-go/issues/599
+				goleak.IgnoreTopFunction("github.com/segmentio/kafka-go.(*connPool).discover"),
+				goleak.IgnoreTopFunction("github.com/segmentio/kafka-go.(*conn).run"),
 			},
 		},
 	})
