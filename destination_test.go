@@ -89,7 +89,7 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 		Send(
 			gomock.Eq(ctx),
 			gomock.Eq(rec.Key.Bytes()),
-			gomock.Eq(rec.Payload.Bytes()),
+			gomock.Eq(rec.Bytes()),
 			gomock.Eq(rec.Position),
 			gomock.Any(),
 		).
@@ -116,10 +116,15 @@ func configMap() map[string]string {
 
 func testRec() sdk.Record {
 	return sdk.Record{
+		Operation: sdk.OperationUpdate,
 		Position:  []byte(uuid.NewString()),
-		Metadata:  nil,
-		CreatedAt: time.Time{},
-		Key:       sdk.RawData(uuid.NewString()),
-		Payload:   sdk.RawData(fmt.Sprintf("test message %s", time.Now())),
+		Metadata: map[string]string{
+			"foo": "bar",
+		},
+		Key: sdk.RawData(uuid.NewString()),
+		Payload: sdk.Change{
+			Before: sdk.RawData(fmt.Sprintf("test before %s", time.Now())),
+			After:  sdk.RawData(fmt.Sprintf("test after %s", time.Now())),
+		},
 	}
 }

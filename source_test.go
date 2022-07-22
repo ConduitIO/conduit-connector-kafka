@@ -22,6 +22,7 @@ import (
 
 	kafka "github.com/conduitio/conduit-connector-kafka"
 	"github.com/conduitio/conduit-connector-kafka/mock"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/matryer/is"
@@ -81,8 +82,9 @@ func TestReadPosition(t *testing.T) {
 	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
 	rec, err := underTest.Read(context.Background())
 	is.NoErr(err)
+	is.Equal(rec.Operation, sdk.OperationCreate)
 	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
-	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
+	is.Equal(rec.Payload.After.Bytes(), kafkaMsg.Value)
 
 	is.Equal(pos, []byte(rec.Position))
 }
@@ -104,8 +106,9 @@ func TestRead(t *testing.T) {
 	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
 	rec, err := underTest.Read(context.Background())
 	is.NoErr(err)
+	is.Equal(rec.Operation, sdk.OperationCreate)
 	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
-	is.Equal(rec.Payload.Bytes(), kafkaMsg.Value)
+	is.Equal(rec.Payload.After.Bytes(), kafkaMsg.Value)
 	is.Equal(pos, []byte(rec.Position))
 }
 

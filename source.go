@@ -22,6 +22,11 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+const (
+	// MetadataKafkaTopic is the metadata key for storing the kafka topic
+	MetadataKafkaTopic = "kafka.topic"
+)
+
 type Source struct {
 	sdk.UnimplementedSource
 
@@ -73,20 +78,22 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 	if message == nil {
 		return sdk.Record{}, sdk.ErrBackoffRetry
 	}
-	rec, err := toRecord(message, pos)
-	if err != nil {
-		return sdk.Record{}, fmt.Errorf("couldn't transform record %w", err)
-	}
+	rec := s.buildRecord(message, pos)
 	return rec, nil
 }
 
-func toRecord(message *kafka.Message, position []byte) (sdk.Record, error) {
-	return sdk.Record{
-		Position:  position,
-		CreatedAt: message.Time,
-		Key:       sdk.RawData(message.Key),
-		Payload:   sdk.RawData(message.Value),
-	}, nil
+func (s *Source) buildRecord(message *kafka.Message, position []byte) sdk.Record {
+	metadata := map[string]string{
+		MetadataKafkaTopic: message.Topic,
+	}
+	sdk.SetMetadataCreatedAt(metadata, message.Time)
+
+	return s.Util.NewRecordCreate(
+		position,
+		metadata,
+		sdk.RawData(message.Key),
+		sdk.RawData(message.Value),
+	)
 }
 
 func (s *Source) Ack(ctx context.Context, position sdk.Position) error {
