@@ -236,6 +236,14 @@ func (p *segmentProducer) Close() error {
 		return fmt.Errorf("couldn't close writer: %w", err)
 	}
 
+	// close idle connections if possible
+	closeIdleTransport, ok := p.writer.Transport.(interface {
+		CloseIdleConnections()
+	})
+	if ok {
+		closeIdleTransport.CloseIdleConnections()
+	}
+
 	return nil
 }
 

@@ -15,11 +15,10 @@
 package kafka
 
 import (
+	"testing"
+
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
-	"go.uber.org/goleak"
-
-	"testing"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -36,11 +35,6 @@ func TestAcceptance(t *testing.T) {
 
 			BeforeTest: func(t *testing.T) {
 				cfg[Topic] = "TestAcceptance-" + uuid.NewString()
-			},
-			GoleakOptions: []goleak.Option{
-				// kafka.DefaultTransport starts some goroutines: https://github.com/segmentio/kafka-go/issues/599
-				goleak.IgnoreTopFunction("github.com/segmentio/kafka-go.(*connPool).discover"),
-				goleak.IgnoreTopFunction("github.com/segmentio/kafka-go.(*conn).run"),
 			},
 		},
 	})

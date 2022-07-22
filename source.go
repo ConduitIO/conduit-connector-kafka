@@ -73,7 +73,7 @@ func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
 func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 	message, pos, err := s.Consumer.Get(ctx)
 	if err != nil {
-		return sdk.Record{}, fmt.Errorf("failed getting a message %w", err)
+		return sdk.Record{}, fmt.Errorf("failed getting a message: %w", err)
 	}
 	if message == nil {
 		return sdk.Record{}, sdk.ErrBackoffRetry
