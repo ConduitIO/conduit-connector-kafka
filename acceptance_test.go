@@ -16,6 +16,7 @@ package kafka
 
 import (
 	"testing"
+	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
@@ -36,6 +37,8 @@ func TestAcceptance(t *testing.T) {
 			BeforeTest: func(t *testing.T) {
 				cfg[Topic] = "TestAcceptance-" + uuid.NewString()
 			},
+
+			ReadTimeout: 10 * time.Second,
 		},
 	})
 }
