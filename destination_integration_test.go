@@ -69,7 +69,7 @@ func testWriteSimple(cfg map[string]string, is *is.I) {
 
 	message, err := waitForReaderMessage(cfg[Topic], 15*time.Second)
 	is.NoErr(err)
-	is.Equal(record.Payload.Bytes(), message.Value)
+	is.Equal(record.Bytes(), message.Value)
 }
 
 func waitForReaderMessage(topic string, timeout time.Duration) (skafka.Message, error) {
@@ -91,11 +91,16 @@ func newTestConfig(t *testing.T) map[string]string {
 
 func testRecord() sdk.Record {
 	return sdk.Record{
+		Operation: sdk.OperationUpdate,
 		Position:  []byte(uuid.NewString()),
-		Metadata:  nil,
-		CreatedAt: time.Time{},
-		Key:       sdk.RawData(uuid.NewString()),
-		Payload:   sdk.RawData(fmt.Sprintf("test message %s", time.Now())),
+		Metadata: map[string]string{
+			"foo": "bar",
+		},
+		Key: sdk.RawData(uuid.NewString()),
+		Payload: sdk.Change{
+			Before: sdk.RawData(fmt.Sprintf("test before %s", time.Now())),
+			After:  sdk.RawData(fmt.Sprintf("test after %s", time.Now())),
+		},
 	}
 }
 
