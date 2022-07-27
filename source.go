@@ -86,9 +86,9 @@ func (s *Source) buildRecord(message *kafka.Message, position []byte) sdk.Record
 	metadata := map[string]string{
 		MetadataKafkaTopic: message.Topic,
 	}
-	sdk.SetMetadataCreatedAt(metadata, message.Time)
+	sdk.Util.Metadata.SetCreatedAt(metadata, message.Time)
 
-	return s.Util.NewRecordCreate(
+	return sdk.Util.Source.NewRecordCreate(
 		position,
 		metadata,
 		sdk.RawData(message.Key),
