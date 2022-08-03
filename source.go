@@ -83,10 +83,10 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 }
 
 func (s *Source) buildRecord(message *kafka.Message, position []byte) sdk.Record {
-	metadata := map[string]string{
+	metadata := sdk.Metadata{
 		MetadataKafkaTopic: message.Topic,
 	}
-	sdk.Util.Metadata.SetCreatedAt(metadata, message.Time)
+	metadata.SetCreatedAt(message.Time)
 
 	return sdk.Util.Source.NewRecordCreate(
 		position,
