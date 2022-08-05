@@ -61,7 +61,7 @@ func (d *Destination) WriteAsync(ctx context.Context, record sdk.Record, ackFunc
 	err := d.Producer.Send(
 		ctx,
 		record.Key.Bytes(),
-		record.Payload.Bytes(),
+		record.Bytes(),
 		record.Position,
 		ackFunc,
 	)
