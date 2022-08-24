@@ -28,26 +28,17 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-const kafkaMessageIDHeader = "conduit-id"
-
 type Producer interface {
-	// Send sends a message to Kafka asynchronously.
-	// `messageID` parameter uniquely identifies a message.
-	// `ackFunc` is called when the produces actually sends the messages
-	// (successfully or unsuccessfully).
-	Send(ctx context.Context, key []byte, payload []byte, messageID []byte, ackFunc sdk.AckFunc) error
+	// Send sends all records to Kafka synchronously.
+	Send(ctx context.Context, records []sdk.Record) (int, error)
 
 	// Close this producer and the associated resources (e.g. connections to the broker)
 	Close() error
 }
 
 type segmentProducer struct {
-	writer *kafka.Writer
-	// ackFuncs is a map of message IDs (i.e. Conduit positions)
-	// to respective ack functions.
-	ackFuncs map[string]sdk.AckFunc
-	// m synchronizes access to ackFuncs
-	m sync.Mutex
+	writer   *kafka.Writer
+	balancer *batchSizeAdjustingBalancer
 }
 
 // NewProducer creates a new Kafka producer.
@@ -60,17 +51,16 @@ func NewProducer(cfg Config) (Producer, error) {
 		return nil, ErrTopicMissing
 	}
 
-	p := &segmentProducer{
-		ackFuncs: make(map[string]sdk.AckFunc),
-	}
-	err := p.newWriter(cfg)
+	p := &segmentProducer{}
+	err := p.init(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't create writer: %w", err)
+		return nil, fmt.Errorf("couldn't initialize producer: %w", err)
 	}
 	return p, nil
 }
 
-func (p *segmentProducer) newWriter(cfg Config) error {
+func (p *segmentProducer) init(cfg Config) error {
+	p.balancer = &batchSizeAdjustingBalancer{}
 	p.writer = &kafka.Writer{
 		Addr:                   kafka.TCP(cfg.Servers...),
 		Topic:                  cfg.Topic,
@@ -78,53 +68,17 @@ func (p *segmentProducer) newWriter(cfg Config) error {
 		RequiredAcks:           cfg.Acks,
 		MaxAttempts:            3,
 		AllowAutoTopicCreation: true,
-		Async:                  true,
-		Completion:             p.onMessageDelivery,
+
+		Balancer:     p.balancer,
+		BatchTimeout: time.Millisecond, // partial batches will be written after 1 millisecond
 	}
+	p.balancer.writer = p.writer
+
 	err := p.configureSecurity(cfg)
 	if err != nil {
 		return fmt.Errorf("couldn't configure security: %w", err)
 	}
 	return nil
-}
-
-// onMessageDelivery is a callback function for kafka-go's writer
-// which is calling the ack functions for the messages which were
-// (successfully or unsuccessfully) delivered to Kafka.
-func (p *segmentProducer) onMessageDelivery(messages []kafka.Message, err error) {
-	for _, m := range messages {
-		// accessed also when in Send(), when messages need to be sent
-		p.m.Lock()
-		ackFunc, ok := p.ackFuncs[p.getID(m)]
-		delete(p.ackFuncs, p.getID(m))
-		p.m.Unlock()
-
-		if !ok {
-			sdk.Logger(context.Background()).
-				Error().
-				Msgf("no ack function for %v registered", p.getID(m))
-			// Either Conduit didn't send an AckFunc (pretty unlikely)
-			// or this connector got an AckFunc, but didn't store it.
-			// Either way, without this message being acknowledged,
-			// the source record cannot be ack'd either, which means
-			// that no position (progress) past this will be persisted.
-			// That implies that after a restart, everything after this position
-			// will be redone anyway.
-			// By panicking, we make sure there's no wrong impression of everything being just fine.
-			panic(fmt.Errorf("ack func for %v not registered", p.getID(m)))
-		}
-		ackErr := ackFunc(err)
-		// This means one of two:
-		// (1) bug in Conduit itself
-		// (2) for standalone plugins: the gRPC stream failed
-		// Either way, it makes sense for the connector to continue working.
-		if ackErr != nil {
-			sdk.Logger(context.Background()).
-				Err(ackErr).
-				Msg("ack function returned an error")
-			panic(fmt.Errorf("ack func for %v failed: %w", p.getID(m), ackErr))
-		}
-	}
 }
 
 func (p *segmentProducer) configureSecurity(cfg Config) error {
@@ -151,42 +105,56 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	return nil
 }
 
-func (p *segmentProducer) Send(ctx context.Context, key []byte, payload []byte, id []byte, ackFunc sdk.AckFunc) error {
-	// accessed also in onMessageDelivery, which is
-	// calling and removing the ack functions
-	p.m.Lock()
-	p.ackFuncs[string(id)] = ackFunc
-	p.m.Unlock()
-
-	sendErr := p.sendRetryable(ctx, key, payload, id)
-	// If sendErr == nil, the message was successfully added to a batch,
-	// i.e. not actually sent.
-	// Because of that, we invoke ackFunc here only if sendErr != nil.
-	// NB: ackFunc will be invoked in a callback, when the batch is actually sent.
-	if sendErr != nil {
-		p.m.Lock()
-		delete(p.ackFuncs, string(id))
-		p.m.Unlock()
-
-		ackErr := ackFunc(sendErr)
-		if ackErr == nil {
-			return fmt.Errorf("message not delivered: %w", sendErr)
+func (p *segmentProducer) Send(ctx context.Context, records []sdk.Record) (int, error) {
+	p.balancer.SetRecordCount(len(records))
+	messages := make([]kafka.Message, len(records))
+	for i, r := range records {
+		messages[i] = kafka.Message{
+			Key:   r.Key.Bytes(),
+			Value: r.Bytes(),
 		}
-
-		sdk.Logger(ctx).
-			Err(ackErr).
-			Msgf("ack func failed, called with %v", sendErr)
-
-		return fmt.Errorf("ack func failed: %w", ackErr)
 	}
 
-	return nil
+	err := p.sendRetryable(ctx, messages)
+	if err != nil {
+		werr, ok := err.(kafka.WriteErrors)
+		if !ok {
+			return 0, fmt.Errorf("failed to produce messages: %w", err)
+		}
+		// multiple errors occurred, we loop through the errors and fetch the
+		// first non-nil error, we log all others
+		count := 0
+		err = nil
+		for i := range werr {
+			switch {
+			case werr[i] != nil && err == nil:
+				// the first message that failed to be produced - we will return
+				// this one
+				count = i
+				err = werr[i]
+			case werr[i] != nil && err != nil:
+				// a message that failed to be produced after an already failed
+				// message - we will log this one
+				sdk.Logger(ctx).Err(werr[i]).Bytes("record_position", records[i].Position).Msg("failed to produce message")
+			case werr[i] == nil && err != nil:
+				// a message that we successfully produced after a message that
+				// failed - we need to log a warning, this one will be
+				// duplicated if it's reprocessed
+				sdk.Logger(ctx).Warn().Bytes("record_position", records[i].Position).Msg("this message was produced after a previous message failed to be produced - if you restart the pipeline this message will be produced again")
+			}
+		}
+		return count, err
+	}
+	return len(records), nil
 }
 
-func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload []byte, id []byte) error {
+func (p *segmentProducer) sendRetryable(ctx context.Context, messages []kafka.Message) error {
 	return retry.Do(
 		func() error {
-			return p.sendOnce(id, key, payload)
+			return p.writer.WriteMessages(
+				context.Background(),
+				messages...,
+			)
 		},
 		retry.RetryIf(func(err error) bool {
 			// this can happen when the topic doesn't exist and the broker has auto-create enabled
@@ -203,27 +171,6 @@ func (p *segmentProducer) sendRetryable(ctx context.Context, key []byte, payload
 		retry.Attempts(10),
 		retry.LastErrorOnly(true),
 	)
-}
-
-func (p *segmentProducer) sendOnce(id []byte, key []byte, payload []byte) error {
-	err := p.writer.WriteMessages(
-		context.Background(),
-		kafka.Message{
-			Key:   key,
-			Value: payload,
-			Headers: []kafka.Header{
-				{
-					Key:   kafkaMessageIDHeader,
-					Value: id,
-				},
-			},
-		},
-	)
-
-	if err != nil {
-		return fmt.Errorf("message not delivered: %w", err)
-	}
-	return nil
 }
 
 func (p *segmentProducer) Close() error {
@@ -247,11 +194,40 @@ func (p *segmentProducer) Close() error {
 	return nil
 }
 
-func (p *segmentProducer) getID(m kafka.Message) string {
-	for _, h := range m.Headers {
-		if h.Key == kafkaMessageIDHeader {
-			return string(h.Value)
-		}
-	}
-	return ""
+// batchSizeAdjustingBalancer is a balancer that adjusts the batch size of the
+// writer based on the number of messages that we want to write.
+// Before calling Writer.WriteMessages you can call SetRecordCount on the
+// balancer to let it know how many messages will be written. First time the
+// Balance method is called it will calculate the appropriate batch size based
+// on the number of partitions and adjust the setting in the writer.
+// The actual balancing logic after that is delegated to kafka.RoundRobin.
+//
+// When the record count is divisible by the number of partitions, this balancer
+// will ensure that all batches are flushed instantly. If it's not divisible and
+// the record count is greater than the number of partitions, some batches will
+// be flushed only after the batch delay is reached.
+//
+// This is a workaround and best approximation for achieving synchronous writes,
+// because the segment client doesn't allow you to write without batching.
+// For more info see https://github.com/segmentio/kafka-go/issues/852.
+type batchSizeAdjustingBalancer struct {
+	kafka.RoundRobin
+	writer *kafka.Writer
+
+	recordCount int
+	once        sync.Once
+}
+
+func (b *batchSizeAdjustingBalancer) SetRecordCount(count int) {
+	b.recordCount = count
+	b.once = sync.Once{} // make sure new batch size is calculated
+}
+
+// Balance satisfies the kafka.Balancer interface.
+func (b *batchSizeAdjustingBalancer) Balance(msg kafka.Message, partitions ...int) int {
+	b.once.Do(func() {
+		// trick for ceil without cast to float: ceil(a/b) = (a+b-1)/b
+		b.writer.BatchSize = (b.recordCount + len(partitions) - 1) / len(partitions)
+	})
+	return b.RoundRobin.Balance(msg, partitions...)
 }

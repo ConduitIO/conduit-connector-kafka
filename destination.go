@@ -94,7 +94,7 @@ func (d *Destination) Parameters() map[string]sdk.Parameter {
 }
 
 func (d *Destination) Configure(ctx context.Context, cfg map[string]string) error {
-	sdk.Logger(ctx).Info().Msg("Configuring a Kafka Destination...")
+	sdk.Logger(ctx).Info().Msg("Configuring Kafka Destination...")
 	parsed, err := Parse(cfg)
 	if err != nil {
 		return fmt.Errorf("config is invalid: %w", err)
@@ -118,29 +118,13 @@ func (d *Destination) Open(ctx context.Context) error {
 	return nil
 }
 
-func (d *Destination) WriteAsync(ctx context.Context, record sdk.Record, ackFunc sdk.AckFunc) error {
-	err := d.Producer.Send(
-		ctx,
-		record.Key.Bytes(),
-		record.Bytes(),
-		record.Position,
-		ackFunc,
-	)
-	if err != nil {
-		// Producer.Send() will call ackFunc, so there's no need to do it here too.
-		return fmt.Errorf("message not delivered: %w", err)
-	}
-
-	return nil
-}
-
-func (d *Destination) Flush(context.Context) error {
-	return nil
+func (d *Destination) Write(ctx context.Context, records []sdk.Record) (int, error) {
+	return d.Producer.Send(ctx, records)
 }
 
 // Teardown shuts down the Kafka client.
 func (d *Destination) Teardown(ctx context.Context) error {
-	sdk.Logger(ctx).Info().Msg("Tearing down a Kafka Destination...")
+	sdk.Logger(ctx).Info().Msg("Tearing down Kafka Destination...")
 	if d.Producer != nil {
 		err := d.Producer.Close()
 		if err != nil {

@@ -38,7 +38,7 @@ func TestSegmentWriter_TLSOnly(t *testing.T) {
 		InsecureSkipVerify: true,
 	}
 	p := &segmentProducer{}
-	err := p.newWriter(config)
+	err := p.init(config)
 	is.NoErr(err)
 	underTest := p.writer
 
@@ -62,7 +62,7 @@ func TestSegmentWriter_ClientTLS(t *testing.T) {
 		InsecureSkipVerify: true,
 	}
 	p := &segmentProducer{}
-	err := p.newWriter(config)
+	err := p.init(config)
 	is.NoErr(err)
 	underTest := p.writer
 
@@ -84,7 +84,7 @@ func TestSegmentWriter_ServerTLS(t *testing.T) {
 		InsecureSkipVerify: true,
 	}
 	p := &segmentProducer{}
-	err := p.newWriter(config)
+	err := p.init(config)
 	is.NoErr(err)
 	underTest := p.writer
 
@@ -103,7 +103,7 @@ func TestSegmentWriter_SASL_Plain(t *testing.T) {
 		SASLPassword: "sasl-password",
 	}
 	p := &segmentProducer{}
-	err := p.newWriter(config)
+	err := p.init(config)
 	is.NoErr(err)
 	underTest := p.writer
 
@@ -129,7 +129,7 @@ func TestSegmentWriter_SASL_SCRAM_SHA_256(t *testing.T) {
 		SASLPassword:  "sasl-password",
 	}
 	p := &segmentProducer{}
-	err := p.newWriter(config)
+	err := p.init(config)
 	is.NoErr(err)
 	underTest := p.writer
 
@@ -151,7 +151,7 @@ func TestSegmentWriter_SASL_SCRAM_SHA_512(t *testing.T) {
 		SASLPassword:  "sasl-password",
 	}
 	p := &segmentProducer{}
-	err := p.newWriter(config)
+	err := p.init(config)
 	is.NoErr(err)
 	underTest := p.writer
 
