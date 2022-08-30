@@ -226,6 +226,11 @@ func (b *batchSizeAdjustingBalancer) SetRecordCount(count int) {
 // Balance satisfies the kafka.Balancer interface.
 func (b *batchSizeAdjustingBalancer) Balance(msg kafka.Message, partitions ...int) int {
 	b.once.Do(func() {
+		// kafka.Writer.BatchSize is the batch size for a single partition. We
+		// know the number of messages we are writing and because we are using
+		// the round robin balancer we know that a single partition will receive
+		// at most ceil(recordCount/partitions) messages. We set the batch size
+		// accordingly.
 		// trick for ceil without cast to float: ceil(a/b) = (a+b-1)/b
 		b.writer.BatchSize = (b.recordCount + len(partitions) - 1) / len(partitions)
 	})
