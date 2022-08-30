@@ -84,25 +84,13 @@ func TestWrite_ClientSendsMessage(t *testing.T) {
 
 	rec := testRec()
 	producerMock := mock.NewProducer(ctrl)
-	producerMock.
-		EXPECT().
-		Send(
-			gomock.Eq(ctx),
-			gomock.Eq(rec.Key.Bytes()),
-			gomock.Eq(rec.Bytes()),
-			gomock.Eq(rec.Position),
-			gomock.Any(),
-		).
-		Return(nil)
+	producerMock.EXPECT().Send(ctx, []sdk.Record{rec}).Return(1, nil)
 
 	underTest := kafka.Destination{Producer: producerMock, Config: connectorCfg()}
 
-	err := underTest.WriteAsync(
-		ctx,
-		rec,
-		func(err error) error { return nil }, // an sdk.AckFunc
-	)
+	count, err := underTest.Write(ctx, []sdk.Record{rec})
 	is.NoErr(err)
+	is.Equal(count, 1)
 }
 
 func connectorCfg() kafka.Config {

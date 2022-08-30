@@ -50,15 +50,16 @@ func (mr *ProducerMockRecorder) Close() *gomock.Call {
 }
 
 // Send mocks base method.
-func (m *Producer) Send(arg0 context.Context, arg1, arg2, arg3 []byte, arg4 sdk.AckFunc) error {
+func (m *Producer) Send(arg0 context.Context, arg1 []sdk.Record) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Send", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Send", arg0, arg1)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Send indicates an expected call of Send.
-func (mr *ProducerMockRecorder) Send(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *ProducerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*Producer)(nil).Send), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*Producer)(nil).Send), arg0, arg1)
 }

@@ -17,7 +17,7 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -27,7 +27,7 @@ import (
 )
 
 func readFile(filename string, t *testing.T) string {
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
