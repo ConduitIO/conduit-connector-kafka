@@ -20,11 +20,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/segmentio/kafka-go"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
