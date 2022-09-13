@@ -26,7 +26,6 @@ import (
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
-	"github.com/segmentio/kafka-go"
 )
 
 // Consumer represents a Kafka consumer in a simplified form,
@@ -121,7 +120,11 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 	}
 	// Group ID
 	if groupID == "" {
-		readerCfg.GroupID = uuid.NewString()
+		if cfg.GroupID != "" {
+			readerCfg.GroupID = cfg.GroupID
+		} else {
+			readerCfg.GroupID = uuid.NewString()
+		}
 	} else {
 		readerCfg.GroupID = groupID
 	}

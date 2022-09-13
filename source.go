@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/segmentio/kafka-go"
 )
 
 const (
@@ -54,6 +53,11 @@ func (s *Source) Parameters() map[string]sdk.Parameter {
 			Default:     "false",
 			Required:    false,
 			Description: "Whether or not to read a topic from beginning (i.e. existing messages or only new messages).",
+		},
+		GroupID: {
+			Default:     "",
+			Required:    false,
+			Description: "The Consumer Group ID to use for the Kafka Consumer on the Source connector.",
 		},
 		ClientCert: {
 			Default:     "",
