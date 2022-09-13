@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/segmentio/kafka-go"
 	"sync"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"

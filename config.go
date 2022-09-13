@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/segmentio/kafka-go"
 	"net"
 	"strconv"
 	"strings"
