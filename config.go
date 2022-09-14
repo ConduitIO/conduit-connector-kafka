@@ -25,8 +25,9 @@ import (
 	"strings"
 	"time"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/segmentio/kafka-go"
+
+	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
 const (
@@ -42,6 +43,7 @@ const (
 	SASLMechanism      = "saslMechanism"
 	SASLUsername       = "saslUsername"
 	SASLPassword       = "saslPassword"
+	GroupID            = "groupID"
 )
 
 var (
@@ -62,6 +64,8 @@ type Config struct {
 	// Read all messages present in a source topic.
 	// Default value: false (only new messages are read)
 	ReadFromBeginning bool
+	// The Consumer Group ID to use for the Source connector
+	GroupID string
 	// TLS section
 	// The Kafka client's certificate
 	ClientCert string
@@ -154,6 +158,11 @@ func Parse(cfg map[string]string) (Config, error) {
 		return Config{}, fmt.Errorf("invalid value for ReadFromBeginning: %w", err)
 	}
 	parsed.ReadFromBeginning = readFromBeginning
+
+	// set Group ID if provided
+	if gID := cfg[GroupID]; gID != "" {
+		parsed.GroupID = gID
+	}
 
 	// parse and validate delivery DeliveryTimeout
 	timeout, err := parseDuration(cfg, DeliveryTimeout, 10*time.Second)

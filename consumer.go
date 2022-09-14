@@ -24,9 +24,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/segmentio/kafka-go"
+
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
-	"github.com/segmentio/kafka-go"
 )
 
 // Consumer represents a Kafka consumer in a simplified form,
@@ -113,18 +114,35 @@ func (c *segmentConsumer) StartFrom(config Config, positionBytes []byte) error {
 	return nil
 }
 
+// newReader creates a new read on the given segmentConsumer.
+// `groupID` is used only if cfg doesn't already specify a group ID.
+// It comes from a position, since it's not possible for the connectors
+// to mutate their own configuration (which is needed if a group ID needs
+// to be generated).
+// If the group ID is empty, and the configuration doesn't specify a group ID,
+// then it will be generated and used for this consumer.
+// If the group ID is not empty, then there are possibilities:
+// 1. Configuration has no group ID: In that case, `groupID` is used.
+// 2. Configuration has a group ID: In that case, it's expected that they are equal.
 func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 	readerCfg := kafka.ReaderConfig{
 		Brokers:               cfg.Servers,
 		Topic:                 cfg.Topic,
 		WatchPartitionChanges: true,
 	}
+
 	// Group ID
-	if groupID == "" {
+	switch {
+	case groupID == "" && cfg.GroupID != "":
+		readerCfg.GroupID = cfg.GroupID
+	case groupID == "" && cfg.GroupID == "":
 		readerCfg.GroupID = uuid.NewString()
-	} else {
+	case groupID != "" && cfg.GroupID == "":
 		readerCfg.GroupID = groupID
+	default:
+		return fmt.Errorf("got two different group IDs: %v and %v", groupID, cfg.GroupID)
 	}
+
 	// StartOffset
 	if cfg.ReadFromBeginning {
 		readerCfg.StartOffset = kafka.FirstOffset

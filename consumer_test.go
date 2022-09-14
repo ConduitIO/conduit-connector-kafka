@@ -81,6 +81,36 @@ func TestSegmentConsumer_StartFrom_InvalidPos(t *testing.T) {
 	is.True(errors.As(err, &jsonError))
 }
 
+func TestReaderConfig_GroupIDMismatch(t *testing.T) {
+	is := is.New(t)
+
+	config := Config{
+		Servers: []string{"test-host:9092"},
+		Topic:   "test-topic",
+		GroupID: "test-group-id",
+	}
+
+	c := &segmentConsumer{}
+	err := c.newReader(config, "group-id")
+	is.True(err != nil)
+	is.Equal("got two different group IDs: group-id and test-group-id", err.Error())
+}
+
+func TestReaderConfig_GroupID(t *testing.T) {
+	is := is.New(t)
+
+	config := Config{
+		Servers: []string{"test-host:9092"},
+		Topic:   "test-topic",
+		GroupID: "test-group-id",
+	}
+
+	c := &segmentConsumer{}
+	err := c.newReader(config, "")
+	is.NoErr(err)
+	is.Equal(config.GroupID, c.reader.Config().GroupID)
+}
+
 func TestReaderConfig_MutualTLS(t *testing.T) {
 	is := is.New(t)
 
