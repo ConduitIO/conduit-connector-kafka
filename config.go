@@ -43,7 +43,7 @@ const (
 	SASLMechanism      = "saslMechanism"
 	SASLUsername       = "saslUsername"
 	SASLPassword       = "saslPassword"
-	GroupID            = "groupId"
+	GroupID            = "groupID"
 )
 
 var (
