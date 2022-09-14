@@ -244,6 +244,7 @@ func TestParse_Full(t *testing.T) {
 	parsed, err := Parse(map[string]string{
 		Servers:           "localhost:9092",
 		Topic:             "hello-world-topic",
+		GroupID:           "test-group-id",
 		Acks:              "all",
 		DeliveryTimeout:   "1s2ms",
 		ReadFromBeginning: "true",
@@ -257,6 +258,7 @@ func TestParse_Full(t *testing.T) {
 	is.NoErr(err)
 	is.Equal([]string{"localhost:9092"}, parsed.Servers)
 	is.Equal("hello-world-topic", parsed.Topic)
+	is.Equal("test-group-id", parsed.GroupID)
 	is.Equal(kafka.RequireAll, parsed.Acks)
 	is.Equal(int64(1002), parsed.DeliveryTimeout.Milliseconds())
 	is.Equal(true, parsed.ReadFromBeginning)
