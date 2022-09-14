@@ -93,6 +93,7 @@ func TestReaderConfig_GroupIDMismatch(t *testing.T) {
 	c := &segmentConsumer{}
 	err := c.newReader(config, "group-id")
 	is.True(err != nil)
+	is.Equal("got two different group IDs: group-id and test-group-id", err.Error())
 }
 
 func TestReaderConfig_GroupID(t *testing.T) {

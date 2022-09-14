@@ -130,6 +130,8 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 		Topic:                 cfg.Topic,
 		WatchPartitionChanges: true,
 	}
+
+	// Group ID
 	switch {
 	case groupID == "" && cfg.GroupID != "":
 		readerCfg.GroupID = cfg.GroupID
@@ -140,16 +142,7 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 	default:
 		return fmt.Errorf("got two different group IDs: %v and %v", groupID, cfg.GroupID)
 	}
-	// Group ID
-	if groupID == "" {
-		if cfg.GroupID != "" {
-			readerCfg.GroupID = cfg.GroupID
-		} else {
-			readerCfg.GroupID = uuid.NewString()
-		}
-	} else {
-		readerCfg.GroupID = groupID
-	}
+
 	// StartOffset
 	if cfg.ReadFromBeginning {
 		readerCfg.StartOffset = kafka.FirstOffset
