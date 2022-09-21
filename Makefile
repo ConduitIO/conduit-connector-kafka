@@ -1,5 +1,7 @@
 .PHONY: build test
 
+VERSION=$(shell git describe --tags --dirty --always)
+
 build:
 	go build -ldflags "-X 'github.com/conduitio/conduit-connector-kafka.version=${VERSION}'" -o conduit-connector-kafka cmd/connector/main.go
 
