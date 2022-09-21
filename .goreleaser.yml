@@ -7,7 +7,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - "-s -w -X 'github.com/conduitio-labs/conduit-connector-kafka.version={{ .Tag }}'"
+      - "-s -w -X 'github.com/conduitio/conduit-connector-kafka.version={{ .Tag }}'"
 checksum:
   name_template: checksums.txt
 archives:

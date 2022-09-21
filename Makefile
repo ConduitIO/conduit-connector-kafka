@@ -1,7 +1,7 @@
 .PHONY: build test
 
 build:
-	go build -ldflags "-X 'github.com/conduitio-labs/conduit-connector-kafka.version=${VERSION}'" -o conduit-connector-kafka cmd/connector/main.go
+	go build -ldflags "-X 'github.com/conduitio/conduit-connector-kafka.version=${VERSION}'" -o conduit-connector-kafka cmd/connector/main.go
 
 test:
 	# run required docker containers, execute integration tests, stop containers after tests
