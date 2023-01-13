@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/conduitio/conduit-connector-sdk v0.4.3
+	github.com/conduitio/conduit-connector-sdk v0.4.4-0.20230113192541-6cd5101ba73f
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/matryer/is v1.4.0
