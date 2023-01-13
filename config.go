@@ -25,9 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/segmentio/kafka-go"
-
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/segmentio/kafka-go"
 )
 
 const (
@@ -81,6 +80,10 @@ type Config struct {
 	SASLMechanism string
 	SASLUsername  string
 	SASLPassword  string
+
+	// IsRecordFormatDebezium detects if the connector middleware is configured
+	// to produce debezium records.
+	IsRecordFormatDebezium bool
 }
 
 func (c *Config) Test(ctx context.Context) error {
@@ -184,6 +187,16 @@ func Parse(cfg map[string]string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("invalid SASL config: %w", err)
 	}
+
+	// record format
+	recordFormat := cfg[sdk.DestinationWithRecordFormat{}.RecordFormatParameterName()]
+	if recordFormat != "" {
+		recordFormatType, _, _ := strings.Cut(recordFormat, "/")
+		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
+			parsed.IsRecordFormatDebezium = true
+		}
+	}
+
 	return parsed, nil
 }
 
