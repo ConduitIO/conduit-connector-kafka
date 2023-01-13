@@ -21,12 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
 	"sync"
 	"time"
 
 	"github.com/avast/retry-go"
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -211,12 +211,9 @@ func (p *segmentProducer) keyEncodingBytes(k sdk.Data) ([]byte, error) {
 	return k.Bytes(), nil
 }
 
-func (p *segmentProducer) keyEncodingDebezium(k sdk.Data) ([]byte, error) {
-	sd, err := p.getStructuredData(k)
-	if err != nil {
-		return nil, err
-	}
-	s := kafkaconnect.Reflect(sd)
+func (p *segmentProducer) keyEncodingDebezium(d sdk.Data) ([]byte, error) {
+	d = p.sanitizeData(d)
+	s := kafkaconnect.Reflect(d)
 	if s == nil {
 		// s is nil, let's write an empty struct in the schema
 		s = &kafkaconnect.Schema{
@@ -227,30 +224,38 @@ func (p *segmentProducer) keyEncodingDebezium(k sdk.Data) ([]byte, error) {
 
 	e := kafkaconnect.Envelope{
 		Schema:  *s,
-		Payload: sd,
+		Payload: d,
 	}
 	// TODO add support for other encodings than JSON
 	return json.Marshal(e)
 }
-func (p *segmentProducer) getStructuredData(d sdk.Data) (sdk.StructuredData, error) {
+
+// sanitizeData tries its best to return StructuredData.
+func (p *segmentProducer) sanitizeData(d sdk.Data) sdk.Data {
 	switch d := d.(type) {
 	case nil:
-		return nil, nil
+		return nil
 	case sdk.StructuredData:
-		return d, nil
+		return d
 	case sdk.RawData:
-		return p.tryConvertRawDataToStructuredData(d)
+		sd, err := p.parseRawDataAsJSON(d)
+		if err != nil {
+			// oh well, can't be done
+			return d
+		}
+		return sd
 	default:
-		return nil, fmt.Errorf("unknown data type: %T", d)
+		// should not be possible
+		panic(fmt.Errorf("unknown data type: %T", d))
 	}
 }
-func (p *segmentProducer) tryConvertRawDataToStructuredData(d sdk.RawData) (sdk.StructuredData, error) {
+func (p *segmentProducer) parseRawDataAsJSON(d sdk.RawData) (sdk.StructuredData, error) {
 	// We have raw data, we need structured data.
 	// We can do our best and try to convert it if RawData is carrying raw JSON.
 	var sd sdk.StructuredData
 	err := json.Unmarshal(d, &sd)
 	if err != nil {
-		return nil, fmt.Errorf("could not convert RawData to StructuredData: %w", err)
+		return nil, fmt.Errorf("could not parse RawData as JSON: %w", err)
 	}
 	return sd, nil
 }
