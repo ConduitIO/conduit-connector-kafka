@@ -183,10 +183,11 @@ func TestReaderConfig_ServerTLS(t *testing.T) {
 func TestReaderConfig_SASL_Plain(t *testing.T) {
 	is := is.New(t)
 	config := Config{
-		Servers:      []string{"test-host:9092"},
-		Topic:        "test-topic",
-		SASLUsername: "sasl-username",
-		SASLPassword: "sasl-password",
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "PLAIN",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
 	}
 	c := &segmentConsumer{}
 	err := c.newReader(config, "group-id")

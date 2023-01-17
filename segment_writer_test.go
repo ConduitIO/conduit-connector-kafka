@@ -97,10 +97,11 @@ func TestSegmentWriter_ServerTLS(t *testing.T) {
 func TestSegmentWriter_SASL_Plain(t *testing.T) {
 	is := is.New(t)
 	config := Config{
-		Servers:      []string{"test-host:9092"},
-		Topic:        "test-topic",
-		SASLUsername: "sasl-username",
-		SASLPassword: "sasl-password",
+		Servers:       []string{"test-host:9092"},
+		Topic:         "test-topic",
+		SASLMechanism: "PLAIN",
+		SASLUsername:  "sasl-username",
+		SASLPassword:  "sasl-password",
 	}
 	p := &segmentProducer{}
 	err := p.init(config)

@@ -130,7 +130,7 @@ func (c *Config) brokerHasCACert() bool {
 }
 
 func (c *Config) saslEnabled() bool {
-	return c.SASLUsername != "" && c.SASLPassword != ""
+	return c.SASLMechanism != ""
 }
 
 func Parse(cfg map[string]string) (Config, error) {
@@ -201,6 +201,16 @@ func Parse(cfg map[string]string) (Config, error) {
 }
 
 func setSASLConfigs(parsed *Config, cfg map[string]string) error {
+	mechanism, mechanismPresent := cfg[SASLMechanism]
+	// Check if SASL mechanism is empty
+	if mechanism == "" {
+		return nil
+	}
+	// check if the mechanism is valid
+	if !validSASLMechanism(mechanism) {
+		return fmt.Errorf("invalid SASL mechanism %q, expected one of: %v", mechanism, SASLMechanismValues)
+	}
+
 	var missingCreds []string
 	if cfg[SASLUsername] == "" {
 		missingCreds = append(missingCreds, SASLUsername)
@@ -211,20 +221,14 @@ func setSASLConfigs(parsed *Config, cfg map[string]string) error {
 	if len(missingCreds) == 1 {
 		return fmt.Errorf("SASL configuration incomplete, %v is missing", missingCreds[0])
 	}
-	mechanism, mechanismPresent := cfg[SASLMechanism]
+
 	// Mechanism specified, but credentials haven't been provided.
 	// Handles specifically the case where neither a username nor a password
 	// have been provided.
-	if mechanismPresent && len(missingCreds) != 0 {
+	if mechanismPresent && mechanism != "" && len(missingCreds) != 0 {
 		return errors.New("SASL mechanism provided, but username and password are missing")
 	}
 
-	if mechanism == "" {
-		mechanism = "PLAIN"
-	}
-	if !validSASLMechanism(mechanism) {
-		return fmt.Errorf("invalid SASL mechanism %q, expected one of: %v", mechanism, SASLMechanismValues)
-	}
 	parsed.SASLMechanism = mechanism
 	parsed.SASLUsername = cfg[SASLUsername]
 	parsed.SASLPassword = cfg[SASLPassword]

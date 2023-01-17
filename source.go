@@ -83,19 +83,19 @@ func (s *Source) Parameters() map[string]sdk.Parameter {
 				"If `true`, accepts any certificate presented by the server and any host name in that certificate.",
 		},
 		SASLMechanism: {
-			Default:     "PLAIN",
+			Default:     "",
 			Required:    false,
 			Description: "SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512.",
 		},
 		SASLUsername: {
 			Default:     "",
 			Required:    false,
-			Description: "SASL username. If provided, a password needs to be provided too.",
+			Description: "SASL username. required if saslMechanism is provided.",
 		},
 		SASLPassword: {
 			Default:     "",
 			Required:    false,
-			Description: "SASL password. If provided, a username needs to be provided too.",
+			Description: "SASL password. required if saslMechanism is provided.",
 		},
 	}
 }
