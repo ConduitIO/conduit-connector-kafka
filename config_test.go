@@ -454,3 +454,25 @@ func TestParseSASL(t *testing.T) {
 		})
 	}
 }
+
+func TestParse_RecordFormat(t *testing.T) {
+	testCases := map[string]bool{
+		"":              false,
+		"opencdc/json":  false,
+		"debezium/json": true,
+		"debezium/foo":  true,
+		"debezium":      true,
+	}
+	for recordFormat, wantIsRecordFormatDebezium := range testCases {
+		t.Run(recordFormat, func(t *testing.T) {
+			is := is.New(t)
+			parsed, err := Parse(map[string]string{
+				Servers:             "localhost:9092",
+				Topic:               "hello-world-topic",
+				"sdk.record.format": recordFormat,
+			})
+			is.NoErr(err)
+			is.Equal(parsed.IsRecordFormatDebezium, wantIsRecordFormatDebezium)
+		})
+	}
+}

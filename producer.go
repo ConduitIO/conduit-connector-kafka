@@ -18,6 +18,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/avast/retry-go"
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -39,6 +41,8 @@ type Producer interface {
 type segmentProducer struct {
 	writer   *kafka.Writer
 	balancer *batchSizeAdjustingBalancer
+
+	keyEncoding func(sdk.Data) ([]byte, error)
 }
 
 // NewProducer creates a new Kafka producer.
@@ -73,6 +77,11 @@ func (p *segmentProducer) init(cfg Config) error {
 		BatchTimeout: time.Millisecond, // partial batches will be written after 1 millisecond
 	}
 	p.balancer.writer = p.writer
+
+	p.keyEncoding = p.keyEncodingBytes
+	if cfg.IsRecordFormatDebezium {
+		p.keyEncoding = p.keyEncodingDebezium
+	}
 
 	err := p.configureSecurity(cfg)
 	if err != nil {
@@ -109,8 +118,12 @@ func (p *segmentProducer) Send(ctx context.Context, records []sdk.Record) (int, 
 	p.balancer.SetRecordCount(len(records))
 	messages := make([]kafka.Message, len(records))
 	for i, r := range records {
+		encodedKey, err := p.keyEncoding(r.Key)
+		if err != nil {
+			return 0, nil
+		}
 		messages[i] = kafka.Message{
-			Key:   r.Key.Bytes(),
+			Key:   encodedKey,
 			Value: r.Bytes(),
 		}
 	}
@@ -192,6 +205,59 @@ func (p *segmentProducer) Close() error {
 	}
 
 	return nil
+}
+
+func (p *segmentProducer) keyEncodingBytes(k sdk.Data) ([]byte, error) {
+	return k.Bytes(), nil
+}
+
+func (p *segmentProducer) keyEncodingDebezium(d sdk.Data) ([]byte, error) {
+	d = p.sanitizeData(d)
+	s := kafkaconnect.Reflect(d)
+	if s == nil {
+		// s is nil, let's write an empty struct in the schema
+		s = &kafkaconnect.Schema{
+			Type:     kafkaconnect.TypeStruct,
+			Optional: true,
+		}
+	}
+
+	e := kafkaconnect.Envelope{
+		Schema:  *s,
+		Payload: d,
+	}
+	// TODO add support for other encodings than JSON
+	return json.Marshal(e)
+}
+
+// sanitizeData tries its best to return StructuredData.
+func (p *segmentProducer) sanitizeData(d sdk.Data) sdk.Data {
+	switch d := d.(type) {
+	case nil:
+		return nil
+	case sdk.StructuredData:
+		return d
+	case sdk.RawData:
+		sd, err := p.parseRawDataAsJSON(d)
+		if err != nil {
+			// oh well, can't be done
+			return d
+		}
+		return sd
+	default:
+		// should not be possible
+		panic(fmt.Errorf("unknown data type: %T", d))
+	}
+}
+func (p *segmentProducer) parseRawDataAsJSON(d sdk.RawData) (sdk.StructuredData, error) {
+	// We have raw data, we need structured data.
+	// We can do our best and try to convert it if RawData is carrying raw JSON.
+	var sd sdk.StructuredData
+	err := json.Unmarshal(d, &sd)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse RawData as JSON: %w", err)
+	}
+	return sd, nil
 }
 
 // batchSizeAdjustingBalancer is a balancer that adjusts the batch size of the
