@@ -265,8 +265,8 @@ func TestParse_Full(t *testing.T) {
 	is.Equal("ClientCert", parsed.ClientCert)
 	is.Equal("ClientKey", parsed.ClientKey)
 	is.Equal("CACert", parsed.CACert)
-	is.Equal("test-username", parsed.SASLUsername)
-	is.Equal("test-password", parsed.SASLPassword)
+	is.Equal("", parsed.SASLUsername) // empty because SASL mechanism is not provided
+	is.Equal("", parsed.SASLPassword)
 }
 
 func TestParse_Ack(t *testing.T) {
@@ -356,7 +356,7 @@ func TestParseSASL(t *testing.T) {
 		},
 		{
 			name:      "password missing",
-			mechanism: "",
+			mechanism: "PLAIN",
 			username:  "test-user",
 			password:  "",
 			expectation: func(cfg Config, err error, is *is.I) {
@@ -369,7 +369,7 @@ func TestParseSASL(t *testing.T) {
 		},
 		{
 			name:      "username missing",
-			mechanism: "",
+			mechanism: "PLAIN",
 			username:  "",
 			password:  "test-password",
 			expectation: func(cfg Config, err error, is *is.I) {
@@ -383,8 +383,6 @@ func TestParseSASL(t *testing.T) {
 		{
 			name:      "invalid mechanism",
 			mechanism: "SCRAM-SHA-1024",
-			username:  "test-username",
-			password:  "test-password",
 			expectation: func(cfg Config, err error, is *is.I) {
 				is.True(err != nil)
 				is.Equal(
@@ -394,15 +392,13 @@ func TestParseSASL(t *testing.T) {
 			},
 		},
 		{
-			name:      "default mechanism is PLAIN",
-			mechanism: "",
-			username:  "test-username",
-			password:  "test-password",
+			name:     "default mechanism is empty",
+			username: "",
 			expectation: func(cfg Config, err error, is *is.I) {
 				is.True(err == nil)
-				is.Equal(cfg.SASLMechanism, "PLAIN")
-				is.Equal(cfg.SASLUsername, "test-username")
-				is.Equal(cfg.SASLPassword, "test-password")
+				is.Equal(cfg.SASLMechanism, "")
+				is.Equal(cfg.SASLUsername, "")
+				is.Equal(cfg.SASLPassword, "")
 			},
 		},
 		{
