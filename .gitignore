@@ -4,4 +4,7 @@
 # Binary built with `make build`
 /conduit-connector-kafka
 
+# GoReleaser output
+dist/
+
 .DS_Store
