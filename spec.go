@@ -19,9 +19,8 @@ import (
 )
 
 // version is set during the build process (i.e. the Makefile).
-// It follows Go's convention for module version, where the version
-// starts with the letter v, followed by a semantic version.
-var version = "v0.3.0"
+// Default version matches default from runtime/debug.
+var version = "(devel)"
 
 // Specification returns the Kafka plugin's specification.
 // Any changes here must also be reflected in the ReadMe.
