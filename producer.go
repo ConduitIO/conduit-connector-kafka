@@ -19,7 +19,6 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -172,7 +171,8 @@ func (p *segmentProducer) sendRetryable(ctx context.Context, messages []kafka.Me
 		retry.RetryIf(func(err error) bool {
 			// this can happen when the topic doesn't exist and the broker has auto-create enabled
 			// we give it some time to process topic metadata and retry
-			return errors.Is(err, kafka.LeaderNotAvailable)
+			kafkaErr, ok := err.(kafka.Error)
+			return ok && kafkaErr.Temporary()
 		}),
 		retry.OnRetry(func(n uint, err error) {
 			sdk.Logger(ctx).
