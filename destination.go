@@ -94,10 +94,6 @@ func (d *Destination) Parameters() map[string]sdk.Parameter {
 			Default:     "",
 			Description: "Compression",
 		},
-		BatchSize: {
-			Default:     "100",
-			Description: "batch size",
-		},
 		BatchBytes: {
 			Default:     "1048576",
 			Description: "BatchBytes",

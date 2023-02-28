@@ -45,7 +45,6 @@ const (
 	GroupID            = "groupID"
 
 	Compression = "compression"
-	BatchSize   = "batchSize"
 	BatchBytes  = "batchBytes"
 )
 
@@ -90,7 +89,6 @@ type Config struct {
 	IsRecordFormatDebezium bool
 
 	Compression kafka.Compression
-	BatchSize   int
 	BatchBytes  int64
 }
 
@@ -214,13 +212,6 @@ func Parse(cfg map[string]string) (Config, error) {
 		}
 		parsed.Compression = compression
 	}
-
-	batchSize, err := parsePositiveInt64(cfg, BatchSize, 100)
-	if err != nil {
-		return Config{}, fmt.Errorf("cannot parse batch size value %q: %w", cfg[BatchSize], err)
-	}
-	// todo conversion
-	parsed.BatchSize = int(batchSize)
 
 	batchBytes, err := parsePositiveInt64(cfg, BatchBytes, 1048576)
 	if err != nil {
