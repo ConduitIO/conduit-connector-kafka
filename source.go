@@ -43,58 +43,49 @@ func (s *Source) Parameters() map[string]sdk.Parameter {
 	return map[string]sdk.Parameter{
 		Servers: {
 			Default:     "",
-			Required:    true,
+			Validations: []sdk.Validation{sdk.ValidationRequired{}},
 			Description: "A list of bootstrap servers to which the plugin will connect.",
 		},
 		Topic: {
 			Default:     "",
-			Required:    true,
+			Validations: []sdk.Validation{sdk.ValidationRequired{}},
 			Description: "The topic to which records will be written to.",
 		},
 		ReadFromBeginning: {
 			Default:     "false",
-			Required:    false,
 			Description: "Whether or not to read a topic from beginning (i.e. existing messages or only new messages).",
 		},
 		GroupID: {
 			Default:     "",
-			Required:    false,
 			Description: "The Consumer Group ID to use for the Kafka Consumer on the Source connector.",
 		},
 		ClientCert: {
 			Default:     "",
-			Required:    false,
 			Description: "A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.",
 		},
 		ClientKey: {
 			Default:     "",
-			Required:    false,
 			Description: "A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.",
 		},
 		CACert: {
 			Default:     "",
-			Required:    false,
 			Description: "The Kafka broker's certificate, in PEM format.",
 		},
 		InsecureSkipVerify: {
-			Default:  "false",
-			Required: false,
+			Default: "false",
 			Description: "Controls whether a client verifies the server's certificate chain and host name. " +
 				"If `true`, accepts any certificate presented by the server and any host name in that certificate.",
 		},
 		SASLMechanism: {
 			Default:     "",
-			Required:    false,
 			Description: "SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512.",
 		},
 		SASLUsername: {
 			Default:     "",
-			Required:    false,
 			Description: "SASL username. required if saslMechanism is provided.",
 		},
 		SASLPassword: {
 			Default:     "",
-			Required:    false,
 			Description: "SASL password. required if saslMechanism is provided.",
 		},
 	}
