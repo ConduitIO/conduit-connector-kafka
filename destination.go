@@ -90,6 +90,18 @@ func (d *Destination) Parameters() map[string]sdk.Parameter {
 			Required:    false,
 			Description: "SASL password. required if saslMechanism is provided.",
 		},
+		Compression: {
+			Default:     "",
+			Description: "Compression",
+		},
+		BatchSize: {
+			Default:     "100",
+			Description: "batch size",
+		},
+		BatchBytes: {
+			Default:     "1048576",
+			Description: "BatchBytes",
+		},
 	}
 }
 

@@ -90,6 +90,8 @@ type Config struct {
 	IsRecordFormatDebezium bool
 
 	Compression kafka.Compression
+	BatchSize   int
+	BatchBytes  int64
 }
 
 func (c *Config) Test(ctx context.Context) error {
@@ -340,6 +342,21 @@ func parseDuration(cfg map[string]string, key string, defaultVal time.Duration) 
 		return 0, fmt.Errorf("duration cannot be parsed: %w", err)
 	}
 	return timeout, nil
+}
+
+func parsePositiveInt64(cfg map[string]string, key string, defaultVal int64) (int64, error) {
+	intString, exists := cfg[key]
+	if !exists {
+		return defaultVal, nil
+	}
+	parsed, err := strconv.ParseInt(intString, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("int cannot be parsed: %w", err)
+	}
+	if parsed < 0 {
+		return 0, fmt.Errorf("expected value to be positive, but was %v", parsed)
+	}
+	return parsed, nil
 }
 
 func checkRequired(cfg map[string]string) error {
