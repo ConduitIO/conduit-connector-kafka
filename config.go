@@ -43,6 +43,10 @@ const (
 	SASLUsername       = "saslUsername"
 	SASLPassword       = "saslPassword"
 	GroupID            = "groupID"
+
+	Compression = "compression"
+	BatchSize   = "batchSize"
+	BatchBytes  = "batchBytes"
 )
 
 var (
@@ -84,6 +88,8 @@ type Config struct {
 	// IsRecordFormatDebezium detects if the connector middleware is configured
 	// to produce debezium records.
 	IsRecordFormatDebezium bool
+
+	Compression kafka.Compression
 }
 
 func (c *Config) Test(ctx context.Context) error {
@@ -196,6 +202,29 @@ func Parse(cfg map[string]string) (Config, error) {
 			parsed.IsRecordFormatDebezium = true
 		}
 	}
+
+	// compression
+	if raw := cfg[Compression]; raw != "" {
+		var compression kafka.Compression
+		err = compression.UnmarshalText([]byte(raw))
+		if err != nil {
+			return Config{}, fmt.Errorf("cannot parse compression %q: %w", raw, err)
+		}
+		parsed.Compression = compression
+	}
+
+	batchSize, err := parsePositiveInt64(cfg, BatchSize, 100)
+	if err != nil {
+		return Config{}, fmt.Errorf("cannot parse batch size value %q: %w", cfg[BatchSize], err)
+	}
+	// todo conversion
+	parsed.BatchSize = int(batchSize)
+
+	batchBytes, err := parsePositiveInt64(cfg, BatchBytes, 1048576)
+	if err != nil {
+		return Config{}, fmt.Errorf("cannot parse batch size value %q: %w", cfg[BatchBytes], err)
+	}
+	parsed.BatchBytes = batchBytes
 
 	return parsed, nil
 }
