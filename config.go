@@ -344,7 +344,7 @@ func parsePositiveInt64(cfg map[string]string, key string, defaultVal int64) (in
 	if err != nil {
 		return 0, fmt.Errorf("int cannot be parsed: %w", err)
 	}
-	if parsed < 0 {
+	if parsed <= 0 {
 		return 0, fmt.Errorf("expected value to be positive, but was %v", parsed)
 	}
 	return parsed, nil
