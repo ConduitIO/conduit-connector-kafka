@@ -72,7 +72,11 @@ func (p *segmentProducer) init(cfg Config) error {
 		MaxAttempts:            3,
 		AllowAutoTopicCreation: true,
 
+		Compression: cfg.Compression,
+		
 		Balancer:     p.balancer,
+		BatchSize:    cfg.BatchSize,
+		BatchBytes:   cfg.BatchBytes,
 		BatchTimeout: time.Millisecond, // partial batches will be written after 1 millisecond
 	}
 	p.balancer.writer = p.writer
