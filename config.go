@@ -43,6 +43,9 @@ const (
 	SASLUsername       = "saslUsername"
 	SASLPassword       = "saslPassword"
 	GroupID            = "groupID"
+
+	Compression = "compression"
+	BatchBytes  = "batchBytes"
 )
 
 var (
@@ -84,6 +87,9 @@ type Config struct {
 	// IsRecordFormatDebezium detects if the connector middleware is configured
 	// to produce debezium records.
 	IsRecordFormatDebezium bool
+
+	Compression kafka.Compression
+	BatchBytes  int64
 }
 
 func (c *Config) Test(ctx context.Context) error {
@@ -196,6 +202,22 @@ func Parse(cfg map[string]string) (Config, error) {
 			parsed.IsRecordFormatDebezium = true
 		}
 	}
+
+	// compression
+	if raw := cfg[Compression]; raw != "" {
+		var compression kafka.Compression
+		err = compression.UnmarshalText([]byte(raw))
+		if err != nil {
+			return Config{}, fmt.Errorf("cannot parse compression %q: %w", raw, err)
+		}
+		parsed.Compression = compression
+	}
+
+	batchBytes, err := parsePositiveInt64(cfg, BatchBytes, 1048576)
+	if err != nil {
+		return Config{}, fmt.Errorf("cannot parse batch size value %q: %w", cfg[BatchBytes], err)
+	}
+	parsed.BatchBytes = batchBytes
 
 	return parsed, nil
 }
@@ -311,6 +333,21 @@ func parseDuration(cfg map[string]string, key string, defaultVal time.Duration) 
 		return 0, fmt.Errorf("duration cannot be parsed: %w", err)
 	}
 	return timeout, nil
+}
+
+func parsePositiveInt64(cfg map[string]string, key string, defaultVal int64) (int64, error) {
+	intString, exists := cfg[key]
+	if !exists {
+		return defaultVal, nil
+	}
+	parsed, err := strconv.ParseInt(intString, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("int cannot be parsed: %w", err)
+	}
+	if parsed <= 0 {
+		return 0, fmt.Errorf("expected value to be positive, but was %v", parsed)
+	}
+	return parsed, nil
 }
 
 func checkRequired(cfg map[string]string) error {
