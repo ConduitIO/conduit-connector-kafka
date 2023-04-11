@@ -49,6 +49,7 @@ func createTopic(t *testing.T, topic string) {
 		}},
 	)
 	is.NoErr(err)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func sendTestMessages(t *testing.T, cfg Config, from int, to int) {
