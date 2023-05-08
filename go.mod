@@ -8,7 +8,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/matryer/is v1.4.1
-	github.com/segmentio/kafka-go v0.4.39
+	github.com/segmentio/kafka-go v0.4.40
 )
 
 require (
@@ -37,8 +37,9 @@ require (
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/xdg/scram v1.0.5 // indirect
-	github.com/xdg/stringprep v1.0.3 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
 	go.uber.org/goleak v1.2.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
