@@ -153,7 +153,7 @@ func (s *Source) buildRecord(message *kafka.Message, position []byte) sdk.Record
 	)
 }
 
-func (s *Source) Ack(ctx context.Context, position sdk.Position) error {
+func (s *Source) Ack(_ context.Context, position sdk.Position) error {
 	return s.Consumer.Ack(position)
 }
 

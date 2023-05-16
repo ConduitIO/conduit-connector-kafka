@@ -46,7 +46,7 @@ type segmentProducer struct {
 
 // NewProducer creates a new Kafka producer.
 // The current implementation uses Segment's kafka-go client.
-func NewProducer(cfg Config) (*segmentProducer, error) {
+func NewProducer(cfg Config) (Producer, error) {
 	if len(cfg.Servers) == 0 {
 		return nil, ErrServersMissing
 	}
