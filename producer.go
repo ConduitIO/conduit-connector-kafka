@@ -86,17 +86,15 @@ func (p *segmentProducer) init(cfg Config) error {
 		p.keyEncoding = p.keyEncodingDebezium
 	}
 
-	err := p.configureSecurity(cfg)
+	transport, err := p.newTransport(cfg)
 	if err != nil {
 		return fmt.Errorf("couldn't configure security: %w", err)
 	}
+	p.writer.Transport = transport
 	return nil
 }
 
-func (p *segmentProducer) configureSecurity(cfg Config) error {
-	// todo this part of init has nothing to do with securitu
-	// so we need to init it outside of this method
-	// also it needs to match the default transport used
+func (p *segmentProducer) newTransport(cfg Config) (*kafka.Transport, error) {
 	transport := &kafka.Transport{
 		Dial: (&net.Dialer{
 			Timeout: 3 * time.Second,
@@ -107,7 +105,7 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	if cfg.useTLS() {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)
 		if err != nil {
-			return fmt.Errorf("invalid TLS config: %w", err)
+			return nil, fmt.Errorf("invalid TLS config: %w", err)
 		}
 		transport.TLS = tlsCfg
 	}
@@ -116,13 +114,12 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	if cfg.saslEnabled() {
 		mechanism, err := newSASLMechanism(cfg.SASLMechanism, cfg.SASLUsername, cfg.SASLPassword)
 		if err != nil {
-			return fmt.Errorf("couldn't configure SASL: %w", err)
+			return nil, fmt.Errorf("couldn't configure SASL: %w", err)
 		}
 		transport.SASL = mechanism
 	}
-	p.writer.Transport = transport
 
-	return nil
+	return transport, nil
 }
 
 func (p *segmentProducer) Send(ctx context.Context, records []sdk.Record) (int, error) {
