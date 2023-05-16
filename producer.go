@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -97,6 +98,9 @@ func (p *segmentProducer) configureSecurity(cfg Config) error {
 	// so we need to init it outside of this method
 	// also it needs to match the default transport used
 	transport := &kafka.Transport{
+		Dial: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).DialContext,
 		ClientID: cfg.ClientID,
 	}
 	// TLS settings
