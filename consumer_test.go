@@ -111,6 +111,21 @@ func TestReaderConfig_GroupID(t *testing.T) {
 	is.Equal(config.GroupID, c.reader.Config().GroupID)
 }
 
+func TestReaderConfig_ClientID(t *testing.T) {
+	is := is.New(t)
+
+	config := Config{
+		Servers:  []string{"test-host:9092"},
+		Topic:    "test-topic",
+		ClientID: "test-client-id",
+	}
+
+	c := &segmentConsumer{}
+	err := c.newReader(config, "")
+	is.NoErr(err)
+	is.Equal(config.ClientID, c.reader.Config().Dialer.ClientID)
+}
+
 func TestReaderConfig_MutualTLS(t *testing.T) {
 	is := is.New(t)
 

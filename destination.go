@@ -52,6 +52,10 @@ func (d *Destination) Parameters() map[string]sdk.Parameter {
 			Default:     "10s",
 			Description: "Message delivery timeout.",
 		},
+		ClientID: {
+			Default:     "",
+			Description: "A Kafka client ID.",
+		},
 		ClientCert: {
 			Default:     "",
 			Description: "A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.",

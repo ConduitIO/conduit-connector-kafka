@@ -46,6 +46,8 @@ const (
 
 	Compression = "compression"
 	BatchBytes  = "batchBytes"
+
+	ClientID = "clientID"
 )
 
 var (
@@ -54,7 +56,8 @@ var (
 )
 
 // Config contains all the possible configuration parameters for Kafka sources and destinations.
-// When changing this struct, please also change the plugin specification (in main.go) as well as the ReadMe.
+// When changing this struct, please also change the specification (Source.Parameters, Destination.Parameters)
+// as well as the ReadMe.
 type Config struct {
 	// A list of bootstrap servers, which will be used to discover all the servers in a cluster.
 	Servers []string
@@ -90,6 +93,8 @@ type Config struct {
 
 	Compression kafka.Compression
 	BatchBytes  int64
+
+	ClientID string
 }
 
 func (c *Config) Test(ctx context.Context) error {
@@ -219,6 +224,11 @@ func Parse(cfg map[string]string) (Config, error) {
 	}
 	parsed.BatchBytes = batchBytes
 
+	// Client ID
+	clientID := strings.Trim(cfg[ClientID], " ")
+	if clientID != "" {
+		parsed.ClientID = clientID
+	}
 	return parsed, nil
 }
 

@@ -46,7 +46,7 @@ type segmentProducer struct {
 
 // NewProducer creates a new Kafka producer.
 // The current implementation uses Segment's kafka-go client.
-func NewProducer(cfg Config) (Producer, error) {
+func NewProducer(cfg Config) (*segmentProducer, error) {
 	if len(cfg.Servers) == 0 {
 		return nil, ErrServersMissing
 	}
@@ -93,7 +93,12 @@ func (p *segmentProducer) init(cfg Config) error {
 }
 
 func (p *segmentProducer) configureSecurity(cfg Config) error {
-	transport := &kafka.Transport{}
+	// todo this part of init has nothing to do with securitu
+	// so we need to init it outside of this method
+	// also it needs to match the default transport used
+	transport := &kafka.Transport{
+		ClientID: cfg.ClientID,
+	}
 	// TLS settings
 	if cfg.useTLS() {
 		tlsCfg, err := newTLSConfig(cfg.ClientCert, cfg.ClientKey, cfg.CACert, cfg.InsecureSkipVerify)

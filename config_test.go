@@ -476,3 +476,35 @@ func TestParse_RecordFormat(t *testing.T) {
 		})
 	}
 }
+
+func TestParse_ClientID(t *testing.T) {
+	is := is.New(t)
+
+	testCases := []struct {
+		name, input, want string
+	}{
+		{
+			name:  "all blanks in client ID",
+			input: "       ",
+			want:  "",
+		},
+		{
+			name:  "normal client ID",
+			input: "it's me",
+			want:  "it's me",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := map[string]string{
+				Servers:  "localhost:9092",
+				Topic:    "hello-world-topic",
+				ClientID: tc.input,
+			}
+
+			parsed, err := Parse(cfg)
+			is.NoErr(err)
+			is.Equal(parsed.ClientID, tc.want)
+		})
+	}
+}
