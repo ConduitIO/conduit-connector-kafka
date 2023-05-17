@@ -55,6 +55,10 @@ func (s *Source) Parameters() map[string]sdk.Parameter {
 			Default:     "false",
 			Description: "Whether or not to read a topic from beginning (i.e. existing messages or only new messages).",
 		},
+		ClientID: {
+			Default:     "",
+			Description: "A Kafka client ID.",
+		},
 		GroupID: {
 			Default:     "",
 			Description: "The Consumer Group ID to use for the Kafka Consumer on the Source connector.",
@@ -149,7 +153,7 @@ func (s *Source) buildRecord(message *kafka.Message, position []byte) sdk.Record
 	)
 }
 
-func (s *Source) Ack(ctx context.Context, position sdk.Position) error {
+func (s *Source) Ack(_ context.Context, position sdk.Position) error {
 	return s.Consumer.Ack(position)
 }
 

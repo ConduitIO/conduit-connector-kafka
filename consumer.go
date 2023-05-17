@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 
@@ -131,6 +132,14 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 		WatchPartitionChanges: true,
 	}
 
+	// Client ID
+	readerCfg.Dialer = &kafka.Dialer{
+		ClientID: cfg.ClientID,
+		// copied from kafka.DefaultDialer
+		Timeout:   10 * time.Second,
+		DualStack: true,
+	}
+
 	// Group ID
 	switch {
 	case groupID == "" && cfg.GroupID != "":
@@ -149,6 +158,7 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 	} else {
 		readerCfg.StartOffset = kafka.LastOffset
 	}
+
 	// TLS config
 	if cfg.useTLS() {
 		err := c.withTLS(&readerCfg, cfg)
@@ -156,6 +166,7 @@ func (c *segmentConsumer) newReader(cfg Config, groupID string) error {
 			return fmt.Errorf("failed to set up TLS: %w", err)
 		}
 	}
+
 	// SASL
 	if cfg.saslEnabled() {
 		err := c.withSASL(&readerCfg, cfg)
