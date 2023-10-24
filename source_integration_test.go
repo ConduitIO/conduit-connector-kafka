@@ -16,72 +16,72 @@ package kafka
 
 import (
 	"context"
-	"fmt"
 	"testing"
+
+	"github.com/conduitio/conduit-connector-kafka/config"
+
+	"github.com/conduitio/conduit-connector-kafka/test"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 )
 
-func TestSource_Restart(t *testing.T) {
+func TestSource_Integration_RestartFull(t *testing.T) {
 	t.Parallel()
-	is := is.New(t)
 
-	cfgMap := testConfigMap()
-	cfg, err := Parse(cfgMap)
-	is.NoErr(err)
-	createTopic(t, cfg.Topic)
+	cfgMap := test.SourceConfigMap(t)
+	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
 
-	sendTestMessages(t, cfg, 1, 3)
-	pos := testRead(t, cfgMap, 1, 3, nil, false)
-	// Restart
-	sendTestMessages(t, cfg, 4, 6)
-	testRead(t, cfgMap, 4, 6, pos, false)
+	test.Produce(t, cfg, test.GenerateRecords(1, 3))
+	pos := testSource_Integration_Read(t, cfgMap, 1, 3, nil, false)
+
+	// produce more records and restart source from fully acked position
+	test.Produce(t, cfg, test.GenerateRecords(4, 6))
+	testSource_Integration_Read(t, cfgMap, 4, 6, pos, false)
 }
 
-func TestSource_Ack(t *testing.T) {
+func TestSource_Integration_RestartPartial(t *testing.T) {
 	t.Parallel()
-	is := is.New(t)
 
-	cfgMap := testConfigMap()
-	cfg, err := Parse(cfgMap)
-	is.NoErr(err)
-	createTopic(t, cfg.Topic)
+	cfgMap := test.SourceConfigMap(t)
+	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
 
-	sendTestMessages(t, cfg, 1, 3)
-	pos := testRead(t, cfgMap, 1, 3, nil, true)
-	// Restart
-	sendTestMessages(t, cfg, 4, 6)
-	testRead(t, cfgMap, 2, 6, pos, false)
+	test.Produce(t, cfg, test.GenerateRecords(1, 3))
+	pos := testSource_Integration_Read(t, cfgMap, 1, 3, nil, true)
+
+	// produce more records and restart source from partially acked position
+	test.Produce(t, cfg, test.GenerateRecords(4, 6))
+	testSource_Integration_Read(t, cfgMap, 2, 6, pos, false)
 }
 
-// testRead reads and acks messages in range [from,to].
-// If `ackFirst`, only the first message will be acknowledged.
+// testSource_Integration_Read reads and acks messages in range [from,to].
+// If ackFirst is true, only the first message will be acknowledged.
 // Returns the position of the last message read.
-func testRead(t *testing.T, cfgMap map[string]string, from int, to int, pos sdk.Position, ackFirstOnly bool) sdk.Position {
+func testSource_Integration_Read(t *testing.T, cfgMap map[string]string, from int, to int, pos sdk.Position, ackFirstOnly bool) sdk.Position {
 	is := is.New(t)
 	ctx := context.Background()
 
 	underTest := NewSource()
-	defer underTest.Teardown(ctx) //nolint:errcheck // not interested at this point
+	defer underTest.Teardown(ctx)
 
 	err := underTest.Configure(ctx, cfgMap)
 	is.NoErr(err)
 	err = underTest.Open(ctx, pos)
 	is.NoErr(err)
 
+	want := test.GenerateRecords(from, to)
 	var positions []sdk.Position
 	for i := from; i <= to; i++ {
 		rec, err := underTest.Read(ctx)
 		is.NoErr(err)
-		is.Equal(fmt.Sprintf("test-key-%d", i), string(rec.Key.Bytes()))
+		is.Equal(want[i-from].Key, rec.Key.Bytes())
 
 		positions = append(positions, rec.Position)
 	}
 
 	for i, p := range positions {
 		if i > 0 && ackFirstOnly {
-			continue
+			break
 		}
 		err = underTest.Ack(ctx, p)
 		is.NoErr(err)

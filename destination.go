@@ -18,14 +18,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/conduitio/conduit-connector-kafka/destination"
+
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
 type Destination struct {
 	sdk.UnimplementedDestination
 
-	Producer Producer
-	Config   Config
+	producer destination.Producer
+	config   destination.Config
 }
 
 func NewDestination() sdk.Destination {
@@ -33,103 +35,47 @@ func NewDestination() sdk.Destination {
 }
 
 func (d *Destination) Parameters() map[string]sdk.Parameter {
-	return map[string]sdk.Parameter{
-		Servers: {
-			Default:     "",
-			Validations: []sdk.Validation{sdk.ValidationRequired{}},
-			Description: "A list of bootstrap servers to which the plugin will connect.",
-		},
-		Topic: {
-			Default:     "",
-			Validations: []sdk.Validation{sdk.ValidationRequired{}},
-			Description: "The topic to which records will be written to.",
-		},
-		Acks: {
-			Default:     "all",
-			Description: "The number of acknowledgments required before considering a record written to Kafka. Valid values: none, one, all.",
-		},
-		DeliveryTimeout: {
-			Default:     "10s",
-			Description: "Message delivery timeout.",
-		},
-		ClientID: {
-			Default:     "",
-			Description: "A Kafka client ID.",
-		},
-		ClientCert: {
-			Default:     "",
-			Description: "A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.",
-		},
-		ClientKey: {
-			Default:     "",
-			Description: "A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.",
-		},
-		CACert: {
-			Default:     "",
-			Description: "The Kafka broker's certificate, in PEM format.",
-		},
-		InsecureSkipVerify: {
-			Default: "false",
-			Description: "Controls whether a client verifies the server's certificate chain and host name. " +
-				"If `true`, accepts any certificate presented by the server and any host name in that certificate.",
-		},
-		SASLMechanism: {
-			Default:     "",
-			Description: "SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512.",
-		},
-		SASLUsername: {
-			Default:     "",
-			Description: "SASL username. required if saslMechanism is provided.",
-		},
-		SASLPassword: {
-			Default:     "",
-			Description: "SASL password. required if saslMechanism is provided.",
-		},
-		Compression: {
-			Default:     "",
-			Description: "Compression applied to messages. Possible values: gzip, snappy, lz4, zstd.",
-		},
-		BatchBytes: {
-			Default:     "1048576",
-			Description: "The maximum size of a request in bytes before being sent to a partition.",
-		},
-	}
+	return destination.Config{}.Parameters()
 }
 
-func (d *Destination) Configure(ctx context.Context, cfg map[string]string) error {
-	sdk.Logger(ctx).Info().Msg("Configuring Kafka Destination...")
-	parsed, err := Parse(cfg)
+func (d *Destination) Configure(_ context.Context, cfg map[string]string) error {
+	var config destination.Config
+
+	err := sdk.Util.ParseConfig(cfg, &config)
 	if err != nil {
-		return fmt.Errorf("config is invalid: %w", err)
+		return err
 	}
-	d.Config = parsed
+	err = config.Validate()
+	if err != nil {
+		return err
+	}
+
+	d.config = config
 	return nil
 }
 
 func (d *Destination) Open(ctx context.Context) error {
-	err := d.Config.Test(ctx)
+	err := d.config.TryDial(ctx)
 	if err != nil {
-		return fmt.Errorf("config validation failed: %w", err)
+		return fmt.Errorf("failed to dial broker: %w", err)
 	}
 
-	producer, err := NewProducer(d.Config)
+	d.producer, err = destination.NewFranzProducer(ctx, d.config)
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
 
-	d.Producer = producer
 	return nil
 }
 
 func (d *Destination) Write(ctx context.Context, records []sdk.Record) (int, error) {
-	return d.Producer.Send(ctx, records)
+	return d.producer.Produce(ctx, records)
 }
 
 // Teardown shuts down the Kafka client.
 func (d *Destination) Teardown(ctx context.Context) error {
-	sdk.Logger(ctx).Info().Msg("Tearing down Kafka Destination...")
-	if d.Producer != nil {
-		err := d.Producer.Close()
+	if d.producer != nil {
+		err := d.producer.Close(ctx)
 		if err != nil {
 			return fmt.Errorf("failed closing Kafka producer: %w", err)
 		}

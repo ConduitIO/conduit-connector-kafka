@@ -24,8 +24,8 @@ import (
 
 func TestAcceptance(t *testing.T) {
 	cfg := map[string]string{
-		Servers:           "localhost:9092",
-		ReadFromBeginning: "true",
+		"servers":           "localhost:9092",
+		"readFromBeginning": "true",
 	}
 
 	sdk.AcceptanceTest(t, sdk.ConfigurableAcceptanceTestDriver{
@@ -35,7 +35,13 @@ func TestAcceptance(t *testing.T) {
 			DestinationConfig: cfg,
 
 			BeforeTest: func(t *testing.T) {
-				cfg[Topic] = "TestAcceptance-" + uuid.NewString()
+				cfg["topic"] = "TestAcceptance-" + uuid.NewString()
+			},
+
+			Skip: []string{
+				// Configure tests are faulty since we rely on paramgen to validate required parameters.
+				"TestSource_Configure_RequiredParams",
+				"TestDestination_Configure_RequiredParams",
 			},
 
 			ReadTimeout: 10 * time.Second,

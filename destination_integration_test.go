@@ -20,30 +20,41 @@ import (
 	"testing"
 	"time"
 
+	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"github.com/matryer/is"
-	skafka "github.com/segmentio/kafka-go"
 )
 
-// todo try optimizing, the test takes 15 seconds to run!
-func TestDestination_Write_Simple(t *testing.T) {
-	is := is.New(t)
-	// prepare test data
-	cfg := newTestConfig(t)
-	createTopic(t, cfg[Topic])
-	testWriteSimple(cfg, is)
+func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
+	cfgMap := test.DestinationConfigMap(t)
+	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
+
+	test.CreateTopic(t, cfg)
+	testWriteSimple(t, cfgMap)
 }
 
-func TestDestination_Write_Simple_AutoCreate(t *testing.T) {
-	is := is.New(t)
-	// prepare test data
-	cfg := newTestConfig(t)
-	testWriteSimple(cfg, is)
+func TestDestination_Integration_WriteCreateTopic(t *testing.T) {
+	cfgMap := test.DestinationConfigMap(t)
+	testWriteSimple(t, cfgMap)
 }
 
-func testWriteSimple(cfg map[string]string, is *is.I) {
-	record := testRecord()
+func testWriteSimple(t *testing.T, cfg map[string]string) {
+	is := is.New(t)
+
+	record := sdk.Record{
+		Operation: sdk.OperationUpdate,
+		Position:  []byte(uuid.NewString()),
+		Metadata: map[string]string{
+			"foo": "bar",
+		},
+		Key: sdk.RawData(uuid.NewString()),
+		Payload: sdk.Change{
+			Before: sdk.RawData(fmt.Sprintf("test before %s", time.Now())),
+			After:  sdk.RawData(fmt.Sprintf("test after %s", time.Now())),
+		},
+	}
 
 	// prepare SUT
 	underTest := Destination{}
@@ -65,48 +76,6 @@ func testWriteSimple(cfg map[string]string, is *is.I) {
 	is.NoErr(err)
 	is.Equal(count, 1)
 
-	message, err := waitForReaderMessage(cfg[Topic], 15*time.Second)
-	is.NoErr(err)
-	is.Equal(record.Bytes(), message.Value)
-}
-
-func waitForReaderMessage(topic string, timeout time.Duration) (skafka.Message, error) {
-	// Kafka is started in Docker
-	reader := newKafkaReader(topic)
-	defer reader.Close()
-
-	withTimeout, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return reader.ReadMessage(withTimeout)
-}
-
-func newTestConfig(t *testing.T) map[string]string {
-	return map[string]string{
-		Servers: "localhost:9092",
-		Topic:   t.Name() + uuid.NewString(),
-	}
-}
-
-func testRecord() sdk.Record {
-	return sdk.Record{
-		Operation: sdk.OperationUpdate,
-		Position:  []byte(uuid.NewString()),
-		Metadata: map[string]string{
-			"foo": "bar",
-		},
-		Key: sdk.RawData(uuid.NewString()),
-		Payload: sdk.Change{
-			Before: sdk.RawData(fmt.Sprintf("test before %s", time.Now())),
-			After:  sdk.RawData(fmt.Sprintf("test after %s", time.Now())),
-		},
-	}
-}
-
-func newKafkaReader(topic string) (reader *skafka.Reader) {
-	return skafka.NewReader(skafka.ReaderConfig{
-		Brokers:     []string{"localhost:9092"},
-		Topic:       topic,
-		StartOffset: skafka.FirstOffset,
-		GroupID:     uuid.NewString(),
-	})
+	recs := test.Consume(t, test.ParseConfigMap[config.Config](t, cfg), 1)
+	is.Equal(record.Bytes(), recs[0].Value)
 }

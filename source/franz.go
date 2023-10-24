@@ -1,0 +1,194 @@
+// Copyright © 2023 Meroxa, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package source
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"sync"
+	"time"
+
+	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/rs/zerolog"
+
+	"github.com/twmb/franz-go/pkg/kgo"
+)
+
+type FranzConsumer struct {
+	cfg    Config
+	client *kgo.Client
+	acker  *batchAcker
+
+	iter *kgo.FetchesRecordIter
+}
+
+var _ Consumer = (*FranzConsumer)(nil)
+
+func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
+	opts := []kgo.Opt{
+		kgo.SeedBrokers(cfg.Servers...),
+		kgo.ClientID(cfg.ClientID),
+
+		kgo.RetryTimeout(time.Second * 5),
+		kgo.ConsumerGroup(cfg.GroupID),
+		kgo.ConsumeTopics(cfg.Topic),
+		kgo.DisableAutoCommit(), // TODO research if we need to add OnPartitionsRevoked (see DisableAutoCommit doc)
+
+		kgo.WithHooks(franzHooks{logger: sdk.Logger(ctx)}),
+	}
+
+	if sasl := cfg.SASL(); sasl != nil {
+		opts = append(opts, kgo.SASL(sasl))
+	}
+	if tls := cfg.TLS(); tls != nil {
+		opts = append(opts, kgo.DialTLSConfig(tls))
+	}
+	if !cfg.ReadFromBeginning {
+		opts = append(opts, kgo.ConsumeResetOffset(kgo.NewOffset().AtEnd()))
+	}
+
+	cl, err := kgo.NewClient(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kafka client: %w", err)
+	}
+
+	if err != nil {
+		cl.Close()
+		return nil, err
+	}
+
+	return &FranzConsumer{
+		cfg:    cfg,
+		client: cl,
+		acker:  newBatchAcker(cl, 1000),
+		iter:   &kgo.FetchesRecordIter{}, // empty iterator is done
+	}, nil
+}
+
+func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
+	for c.iter.Done() {
+		fetches := c.client.PollFetches(ctx)
+		if err := fetches.Err(); err != nil {
+			return nil, err
+		}
+		if fetches.Empty() {
+			continue // no records, keep polling
+		}
+		c.iter = fetches.RecordIter()
+		c.acker.Records(fetches.Records()...)
+		break
+	}
+	return (*Record)(c.iter.Next()), nil
+}
+
+func (c *FranzConsumer) Ack(ctx context.Context) error {
+	return c.acker.Ack(ctx)
+}
+
+func (c *FranzConsumer) Close(ctx context.Context) error {
+	var multierr []error
+
+	if err := c.acker.Flush(ctx); err != nil {
+		multierr = append(multierr, err)
+	}
+	c.client.Close()
+
+	return errors.Join(multierr...)
+}
+
+// batchAcker commits acks in batches.
+type batchAcker struct {
+	client *kgo.Client
+
+	batchSize     int
+	curBatchIndex int
+
+	records []*kgo.Record
+	m       sync.Mutex
+}
+
+func newBatchAcker(client *kgo.Client, batchSize int) *batchAcker {
+	return &batchAcker{
+		client:        client,
+		batchSize:     batchSize,
+		curBatchIndex: 0,
+		records:       make([]*kgo.Record, 0, 10000), // prepare generous capacity
+	}
+}
+
+func (a *batchAcker) Records(recs ...*kgo.Record) {
+	a.m.Lock()
+	a.records = append(a.records, recs...)
+	a.m.Unlock()
+}
+
+func (a *batchAcker) Ack(ctx context.Context) error {
+	a.curBatchIndex++
+	if a.curBatchIndex < a.batchSize {
+		return nil
+	}
+	// TODO flush on timeout
+	return a.Flush(ctx)
+}
+
+func (a *batchAcker) Flush(ctx context.Context) error {
+	if a.curBatchIndex == 0 {
+		return nil // nothing to flush
+	}
+
+	a.m.Lock()
+	defer a.m.Unlock()
+
+	err := a.client.CommitRecords(ctx, a.records[:a.curBatchIndex]...)
+	if err != nil {
+		return fmt.Errorf("failed to commit records: %w", err)
+	}
+
+	a.records = a.records[a.curBatchIndex:]
+	a.curBatchIndex = 0
+	return nil
+}
+
+// franzHooks gathers hooks added to franz-go client.
+type franzHooks struct {
+	logger *zerolog.Logger
+}
+
+var _ kgo.HookBrokerConnect = (*franzHooks)(nil)
+var _ kgo.HookBrokerDisconnect = (*franzHooks)(nil)
+
+func (h franzHooks) OnBrokerConnect(meta kgo.BrokerMetadata, dialDur time.Duration, conn net.Conn, err error) {
+	if err != nil {
+		h.logger.Warn().
+			Err(err).
+			Str("host", meta.Host).
+			Int32("port", meta.Port).
+			Msg("failed to open connection to broker")
+		return
+	}
+	h.logger.Info().
+		Str("host", meta.Host).
+		Int32("port", meta.Port).
+		Msg("established connection to broker")
+}
+
+func (h franzHooks) OnBrokerDisconnect(meta kgo.BrokerMetadata, conn net.Conn) {
+	h.logger.Warn().
+		Str("host", meta.Host).
+		Int32("port", meta.Port).
+		Msg("connection to broker closed")
+}
