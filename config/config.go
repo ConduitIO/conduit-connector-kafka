@@ -171,6 +171,6 @@ func (c Config) tls() (*tls.Config, error) {
 	return &tls.Config{
 		Certificates:       certificates,
 		RootCAs:            rootCAs,
-		InsecureSkipVerify: c.InsecureSkipVerify,
+		InsecureSkipVerify: c.InsecureSkipVerify, //nolint:gosec // it's the users decision to turn this on
 	}, nil
 }

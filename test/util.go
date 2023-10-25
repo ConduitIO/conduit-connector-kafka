@@ -22,11 +22,9 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/google/uuid"
-
-	sdk "github.com/conduitio/conduit-connector-sdk"
-
 	"github.com/conduitio/conduit-connector-kafka/config"
+	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/google/uuid"
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -131,7 +129,7 @@ func Certificates(t *testing.T) (clientCert, clientKey, caCert string) {
 	is.Helper()
 
 	// get test dir
-	_, filename, _, _ := runtime.Caller(0)
+	_, filename, _, _ := runtime.Caller(0) //nolint:dogsled // we don't need other values
 	testDir := path.Dir(filename)
 
 	readFile := func(file string) string {

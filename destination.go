@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/conduitio/conduit-connector-kafka/destination"
-
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 

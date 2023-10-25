@@ -58,7 +58,7 @@ type AcceptanceTestDriver struct {
 }
 
 // ReadFromDestination is overwritten because the source connector uses a consumer
-// group which results in slow reads.
+// group which results in slow reads. This speeds up the destination tests.
 func (d AcceptanceTestDriver) ReadFromDestination(t *testing.T, records []sdk.Record) []sdk.Record {
 	cfg := test.ParseConfigMap[config.Config](t, d.Config.SourceConfig)
 	kgoRecs := test.Consume(t, cfg, len(records))

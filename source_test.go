@@ -19,11 +19,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/test"
-
-	sdk "github.com/conduitio/conduit-connector-sdk"
-
 	"github.com/conduitio/conduit-connector-kafka/source"
+	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 	"go.uber.org/mock/gomock"
 )

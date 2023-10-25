@@ -31,7 +31,7 @@ type FranzProducer struct {
 
 var _ Producer = (*FranzProducer)(nil)
 
-func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
+func NewFranzProducer(_ context.Context, cfg Config) (*FranzProducer, error) {
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
 		kgo.AllowAutoTopicCreation(),
@@ -42,7 +42,6 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 		return nil, err
 	}
 
-	err = cl.BeginTransaction()
 	return &FranzProducer{
 		client: cl,
 	}, nil
@@ -67,7 +66,7 @@ func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int,
 	return len(results), nil
 }
 
-func (p *FranzProducer) Close(ctx context.Context) error {
+func (p *FranzProducer) Close(_ context.Context) error {
 	if p.client == nil {
 		return nil
 	}

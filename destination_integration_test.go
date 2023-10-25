@@ -32,15 +32,15 @@ func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
 	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
 
 	test.CreateTopic(t, cfg)
-	testDestination_Integration_Write(t, cfgMap)
+	testDestinationIntegrationWrite(t, cfgMap)
 }
 
 func TestDestination_Integration_WriteCreateTopic(t *testing.T) {
 	cfgMap := test.DestinationConfigMap(t)
-	testDestination_Integration_Write(t, cfgMap)
+	testDestinationIntegrationWrite(t, cfgMap)
 }
 
-func testDestination_Integration_Write(t *testing.T, cfg map[string]string) {
+func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 	is := is.New(t)
 	ctx := context.Background()
 
@@ -57,7 +57,6 @@ func testDestination_Integration_Write(t *testing.T, cfg map[string]string) {
 		},
 	}
 
-	// prepare SUT
 	underTest := NewDestination()
 	defer func() {
 		err := underTest.Teardown(ctx)
@@ -70,7 +69,6 @@ func testDestination_Integration_Write(t *testing.T, cfg map[string]string) {
 	err = underTest.Open(ctx)
 	is.NoErr(err)
 
-	// act and assert
 	count, err := underTest.Write(ctx, []sdk.Record{record})
 	is.NoErr(err)
 	is.Equal(count, 1)

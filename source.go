@@ -18,11 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/conduitio/conduit-connector-kafka/source"
-
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/google/uuid"
 )
 
 const (

@@ -24,7 +24,6 @@ import (
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/rs/zerolog"
-
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -171,7 +170,7 @@ type franzHooks struct {
 var _ kgo.HookBrokerConnect = (*franzHooks)(nil)
 var _ kgo.HookBrokerDisconnect = (*franzHooks)(nil)
 
-func (h franzHooks) OnBrokerConnect(meta kgo.BrokerMetadata, dialDur time.Duration, conn net.Conn, err error) {
+func (h franzHooks) OnBrokerConnect(meta kgo.BrokerMetadata, _ time.Duration, _ net.Conn, err error) {
 	if err != nil {
 		h.logger.Warn().
 			Err(err).
@@ -186,7 +185,7 @@ func (h franzHooks) OnBrokerConnect(meta kgo.BrokerMetadata, dialDur time.Durati
 		Msg("established connection to broker")
 }
 
-func (h franzHooks) OnBrokerDisconnect(meta kgo.BrokerMetadata, conn net.Conn) {
+func (h franzHooks) OnBrokerDisconnect(meta kgo.BrokerMetadata, _ net.Conn) {
 	h.logger.Warn().
 		Str("host", meta.Host).
 		Int32("port", meta.Port).
