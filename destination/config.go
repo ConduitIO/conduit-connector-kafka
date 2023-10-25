@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type Config struct {
@@ -34,14 +35,51 @@ type Config struct {
 	// DeliveryTimeout for write operation performed by the Writer.
 	DeliveryTimeout time.Duration `json:"deliveryTimeout"`
 	// Compression set the compression codec to be used to compress messages.
-	Compression string `json:"compression" validate:"inclusion=none|gzip|snappy|lz4|zstd"`
+	Compression string `json:"compression" default:"snappy" validate:"inclusion=none|gzip|snappy|lz4|zstd"`
 	// BatchBytes limits the maximum size of a request in bytes before being
-	// sent to a partition.
-	BatchBytes int64 `json:"batchBytes" default:"1048576"`
+	// sent to a partition. This mirrors Kafka's max.message.bytes.
+	BatchBytes int32 `json:"batchBytes" default:"1000012"`
 
-	// isRecordFormatDebezium detects if the connector middleware is configured
-	// to produce debezium records.
-	isRecordFormatDebezium bool
+	// useKafkaConnectKeyFormat defines if the produced key in a kafka message
+	// should be in the kafka connect format (i.e. JSON with schema).
+	useKafkaConnectKeyFormat bool
+}
+
+func (c Config) WithKafkaConnectKeyFormat() Config {
+	c.useKafkaConnectKeyFormat = true
+	return c
+}
+
+func (c Config) RequiredAcks() kgo.Acks {
+	switch c.Acks {
+	case "none":
+		return kgo.NoAck()
+	case "one":
+		return kgo.LeaderAck()
+	case "all":
+		return kgo.AllISRAcks()
+	default:
+		// it shouldn't be possible to get here because of the config validation
+		return kgo.AllISRAcks()
+	}
+}
+
+func (c Config) CompressionCodecs() []kgo.CompressionCodec {
+	switch c.Compression {
+	case "none":
+		return []kgo.CompressionCodec{kgo.NoCompression()}
+	case "gzip":
+		return []kgo.CompressionCodec{kgo.GzipCompression(), kgo.NoCompression()}
+	case "snappy":
+		return []kgo.CompressionCodec{kgo.SnappyCompression(), kgo.NoCompression()}
+	case "lz4":
+		return []kgo.CompressionCodec{kgo.Lz4Compression(), kgo.NoCompression()}
+	case "zstd":
+		return []kgo.CompressionCodec{kgo.ZstdCompression(), kgo.NoCompression()}
+	default:
+		// it shouldn't be possible to get here because of the config validation
+		return []kgo.CompressionCodec{kgo.SnappyCompression(), kgo.NoCompression()}
+	}
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.

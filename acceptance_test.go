@@ -27,8 +27,13 @@ import (
 
 func TestAcceptance(t *testing.T) {
 	cfg := map[string]string{
-		"servers":           "localhost:9092",
+		"servers": "localhost:9092",
+		// source params
 		"readFromBeginning": "true",
+		// destination params
+		"batchBytes":  "1000012",
+		"acks":        "all",
+		"compression": "snappy",
 	}
 
 	sdk.AcceptanceTest(t, AcceptanceTestDriver{
@@ -60,7 +65,7 @@ type AcceptanceTestDriver struct {
 // ReadFromDestination is overwritten because the source connector uses a consumer
 // group which results in slow reads. This speeds up the destination tests.
 func (d AcceptanceTestDriver) ReadFromDestination(t *testing.T, records []sdk.Record) []sdk.Record {
-	cfg := test.ParseConfigMap[common.Config](t, d.Config.SourceConfig)
+	cfg := test.ParseConfigMap[common.Config](t, d.SourceConfig(t))
 	kgoRecs := test.Consume(t, cfg, len(records))
 
 	recs := make([]sdk.Record, len(kgoRecs))

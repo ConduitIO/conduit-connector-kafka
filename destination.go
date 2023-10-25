@@ -17,6 +17,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/conduitio/conduit-connector-kafka/destination"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -47,6 +48,14 @@ func (d *Destination) Configure(_ context.Context, cfg map[string]string) error 
 	err = config.Validate()
 	if err != nil {
 		return err
+	}
+
+	recordFormat := cfg[sdk.DestinationWithRecordFormat{}.RecordFormatParameterName()]
+	if recordFormat != "" {
+		recordFormatType, _, _ := strings.Cut(recordFormat, "/")
+		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
+			config = config.WithKafkaConnectKeyFormat()
+		}
 	}
 
 	d.config = config

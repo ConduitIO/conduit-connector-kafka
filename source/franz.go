@@ -18,17 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"sync"
-	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/rs/zerolog"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type FranzConsumer struct {
-	cfg    Config
 	client *kgo.Client
 	acker  *batchAcker
 
@@ -38,23 +34,13 @@ type FranzConsumer struct {
 var _ Consumer = (*FranzConsumer)(nil)
 
 func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
-	opts := []kgo.Opt{
-		kgo.SeedBrokers(cfg.Servers...),
-		kgo.ClientID(cfg.ClientID),
-
+	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
+	opts = append(opts, []kgo.Opt{
 		kgo.ConsumerGroup(cfg.GroupID),
 		kgo.ConsumeTopics(cfg.Topic),
 		kgo.DisableAutoCommit(), // TODO research if we need to add OnPartitionsRevoked (see DisableAutoCommit doc)
+	}...)
 
-		kgo.WithHooks(franzHooks{logger: sdk.Logger(ctx)}),
-	}
-
-	if sasl := cfg.SASL(); sasl != nil {
-		opts = append(opts, kgo.SASL(sasl))
-	}
-	if tls := cfg.TLS(); tls != nil {
-		opts = append(opts, kgo.DialTLSConfig(tls))
-	}
 	if !cfg.ReadFromBeginning {
 		opts = append(opts, kgo.ConsumeResetOffset(kgo.NewOffset().AtEnd()))
 	}
@@ -70,7 +56,6 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 	}
 
 	return &FranzConsumer{
-		cfg:    cfg,
 		client: cl,
 		acker:  newBatchAcker(cl, 1000),
 		iter:   &kgo.FetchesRecordIter{}, // empty iterator is done
@@ -159,34 +144,4 @@ func (a *batchAcker) Flush(ctx context.Context) error {
 	a.records = a.records[a.curBatchIndex:]
 	a.curBatchIndex = 0
 	return nil
-}
-
-// franzHooks gathers hooks added to franz-go client.
-type franzHooks struct {
-	logger *zerolog.Logger
-}
-
-var _ kgo.HookBrokerConnect = (*franzHooks)(nil)
-var _ kgo.HookBrokerDisconnect = (*franzHooks)(nil)
-
-func (h franzHooks) OnBrokerConnect(meta kgo.BrokerMetadata, _ time.Duration, _ net.Conn, err error) {
-	if err != nil {
-		h.logger.Warn().
-			Err(err).
-			Str("host", meta.Host).
-			Int32("port", meta.Port).
-			Msg("failed to open connection to broker")
-		return
-	}
-	h.logger.Info().
-		Str("host", meta.Host).
-		Int32("port", meta.Port).
-		Msg("established connection to broker")
-}
-
-func (h franzHooks) OnBrokerDisconnect(meta kgo.BrokerMetadata, _ net.Conn) {
-	h.logger.Warn().
-		Str("host", meta.Host).
-		Int32("port", meta.Port).
-		Msg("connection to broker closed")
 }

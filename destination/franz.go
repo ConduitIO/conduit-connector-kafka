@@ -25,39 +25,53 @@ import (
 )
 
 type FranzProducer struct {
-	cfg    Config
-	client *kgo.Client
+	client     *kgo.Client
+	keyEncoder dataEncoder
 }
 
 var _ Producer = (*FranzProducer)(nil)
 
-func NewFranzProducer(_ context.Context, cfg Config) (*FranzProducer, error) {
-	cl, err := kgo.NewClient(
-		kgo.SeedBrokers(cfg.Servers...),
-		kgo.ClientID(cfg.ClientID),
-
+func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
+	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
+	opts = append(opts, []kgo.Opt{
 		kgo.AllowAutoTopicCreation(),
 		kgo.DefaultProduceTopic(cfg.Topic),
-	)
+		kgo.RecordDeliveryTimeout(cfg.DeliveryTimeout),
+		kgo.RequiredAcks(cfg.RequiredAcks()),
+		kgo.ProducerBatchCompression(cfg.CompressionCodecs()...),
+		kgo.ProducerBatchMaxBytes(cfg.BatchBytes),
+	}...)
+
+	cl, err := kgo.NewClient(opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create kafka client: %w", err)
+	}
+
+	var keyEncoder dataEncoder = bytesEncoder{}
+	if cfg.useKafkaConnectKeyFormat {
+		keyEncoder = kafkaConnectEncoder{}
 	}
 
 	return &FranzProducer{
-		client: cl,
+		client:     cl,
+		keyEncoder: keyEncoder,
 	}, nil
 }
 
 func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int, error) {
-	messages := make([]*kgo.Record, len(records))
+	kafkaRecs := make([]*kgo.Record, len(records))
 	for i, r := range records {
-		messages[i] = &kgo.Record{
-			Key:   r.Key.Bytes(),
+		encodedKey, err := p.keyEncoder.Encode(r.Key)
+		if err != nil {
+			return 0, fmt.Errorf("could not encode key of record %v: %w", i, err)
+		}
+		kafkaRecs[i] = &kgo.Record{
+			Key:   encodedKey,
 			Value: r.Bytes(),
 		}
 	}
 
-	results := p.client.ProduceSync(ctx, messages...)
+	results := p.client.ProduceSync(ctx, kafkaRecs...)
 	for i, r := range results {
 		if r.Err != nil {
 			return i, r.Err
@@ -68,47 +82,62 @@ func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int,
 }
 
 func (p *FranzProducer) Close(_ context.Context) error {
-	if p.client == nil {
-		return nil
+	if p.client != nil {
+		p.client.Close()
 	}
-	p.client.Close()
 	return nil
 }
 
-func (p *FranzProducer) keyEncodingBytes(k sdk.Data) ([]byte, error) {
-	return k.Bytes(), nil
+// dataEncoder is similar to a sdk.Encoder, which takes data and encodes it in
+// a certain format. The producer uses this to encode the key of the kafka
+// message.
+type dataEncoder interface {
+	Encode(sdk.Data) ([]byte, error)
 }
 
-func (p *FranzProducer) keyEncodingDebezium(d sdk.Data) ([]byte, error) {
-	d = p.sanitizeData(d)
-	s := kafkaconnect.Reflect(d)
-	if s == nil {
+// bytesEncoder is a dataEncoder that simply calls data.Bytes().
+type bytesEncoder struct{}
+
+func (bytesEncoder) Encode(data sdk.Data) ([]byte, error) {
+	return data.Bytes(), nil
+}
+
+// kafkaConnectEncoder encodes the data into a kafka connect JSON with schema
+// (NB: this is not the same as JSONSchema).
+type kafkaConnectEncoder struct{}
+
+func (e kafkaConnectEncoder) Encode(data sdk.Data) ([]byte, error) {
+	sd := e.toStructuredData(data)
+	schema := kafkaconnect.Reflect(sd)
+	if schema == nil {
 		// s is nil, let's write an empty struct in the schema
-		s = &kafkaconnect.Schema{
+		schema = &kafkaconnect.Schema{
 			Type:     kafkaconnect.TypeStruct,
 			Optional: true,
 		}
 	}
 
-	e := kafkaconnect.Envelope{
-		Schema:  *s,
-		Payload: d,
+	env := kafkaconnect.Envelope{
+		Schema:  *schema,
+		Payload: sd,
 	}
 	// TODO add support for other encodings than JSON
-	return json.Marshal(e)
+	return json.Marshal(env)
 }
 
-// sanitizeData tries its best to return StructuredData.
-func (p *FranzProducer) sanitizeData(d sdk.Data) sdk.Data {
+// toStructuredData tries its best to return StructuredData.
+func (kafkaConnectEncoder) toStructuredData(d sdk.Data) sdk.Data {
 	switch d := d.(type) {
 	case nil:
 		return nil
 	case sdk.StructuredData:
 		return d
 	case sdk.RawData:
-		sd, err := p.parseRawDataAsJSON(d)
+		// try parsing the raw data as json
+		var sd sdk.StructuredData
+		err := json.Unmarshal(d, &sd)
 		if err != nil {
-			// oh well, can't be done
+			// it's not JSON, nothing more we can do
 			return d
 		}
 		return sd
@@ -116,14 +145,4 @@ func (p *FranzProducer) sanitizeData(d sdk.Data) sdk.Data {
 		// should not be possible
 		panic(fmt.Errorf("unknown data type: %T", d))
 	}
-}
-func (p *FranzProducer) parseRawDataAsJSON(d sdk.RawData) (sdk.StructuredData, error) {
-	// We have raw data, we need structured data.
-	// We can do our best and try to convert it if RawData is carrying raw JSON.
-	var sd sdk.StructuredData
-	err := json.Unmarshal(d, &sd)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse RawData as JSON: %w", err)
-	}
-	return sd, nil
 }

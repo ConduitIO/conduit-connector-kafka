@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
@@ -31,9 +32,10 @@ import (
 )
 
 func ConfigMap(t *testing.T) map[string]string {
+	lastSlash := strings.LastIndex(t.Name(), "/")
 	return map[string]string{
 		"servers": "localhost:9092",
-		"topic":   t.Name() + uuid.NewString(),
+		"topic":   t.Name()[lastSlash+1:] + uuid.NewString(),
 	}
 }
 
@@ -45,7 +47,9 @@ func SourceConfigMap(t *testing.T) map[string]string {
 
 func DestinationConfigMap(t *testing.T) map[string]string {
 	m := ConfigMap(t)
-	// no special fields for now
+	m["batchBytes"] = "1000012"
+	m["acks"] = "all"
+	m["compression"] = "snappy"
 	return m
 }
 

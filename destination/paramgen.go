@@ -18,8 +18,8 @@ func (Config) Parameters() map[string]sdk.Parameter {
 			},
 		},
 		"batchBytes": {
-			Default:     "1048576",
-			Description: "batchBytes limits the maximum size of a request in bytes before being sent to a partition.",
+			Default:     "1000012",
+			Description: "batchBytes limits the maximum size of a request in bytes before being sent to a partition. This mirrors Kafka's max.message.bytes.",
 			Type:        sdk.ParameterTypeInt,
 			Validations: []sdk.Validation{},
 		},
@@ -48,7 +48,7 @@ func (Config) Parameters() map[string]sdk.Parameter {
 			Validations: []sdk.Validation{},
 		},
 		"compression": {
-			Default:     "",
+			Default:     "snappy",
 			Description: "compression set the compression codec to be used to compress messages.",
 			Type:        sdk.ParameterTypeString,
 			Validations: []sdk.Validation{
