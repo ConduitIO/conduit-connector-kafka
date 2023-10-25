@@ -33,10 +33,14 @@ type Source struct {
 
 	consumer source.Consumer
 	config   source.Config
+
+	batch MicroBatch
 }
 
 func NewSource() sdk.Source {
-	return sdk.SourceWithMiddleware(&Source{}, sdk.DefaultSourceMiddleware()...)
+	return sdk.SourceWithMiddleware(&Source{
+		batch: make(MicroBatch, microBatchSize),
+	}, sdk.DefaultSourceMiddleware()...)
 }
 
 func (s *Source) Parameters() map[string]sdk.Parameter {
@@ -91,29 +95,39 @@ func (s *Source) Open(ctx context.Context, sdkPos sdk.Position) error {
 }
 
 func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
-	rec, err := s.consumer.Consume(ctx)
-	if err != nil {
-		return sdk.Record{}, fmt.Errorf("failed getting a record: %w", err)
+	for i := 0; i < cap(s.batch); i++ {
+		rec, err := s.consumer.Consume(ctx)
+		if err != nil {
+			return sdk.Record{}, fmt.Errorf("failed getting a record: %w", err)
+		}
+
+		metadata := sdk.Metadata{MetadataKafkaTopic: rec.Topic}
+		metadata.SetCreatedAt(rec.Timestamp)
+
+		s.batch[i] = sdk.Util.Source.NewRecordCreate(
+			source.Position{
+				GroupID:   s.config.GroupID,
+				Topic:     rec.Topic,
+				Partition: rec.Partition,
+				Offset:    rec.Offset,
+			}.ToSDKPosition(),
+			metadata,
+			sdk.RawData(rec.Key),
+			sdk.RawData(rec.Value),
+		)
 	}
 
-	metadata := sdk.Metadata{MetadataKafkaTopic: rec.Topic}
-	metadata.SetCreatedAt(rec.Timestamp)
-
-	return sdk.Util.Source.NewRecordCreate(
-		source.Position{
-			GroupID:   s.config.GroupID,
-			Topic:     rec.Topic,
-			Partition: rec.Partition,
-			Offset:    rec.Offset,
-		}.ToSDKPosition(),
-		metadata,
-		sdk.RawData(rec.Key),
-		sdk.RawData(rec.Value),
-	), nil
+	return s.batch.ToRecord(), nil
 }
 
 func (s *Source) Ack(ctx context.Context, _ sdk.Position) error {
-	return s.consumer.Ack(ctx)
+	for i := 0; i < microBatchSize; i++ {
+		err := s.consumer.Ack(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Source) Teardown(ctx context.Context) error {

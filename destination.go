@@ -28,10 +28,14 @@ type Destination struct {
 
 	producer destination.Producer
 	config   destination.Config
+
+	batch MicroBatch
 }
 
 func NewDestination() sdk.Destination {
-	return sdk.DestinationWithMiddleware(&Destination{}, sdk.DefaultDestinationMiddleware()...)
+	return sdk.DestinationWithMiddleware(&Destination{
+		batch: make(MicroBatch, 0, microBatchSize),
+	}, sdk.DefaultDestinationMiddleware()...)
 }
 
 func (d *Destination) Parameters() map[string]sdk.Parameter {
@@ -77,7 +81,13 @@ func (d *Destination) Open(ctx context.Context) error {
 }
 
 func (d *Destination) Write(ctx context.Context, records []sdk.Record) (int, error) {
-	return d.producer.Produce(ctx, records)
+	for _, rec := range records {
+		d.batch.FromRecord(rec)
+	}
+	defer func() {
+		d.batch = d.batch[:0] // reset batch
+	}()
+	return d.producer.Produce(ctx, d.batch)
 }
 
 // Teardown shuts down the Kafka client.
