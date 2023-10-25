@@ -19,7 +19,7 @@ import (
 	"crypto/tls"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -34,7 +34,7 @@ func TestFranzConsumer_Opts(t *testing.T) {
 	clientCert, clientKey, caCert := test.Certificates(t)
 
 	cfg := Config{
-		Config: config.Config{
+		Config: common.Config{
 			Servers:  []string{"test-host:9092"},
 			Topic:    "test-topic",
 			ClientID: "test-client-id",

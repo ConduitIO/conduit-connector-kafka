@@ -34,9 +34,10 @@ var _ Producer = (*FranzProducer)(nil)
 func NewFranzProducer(_ context.Context, cfg Config) (*FranzProducer, error) {
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
+		kgo.ClientID(cfg.ClientID),
+
 		kgo.AllowAutoTopicCreation(),
 		kgo.DefaultProduceTopic(cfg.Topic),
-		kgo.ClientID(cfg.ClientID),
 	)
 	if err != nil {
 		return nil, err

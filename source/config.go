@@ -19,11 +19,11 @@ package source
 import (
 	"errors"
 
-	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/common"
 )
 
 type Config struct {
-	config.Config
+	common.Config
 	// ReadFromBeginning determines from whence the consumer group should begin
 	// consuming when it finds a partition without a committed offset. If this
 	// options is set to true it will start with the first message in that

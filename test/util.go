@@ -22,7 +22,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
 	"github.com/matryer/is"
@@ -60,7 +60,7 @@ func ParseConfigMap[T any](t *testing.T, cfg map[string]string) T {
 	return out
 }
 
-func Consume(t *testing.T, cfg config.Config, limit int) []*kgo.Record {
+func Consume(t *testing.T, cfg common.Config, limit int) []*kgo.Record {
 	is := is.New(t)
 	is.Helper()
 
@@ -81,7 +81,7 @@ func Consume(t *testing.T, cfg config.Config, limit int) []*kgo.Record {
 	return records[:limit]
 }
 
-func Produce(t *testing.T, cfg config.Config, records []*kgo.Record) {
+func Produce(t *testing.T, cfg common.Config, records []*kgo.Record) {
 	is := is.New(t)
 	is.Helper()
 
@@ -108,7 +108,7 @@ func GenerateRecords(from, to int) []*kgo.Record {
 	return recs
 }
 
-func CreateTopic(t *testing.T, cfg config.Config) {
+func CreateTopic(t *testing.T, cfg common.Config) {
 	is := is.New(t)
 	is.Helper()
 

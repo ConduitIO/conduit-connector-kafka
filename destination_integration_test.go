@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
@@ -29,7 +29,7 @@ import (
 
 func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
 	cfgMap := test.DestinationConfigMap(t)
-	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
+	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
 
 	test.CreateTopic(t, cfg)
 	testDestinationIntegrationWrite(t, cfgMap)
@@ -73,6 +73,6 @@ func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 	is.NoErr(err)
 	is.Equal(count, 1)
 
-	recs := test.Consume(t, test.ParseConfigMap[config.Config](t, cfg), 1)
+	recs := test.Consume(t, test.ParseConfigMap[common.Config](t, cfg), 1)
 	is.Equal(record.Bytes(), recs[0].Value)
 }

@@ -20,11 +20,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/common"
 )
 
 type Config struct {
-	config.Config
+	common.Config
 
 	// Acks defines the number of acknowledges from partition replicas required
 	// before receiving a response to a produce request.

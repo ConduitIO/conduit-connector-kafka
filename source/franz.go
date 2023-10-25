@@ -42,7 +42,6 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 		kgo.SeedBrokers(cfg.Servers...),
 		kgo.ClientID(cfg.ClientID),
 
-		kgo.RetryTimeout(time.Second * 5),
 		kgo.ConsumerGroup(cfg.GroupID),
 		kgo.ConsumeTopics(cfg.Topic),
 		kgo.DisableAutoCommit(), // TODO research if we need to add OnPartitionsRevoked (see DisableAutoCommit doc)

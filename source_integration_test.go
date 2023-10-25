@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
@@ -29,7 +29,7 @@ func TestSource_Integration_RestartFull(t *testing.T) {
 	t.Parallel()
 
 	cfgMap := test.SourceConfigMap(t)
-	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
+	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
 
 	recs1 := test.GenerateRecords(1, 3)
 	test.Produce(t, cfg, recs1)
@@ -45,7 +45,7 @@ func TestSource_Integration_RestartPartial(t *testing.T) {
 	t.Parallel()
 
 	cfgMap := test.SourceConfigMap(t)
-	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
+	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
 
 	recs1 := test.GenerateRecords(1, 3)
 	test.Produce(t, cfg, recs1)
