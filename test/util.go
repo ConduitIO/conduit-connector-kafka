@@ -17,6 +17,9 @@ package test
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
+	"runtime"
 	"testing"
 
 	"github.com/google/uuid"
@@ -24,8 +27,6 @@ import (
 	sdk "github.com/conduitio/conduit-connector-sdk"
 
 	"github.com/conduitio/conduit-connector-kafka/config"
-	"github.com/conduitio/conduit-connector-kafka/destination"
-	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -38,31 +39,16 @@ func ConfigMap(t *testing.T) map[string]string {
 	}
 }
 
-func Config(t *testing.T) config.Config {
-	cfgMap := ConfigMap(t)
-	return ParseConfigMap[config.Config](t, cfgMap)
-}
-
 func SourceConfigMap(t *testing.T) map[string]string {
 	m := ConfigMap(t)
 	m["readFromBeginning"] = "true"
 	return m
 }
 
-func SourceConfig(t *testing.T) source.Config {
-	cfgMap := SourceConfigMap(t)
-	return ParseConfigMap[source.Config](t, cfgMap)
-}
-
 func DestinationConfigMap(t *testing.T) map[string]string {
 	m := ConfigMap(t)
 	// no special fields for now
 	return m
-}
-
-func DestinationConfig(t *testing.T) destination.Config {
-	cfgMap := DestinationConfigMap(t)
-	return ParseConfigMap[destination.Config](t, cfgMap)
 }
 
 func ParseConfigMap[T any](t *testing.T, cfg map[string]string) T {
@@ -138,4 +124,24 @@ func CreateTopic(t *testing.T, cfg config.Config) {
 		context.Background(), 1, 1, nil, cfg.Topic)
 	is.NoErr(err)
 	is.NoErr(resp.Err)
+}
+
+func Certificates(t *testing.T) (clientCert, clientKey, caCert string) {
+	is := is.New(t)
+	is.Helper()
+
+	// get test dir
+	_, filename, _, _ := runtime.Caller(0)
+	testDir := path.Dir(filename)
+
+	readFile := func(file string) string {
+		bytes, err := os.ReadFile(path.Join(testDir, file))
+		is.NoErr(err)
+		return string(bytes)
+	}
+
+	clientCert = readFile("client.cer.pem")
+	clientKey = readFile("client.key.pem")
+	caCert = readFile("server.cer.pem")
+	return
 }

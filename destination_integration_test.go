@@ -32,16 +32,17 @@ func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
 	cfg := test.ParseConfigMap[config.Config](t, cfgMap)
 
 	test.CreateTopic(t, cfg)
-	testWriteSimple(t, cfgMap)
+	testDestination_Integration_Write(t, cfgMap)
 }
 
 func TestDestination_Integration_WriteCreateTopic(t *testing.T) {
 	cfgMap := test.DestinationConfigMap(t)
-	testWriteSimple(t, cfgMap)
+	testDestination_Integration_Write(t, cfgMap)
 }
 
-func testWriteSimple(t *testing.T, cfg map[string]string) {
+func testDestination_Integration_Write(t *testing.T, cfg map[string]string) {
 	is := is.New(t)
+	ctx := context.Background()
 
 	record := sdk.Record{
 		Operation: sdk.OperationUpdate,
@@ -57,22 +58,20 @@ func testWriteSimple(t *testing.T, cfg map[string]string) {
 	}
 
 	// prepare SUT
-	underTest := Destination{}
-	err := underTest.Configure(context.Background(), cfg)
-	is.NoErr(err)
-
-	err = underTest.Open(context.Background())
-	defer func(underTest *Destination, ctx context.Context) {
+	underTest := NewDestination()
+	defer func() {
 		err := underTest.Teardown(ctx)
 		is.NoErr(err)
-	}(&underTest, context.Background())
+	}()
+
+	err := underTest.Configure(ctx, cfg)
+	is.NoErr(err)
+
+	err = underTest.Open(ctx)
 	is.NoErr(err)
 
 	// act and assert
-	count, err := underTest.Write(
-		context.Background(),
-		[]sdk.Record{record},
-	)
+	count, err := underTest.Write(ctx, []sdk.Record{record})
 	is.NoErr(err)
 	is.Equal(count, 1)
 

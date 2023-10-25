@@ -38,7 +38,9 @@ func TestSource_Teardown_Success(t *testing.T) {
 		Close(context.Background()).
 		Return(nil)
 
-	underTest := Source{consumer: consumerMock, config: test.SourceConfig(t)}
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t))
+
+	underTest := Source{consumer: consumerMock, config: cfg}
 	is.NoErr(underTest.Teardown(context.Background()))
 }
 
@@ -77,7 +79,8 @@ func TestSource_Read(t *testing.T) {
 		Consume(gomock.Any()).
 		Return((*source.Record)(rec), nil)
 
-	underTest := Source{consumer: consumerMock, config: test.SourceConfig(t)}
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t))
+	underTest := Source{consumer: consumerMock, config: cfg}
 	got, err := underTest.Read(context.Background())
 	is.NoErr(err)
 	is.True(got.Metadata[sdk.MetadataReadAt] != "")

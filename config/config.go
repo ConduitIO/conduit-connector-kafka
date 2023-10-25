@@ -71,16 +71,16 @@ type Config struct {
 
 // Validate executes manual validations beyond what is defined in struct tags.
 func (c Config) Validate() error {
-	var multierr error
+	var multierr []error
 
 	if _, err := c.sasl(); err != nil {
-		multierr = errors.Join(multierr, err)
+		multierr = append(multierr, err)
 	}
 	if _, err := c.tls(); err != nil {
-		multierr = errors.Join(multierr, err)
+		multierr = append(multierr, err)
 	}
 
-	return multierr
+	return errors.Join(multierr...)
 }
 
 // TryDial tries to establish a connection to brokers and returns nil if it

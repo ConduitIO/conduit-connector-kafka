@@ -18,53 +18,50 @@ import (
 	"context"
 	"testing"
 
+	"github.com/conduitio/conduit-connector-kafka/destination"
+	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
+	"go.uber.org/mock/gomock"
 )
 
-func TestTeardown_NoOpen(t *testing.T) {
+func TestDestination_Teardown_Success(t *testing.T) {
 	is := is.New(t)
-	underTest := NewDestination()
-	is.NoErr(underTest.Teardown(context.Background()))
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+
+	producerMock := destination.NewMockProducer(ctrl)
+	producerMock.
+		EXPECT().
+		Close(ctx).
+		Return(nil)
+
+	cfg := test.ParseConfigMap[destination.Config](t, test.DestinationConfigMap(t))
+
+	underTest := Destination{producer: producerMock, config: cfg}
+	is.NoErr(underTest.Teardown(ctx))
 }
 
-// func TestConfigureDestination_KafkaProducerCreated(t *testing.T) {
-// 	is := is.New(t)
-// 	underTest := Destination{}
-// 	err := underTest.Configure(context.Background(), configMap())
-// 	is.NoErr(err)
-//
-// 	err = underTest.Open(context.Background())
-// 	is.NoErr(err)
-// 	is.True(underTest.Producer != nil)
-// 	defer underTest.Producer.Close()
-// }
+func TestDestination_Teardown_NoOpen(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	underTest := NewDestination()
+	is.NoErr(underTest.Teardown(ctx))
+}
 
-// func TestTeardown_ClosesClient(t *testing.T) {
-// 	is := is.New(t)
-// 	ctrl := gomock.NewController(t)
-//
-// 	clientMock := mock.NewProducer(ctrl)
-// 	clientMock.
-// 		EXPECT().
-// 		Close().
-// 		Return(nil)
-//
-// 	underTest := Destination{Producer: clientMock, Config: connectorCfg()}
-// 	is.NoErr(underTest.Teardown(context.Background()))
-// }
+func TestDestination_Write_Produce(t *testing.T) {
+	is := is.New(t)
+	ctrl := gomock.NewController(t)
+	ctx := context.Background()
 
-// func TestWrite_ClientSendsMessage(t *testing.T) {
-// 	is := is.New(t)
-// 	ctrl := gomock.NewController(t)
-// 	ctx := context.Background()
-//
-// 	rec := testRec()
-// 	producerMock := mock.NewProducer(ctrl)
-// 	producerMock.EXPECT().Send(ctx, []sdk.Record{rec}).Return(1, nil)
-//
-// 	underTest := Destination{Producer: producerMock, Config: connectorCfg()}
-//
-// 	count, err := underTest.Write(ctx, []sdk.Record{rec})
-// 	is.NoErr(err)
-// 	is.Equal(count, 1)
-// }
+	recs := []sdk.Record{{}}
+	producerMock := destination.NewMockProducer(ctrl)
+	producerMock.EXPECT().Produce(ctx, recs).Return(1, nil)
+
+	cfg := test.ParseConfigMap[destination.Config](t, test.DestinationConfigMap(t))
+	underTest := Destination{producer: producerMock, config: cfg}
+
+	count, err := underTest.Write(ctx, recs)
+	is.NoErr(err)
+	is.Equal(count, 1)
+}

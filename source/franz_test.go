@@ -17,10 +17,10 @@ package source
 import (
 	"context"
 	"crypto/tls"
-	"os"
 	"testing"
 
 	"github.com/conduitio/conduit-connector-kafka/config"
+	"github.com/conduitio/conduit-connector-kafka/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -31,11 +31,7 @@ import (
 func TestFranzConsumer_Opts(t *testing.T) {
 	is := is.New(t)
 
-	certs := readFiles(t,
-		"../test/client.cer.pem", // ClientCert
-		"../test/client.key.pem", // ClientKey
-		"../test/server.cer.pem", // CACert
-	)
+	clientCert, clientKey, caCert := test.Certificates(t)
 
 	cfg := Config{
 		Config: config.Config{
@@ -43,9 +39,9 @@ func TestFranzConsumer_Opts(t *testing.T) {
 			Topic:    "test-topic",
 			ClientID: "test-client-id",
 
-			ClientCert: string(certs[0]),
-			ClientKey:  string(certs[1]),
-			CACert:     string(certs[2]),
+			ClientCert: clientCert,
+			ClientKey:  clientKey,
+			CACert:     caCert,
 
 			SASLMechanism: "PLAIN",
 			SASLUsername:  "user",
@@ -61,16 +57,4 @@ func TestFranzConsumer_Opts(t *testing.T) {
 	is.Equal(c.client.OptValue(kgo.ClientID), cfg.ClientID)
 	is.Equal(cmp.Diff(c.client.OptValue(kgo.DialTLSConfig), cfg.TLS(), cmpopts.IgnoreUnexported(tls.Config{})), "")
 	is.Equal(c.client.OptValue(kgo.SASL).([]sasl.Mechanism)[0].Name(), cfg.SASL().Name())
-}
-
-func readFiles(t *testing.T, paths ...string) [][]byte {
-	files := make([][]byte, len(paths))
-	for i, path := range paths {
-		bytes, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		files[i] = bytes
-	}
-	return files
 }

@@ -62,7 +62,10 @@ func testSource_Integration_Read(t *testing.T, cfgMap map[string]string, from in
 	ctx := context.Background()
 
 	underTest := NewSource()
-	defer underTest.Teardown(ctx)
+	defer func() {
+		err := underTest.Teardown(ctx)
+		is.NoErr(err)
+	}()
 
 	err := underTest.Configure(ctx, cfgMap)
 	is.NoErr(err)
