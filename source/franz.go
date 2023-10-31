@@ -38,11 +38,13 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 	opts = append(opts, []kgo.Opt{
 		kgo.ConsumerGroup(cfg.GroupID),
 		kgo.ConsumeTopics(cfg.Topic),
-		kgo.DisableAutoCommit(), // TODO research if we need to add OnPartitionsRevoked (see DisableAutoCommit doc)
 	}...)
 
 	if !cfg.ReadFromBeginning {
 		opts = append(opts, kgo.ConsumeResetOffset(kgo.NewOffset().AtEnd()))
+	}
+	if cfg.GroupID != "" {
+		opts = append(opts, kgo.DisableAutoCommit()) // TODO research if we need to add OnPartitionsRevoked (see DisableAutoCommit doc)
 	}
 
 	cl, err := kgo.NewClient(opts...)

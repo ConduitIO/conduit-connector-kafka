@@ -1,4 +1,4 @@
-// Copyright © 2022 Meroxa, Inc.
+// Copyright © 2023 Meroxa, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,53 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka
+package destination
 
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	"github.com/matryer/is"
 )
 
-func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
-	cfgMap := test.DestinationConfigMap(t)
-	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
-
-	test.CreateTopic(t, cfg)
-	testDestinationIntegrationWrite(t, cfgMap)
-}
-
-func TestDestination_Integration_WriteCreateTopic(t *testing.T) {
-	cfgMap := test.DestinationConfigMap(t)
-	testDestinationIntegrationWrite(t, cfgMap)
-}
-
-func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
+func TestFranzProducer_Produce(t *testing.T) {
+	t.Parallel()
 	is := is.New(t)
 	ctx := context.Background()
 
-	wantRecords := test.GenerateSDKRecords(1, 6)
+	cfg := test.ParseConfigMap[Config](t, test.DestinationConfigMap(t))
 
-	underTest := NewDestination()
+	p, err := NewFranzProducer(ctx, cfg)
+	is.NoErr(err)
 	defer func() {
-		err := underTest.Teardown(ctx)
+		err := p.Close(ctx)
 		is.NoErr(err)
 	}()
 
-	err := underTest.Configure(ctx, cfg)
-	is.NoErr(err)
+	wantRecords := test.GenerateSDKRecords(1, 6)
 
-	err = underTest.Open(ctx)
-	is.NoErr(err)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 
-	count, err := underTest.Write(ctx, wantRecords)
+	count, err := p.Produce(ctx, wantRecords)
 	is.NoErr(err)
 	is.Equal(count, len(wantRecords))
 
-	gotRecords := test.Consume(t, test.ParseConfigMap[common.Config](t, cfg), len(wantRecords))
+	gotRecords := test.Consume(t, cfg.Config, len(wantRecords))
 	is.Equal(len(wantRecords), len(gotRecords))
 	for i, got := range gotRecords {
 		is.Equal(got.Value, wantRecords[i].Bytes())

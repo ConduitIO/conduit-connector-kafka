@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -33,9 +34,11 @@ import (
 
 func ConfigMap(t *testing.T) map[string]string {
 	lastSlash := strings.LastIndex(t.Name(), "/")
+	topic := t.Name()[lastSlash+1:] + uuid.NewString()
+	t.Logf("using topic: %v", topic)
 	return map[string]string{
 		"servers": "localhost:9092",
-		"topic":   t.Name()[lastSlash+1:] + uuid.NewString(),
+		"topic":   topic,
 	}
 }
 
@@ -65,6 +68,8 @@ func ParseConfigMap[T any](t *testing.T, cfg map[string]string) T {
 }
 
 func Consume(t *testing.T, cfg common.Config, limit int) []*kgo.Record {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	is := is.New(t)
 	is.Helper()
 
@@ -77,7 +82,7 @@ func Consume(t *testing.T, cfg common.Config, limit int) []*kgo.Record {
 
 	var records []*kgo.Record
 	for len(records) < limit {
-		fetches := cl.PollFetches(context.Background())
+		fetches := cl.PollFetches(ctx)
 		is.NoErr(fetches.Err())
 
 		records = append(records, fetches.Records()...)
@@ -86,6 +91,8 @@ func Consume(t *testing.T, cfg common.Config, limit int) []*kgo.Record {
 }
 
 func Produce(t *testing.T, cfg common.Config, records []*kgo.Record) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	is := is.New(t)
 	is.Helper()
 
@@ -97,11 +104,11 @@ func Produce(t *testing.T, cfg common.Config, records []*kgo.Record) {
 	is.NoErr(err)
 	defer cl.Close()
 
-	results := cl.ProduceSync(context.Background(), records...)
+	results := cl.ProduceSync(ctx, records...)
 	is.NoErr(results.FirstErr())
 }
 
-func GenerateRecords(from, to int) []*kgo.Record {
+func GenerateFranzRecords(from, to int) []*kgo.Record {
 	recs := make([]*kgo.Record, 0, to-from+1)
 	for i := from; i <= to; i++ {
 		recs = append(recs, &kgo.Record{
@@ -112,7 +119,26 @@ func GenerateRecords(from, to int) []*kgo.Record {
 	return recs
 }
 
+func GenerateSDKRecords(from, to int) []sdk.Record {
+	recs := GenerateFranzRecords(from, to)
+	sdkRecs := make([]sdk.Record, len(recs))
+	for i, rec := range recs {
+		metadata := sdk.Metadata{"kafka.topic": rec.Topic}
+		metadata.SetCreatedAt(rec.Timestamp)
+
+		sdkRecs[i] = sdk.Util.Source.NewRecordCreate(
+			[]byte(uuid.NewString()),
+			metadata,
+			sdk.RawData(rec.Key),
+			sdk.RawData(rec.Value),
+		)
+	}
+	return sdkRecs
+}
+
 func CreateTopic(t *testing.T, cfg common.Config) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	is := is.New(t)
 	is.Helper()
 
@@ -123,7 +149,7 @@ func CreateTopic(t *testing.T, cfg common.Config) {
 	defer cl.Close()
 
 	resp, err := kadm.NewClient(cl).CreateTopic(
-		context.Background(), 1, 1, nil, cfg.Topic)
+		ctx, 1, 1, nil, cfg.Topic)
 	is.NoErr(err)
 	is.NoErr(resp.Err)
 }

@@ -52,7 +52,7 @@ func TestSource_Read(t *testing.T) {
 	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
-	rec := test.GenerateRecords(0, 0)[0]
+	rec := test.GenerateFranzRecords(0, 0)[0]
 	want := sdk.Record{
 		Position: source.Position{
 			GroupID:   "",

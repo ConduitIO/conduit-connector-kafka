@@ -56,18 +56,18 @@ func TestFranzProducer_Opts(t *testing.T) {
 		Acks:            "one",
 	}
 
-	c, err := NewFranzProducer(context.Background(), cfg)
+	p, err := NewFranzProducer(context.Background(), cfg)
 	is.NoErr(err)
 
-	is.Equal(c.client.OptValue(kgo.DefaultProduceTopic), cfg.Topic)
-	is.Equal(c.client.OptValue(kgo.AllowAutoTopicCreation), true)
-	is.Equal(c.client.OptValue(kgo.RecordDeliveryTimeout), cfg.DeliveryTimeout)
-	is.Equal(c.client.OptValue(kgo.RequiredAcks), cfg.RequiredAcks())
-	is.Equal(c.client.OptValue(kgo.DisableIdempotentWrite), true) // only true because Acks is "one"
-	is.Equal(c.client.OptValue(kgo.ProducerBatchCompression), cfg.CompressionCodecs())
-	is.Equal(c.client.OptValue(kgo.ProducerBatchMaxBytes), cfg.BatchBytes)
+	is.Equal(p.client.OptValue(kgo.DefaultProduceTopic), cfg.Topic)
+	is.Equal(p.client.OptValue(kgo.AllowAutoTopicCreation), true)
+	is.Equal(p.client.OptValue(kgo.RecordDeliveryTimeout), cfg.DeliveryTimeout)
+	is.Equal(p.client.OptValue(kgo.RequiredAcks), cfg.RequiredAcks())
+	is.Equal(p.client.OptValue(kgo.DisableIdempotentWrite), true) // only true because Acks is "one"
+	is.Equal(p.client.OptValue(kgo.ProducerBatchCompression), cfg.CompressionCodecs())
+	is.Equal(p.client.OptValue(kgo.ProducerBatchMaxBytes), cfg.BatchBytes)
 
-	is.Equal(c.client.OptValue(kgo.ClientID), cfg.ClientID)
-	is.Equal(cmp.Diff(c.client.OptValue(kgo.DialTLSConfig), cfg.TLS(), cmpopts.IgnoreUnexported(tls.Config{})), "")
-	is.Equal(c.client.OptValue(kgo.SASL).([]sasl.Mechanism)[0].Name(), cfg.SASL().Name())
+	is.Equal(p.client.OptValue(kgo.ClientID), cfg.ClientID)
+	is.Equal(cmp.Diff(p.client.OptValue(kgo.DialTLSConfig), cfg.TLS(), cmpopts.IgnoreUnexported(tls.Config{})), "")
+	is.Equal(p.client.OptValue(kgo.SASL).([]sasl.Mechanism)[0].Name(), cfg.SASL().Name())
 }

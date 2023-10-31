@@ -14,4 +14,76 @@
 
 package source
 
-// TODO
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/conduitio/conduit-connector-kafka/test"
+	"github.com/matryer/is"
+)
+
+func TestFranzConsumer_Consume_FromBeginning(t *testing.T) {
+	t.Parallel()
+	is := is.New(t)
+	ctx := context.Background()
+
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t))
+	cfg.ReadFromBeginning = true
+
+	records := test.GenerateFranzRecords(1, 6)
+	test.CreateTopic(t, cfg.Config)
+	test.Produce(t, cfg.Config, records)
+
+	c, err := NewFranzConsumer(ctx, cfg)
+	is.NoErr(err)
+	defer func() {
+		err := c.Close(ctx)
+		is.NoErr(err)
+	}()
+
+	for i := 0; i < len(records); i++ {
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		got, err := c.Consume(ctx)
+		is.NoErr(err)
+		is.Equal(got.Key, records[i].Key)
+	}
+}
+
+func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
+	t.Parallel()
+	is := is.New(t)
+	ctx := context.Background()
+
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t))
+	cfg.ReadFromBeginning = false
+
+	records := test.GenerateFranzRecords(1, 6)
+	test.CreateTopic(t, cfg.Config)
+	test.Produce(t, cfg.Config, records)
+
+	c, err := NewFranzConsumer(ctx, cfg)
+	is.NoErr(err)
+	defer func() {
+		err := c.Close(ctx)
+		is.NoErr(err)
+	}()
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	got, err := c.Consume(ctxTimeout)
+	is.Equal(err, context.DeadlineExceeded)
+	is.Equal(got, nil)
+
+	records = test.GenerateFranzRecords(7, 9)
+	test.Produce(t, cfg.Config, records)
+
+	for i := 0; i < len(records); i++ {
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		got, err := c.Consume(ctx)
+		is.NoErr(err)
+		is.Equal(got.Key, records[i].Key)
+	}
+}
