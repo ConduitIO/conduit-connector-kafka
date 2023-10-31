@@ -17,7 +17,6 @@
 package destination
 
 import (
-	"errors"
 	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
@@ -84,12 +83,5 @@ func (c Config) CompressionCodecs() []kgo.CompressionCodec {
 
 // Validate executes manual validations beyond what is defined in struct tags.
 func (c Config) Validate() error {
-	var multierr error
-
-	err := c.Config.Validate()
-	if err != nil {
-		multierr = errors.Join(multierr, err)
-	}
-
-	return multierr
+	return c.Config.Validate()
 }

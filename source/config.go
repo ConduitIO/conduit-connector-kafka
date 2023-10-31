@@ -17,8 +17,6 @@
 package source
 
 import (
-	"errors"
-
 	"github.com/conduitio/conduit-connector-kafka/common"
 )
 
@@ -35,12 +33,5 @@ type Config struct {
 
 // Validate executes manual validations beyond what is defined in struct tags.
 func (c Config) Validate() error {
-	var multierr error
-
-	err := c.Config.Validate()
-	if err != nil {
-		multierr = errors.Join(multierr, err)
-	}
-
-	return multierr
+	return c.Config.Validate()
 }
