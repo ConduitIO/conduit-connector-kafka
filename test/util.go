@@ -16,12 +16,12 @@ package test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"runtime"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
@@ -29,10 +29,31 @@ import (
 	"github.com/google/uuid"
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-func ConfigMap(t *testing.T) map[string]string {
+// T reports when failures occur.
+// testing.T and testing.B implement this interface.
+type T interface {
+	// Fail indicates that the test has failed but
+	// allowed execution to continue.
+	Fail()
+	// FailNow indicates that the test has failed and
+	// aborts the test.
+	FailNow()
+	// Name returns the name of the running (sub-) test or benchmark.
+	Name() string
+	// Logf formats its arguments according to the format, analogous to Printf, and
+	// records the text in the error log.
+	Logf(string, ...any)
+	// Cleanup registers a function to be called when the test (or subtest) and all its
+	// subtests complete. Cleanup functions will be called in last added,
+	// first called order.
+	Cleanup(func())
+}
+
+func ConfigMap(t T) map[string]string {
 	lastSlash := strings.LastIndex(t.Name(), "/")
 	topic := t.Name()[lastSlash+1:] + uuid.NewString()
 	t.Logf("using topic: %v", topic)
@@ -42,13 +63,13 @@ func ConfigMap(t *testing.T) map[string]string {
 	}
 }
 
-func SourceConfigMap(t *testing.T) map[string]string {
+func SourceConfigMap(t T) map[string]string {
 	m := ConfigMap(t)
 	m["readFromBeginning"] = "true"
 	return m
 }
 
-func DestinationConfigMap(t *testing.T) map[string]string {
+func DestinationConfigMap(t T) map[string]string {
 	m := ConfigMap(t)
 	m["batchBytes"] = "1000012"
 	m["acks"] = "all"
@@ -56,18 +77,18 @@ func DestinationConfigMap(t *testing.T) map[string]string {
 	return m
 }
 
-func ParseConfigMap[T any](t *testing.T, cfg map[string]string) T {
+func ParseConfigMap[C any](t T, cfg map[string]string) C {
 	is := is.New(t)
 	is.Helper()
 
-	var out T
+	var out C
 	err := sdk.Util.ParseConfig(cfg, &out)
 	is.NoErr(err)
 
 	return out
 }
 
-func Consume(t *testing.T, cfg common.Config, limit int) []*kgo.Record {
+func Consume(t T, cfg common.Config, limit int) []*kgo.Record {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	is := is.New(t)
@@ -90,8 +111,14 @@ func Consume(t *testing.T, cfg common.Config, limit int) []*kgo.Record {
 	return records[:limit]
 }
 
-func Produce(t *testing.T, cfg common.Config, records []*kgo.Record) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func Produce(t T, cfg common.Config, records []*kgo.Record, timeoutOpt ...time.Duration) {
+	CreateTopic(t, cfg)
+
+	timeout := 5 * time.Second // default timeout
+	if len(timeoutOpt) > 0 {
+		timeout = timeoutOpt[0]
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	is := is.New(t)
 	is.Helper()
@@ -99,7 +126,6 @@ func Produce(t *testing.T, cfg common.Config, records []*kgo.Record) {
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
 		kgo.DefaultProduceTopic(cfg.Topic),
-		kgo.AllowAutoTopicCreation(),
 	)
 	is.NoErr(err)
 	defer cl.Close()
@@ -136,25 +162,43 @@ func GenerateSDKRecords(from, to int) []sdk.Record {
 	return sdkRecs
 }
 
-func CreateTopic(t *testing.T, cfg common.Config) {
+func CreateTopic(t T, cfg common.Config) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	is := is.New(t)
-	is.Helper()
+	// is.Helper()
 
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
 	)
 	is.NoErr(err)
-	defer cl.Close()
 
-	resp, err := kadm.NewClient(cl).CreateTopic(
+	t.Cleanup(cl.Close)
+
+	adminCl := kadm.NewClient(cl)
+	resp, err := adminCl.CreateTopic(
 		ctx, 1, 1, nil, cfg.Topic)
+	var kafkaErr *kerr.Error
+	if errors.As(err, &kafkaErr) && kafkaErr.Code == kerr.TopicAlreadyExists.Code {
+		// ignore topic if it already exists
+		cl.Close()
+		return
+	}
 	is.NoErr(err)
 	is.NoErr(resp.Err)
+
+	// we created the topic, so we should clean up after the test
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		resp, err := adminCl.DeleteTopics(ctx, cfg.Topic)
+		is.NoErr(err)
+		is.Equal(resp[cfg.Topic].ErrMessage, "")
+		is.NoErr(resp[cfg.Topic].Err)
+	})
 }
 
-func Certificates(t *testing.T) (clientCert, clientKey, caCert string) {
+func Certificates(t T) (clientCert, clientKey, caCert string) {
 	is := is.New(t)
 	is.Helper()
 
