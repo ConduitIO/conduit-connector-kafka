@@ -23,13 +23,13 @@ import (
 )
 
 type ConfigSASL struct {
-	// SASLMechanism configures the connector to use SASL authentication. If
+	// Mechanism configures the connector to use SASL authentication. If
 	// empty, no authentication will be performed.
-	SASLMechanism string `json:"saslMechanism" validate:"inclusion=PLAIN|SCRAM-SHA-256|SCRAM-SHA-512"`
-	// SASLUsername sets up the username used with SASL authentication.
-	SASLUsername string `json:"saslUsername"`
-	// SASLPassword sets up the password used with SASL authentication.
-	SASLPassword string `json:"saslPassword"`
+	Mechanism string `json:"saslMechanism" validate:"inclusion=PLAIN|SCRAM-SHA-256|SCRAM-SHA-512"`
+	// Username sets up the username used with SASL authentication.
+	Username string `json:"saslUsername"`
+	// Password sets up the password used with SASL authentication.
+	Password string `json:"saslPassword"`
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
@@ -45,25 +45,25 @@ func (c ConfigSASL) SASL() sasl.Mechanism {
 }
 
 func (c ConfigSASL) sasl() (sasl.Mechanism, error) {
-	switch c.SASLMechanism {
+	switch c.Mechanism {
 	case "PLAIN":
 		return plain.Auth{
-			User: c.SASLUsername,
-			Pass: c.SASLPassword,
+			User: c.Username,
+			Pass: c.Password,
 		}.AsMechanism(), nil
 	case "SCRAM-SHA-256":
 		return scram.Auth{
-			User: c.SASLUsername,
-			Pass: c.SASLPassword,
+			User: c.Username,
+			Pass: c.Password,
 		}.AsSha256Mechanism(), nil
 	case "SCRAM-SHA-512":
 		return scram.Auth{
-			User: c.SASLUsername,
-			Pass: c.SASLPassword,
+			User: c.Username,
+			Pass: c.Password,
 		}.AsSha512Mechanism(), nil
 	case "":
 		return nil, nil
 	default:
-		return nil, fmt.Errorf("invalid SASL mechanism %q", c.SASLMechanism)
+		return nil, fmt.Errorf("invalid SASL mechanism %q", c.Mechanism)
 	}
 }

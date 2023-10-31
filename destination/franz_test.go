@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package source
+package destination
 
 import (
 	"context"
 	"crypto/tls"
-	"regexp"
 	"testing"
+	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
@@ -29,7 +29,7 @@ import (
 	"github.com/twmb/franz-go/pkg/sasl"
 )
 
-func TestFranzConsumer_Opts(t *testing.T) {
+func TestFranzProducer_Opts(t *testing.T) {
 	is := is.New(t)
 
 	clientCert, clientKey, caCert := test.Certificates(t)
@@ -51,14 +51,21 @@ func TestFranzConsumer_Opts(t *testing.T) {
 				CACert:     caCert,
 			},
 		},
-		GroupID: "test-group-id",
+		BatchBytes:      512,
+		DeliveryTimeout: time.Second,
+		Acks:            "one",
 	}
 
-	c, err := NewFranzConsumer(context.Background(), cfg)
+	c, err := NewFranzProducer(context.Background(), cfg)
 	is.NoErr(err)
 
-	is.Equal(c.client.OptValue(kgo.ConsumeTopics), map[string]*regexp.Regexp{cfg.Topic: nil})
-	is.Equal(c.client.OptValue(kgo.ConsumerGroup), cfg.GroupID)
+	is.Equal(c.client.OptValue(kgo.DefaultProduceTopic), cfg.Topic)
+	is.Equal(c.client.OptValue(kgo.AllowAutoTopicCreation), true)
+	is.Equal(c.client.OptValue(kgo.RecordDeliveryTimeout), cfg.DeliveryTimeout)
+	is.Equal(c.client.OptValue(kgo.RequiredAcks), cfg.RequiredAcks())
+	is.Equal(c.client.OptValue(kgo.DisableIdempotentWrite), true) // only true because Acks is "one"
+	is.Equal(c.client.OptValue(kgo.ProducerBatchCompression), cfg.CompressionCodecs())
+	is.Equal(c.client.OptValue(kgo.ProducerBatchMaxBytes), cfg.BatchBytes)
 
 	is.Equal(c.client.OptValue(kgo.ClientID), cfg.ClientID)
 	is.Equal(cmp.Diff(c.client.OptValue(kgo.DialTLSConfig), cfg.TLS(), cmpopts.IgnoreUnexported(tls.Config{})), "")

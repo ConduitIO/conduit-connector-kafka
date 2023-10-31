@@ -17,6 +17,7 @@ package destination
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
@@ -42,6 +43,11 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 		kgo.ProducerBatchMaxBytes(cfg.BatchBytes),
 	}...)
 
+	if cfg.RequiredAcks() != kgo.AllISRAcks() {
+		sdk.Logger(ctx).Warn().Msgf("disabling idempotent writes because \"acks\" is set to %v", cfg.Acks)
+		opts = append(opts, kgo.DisableIdempotentWrite())
+	}
+
 	cl, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
@@ -59,19 +65,28 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 }
 
 func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int, error) {
-	kafkaRecs := make([]*kgo.Record, len(records))
+	var (
+		wg      sync.WaitGroup
+		results = make(kgo.ProduceResults, 0, len(records))
+		promise = func(r *kgo.Record, err error) {
+			results = append(results, kgo.ProduceResult{Record: r, Err: err})
+			wg.Done()
+		}
+	)
+
+	wg.Add(len(records))
 	for i, r := range records {
 		encodedKey, err := p.keyEncoder.Encode(r.Key)
 		if err != nil {
 			return 0, fmt.Errorf("could not encode key of record %v: %w", i, err)
 		}
-		kafkaRecs[i] = &kgo.Record{
+		p.client.Produce(ctx, &kgo.Record{
 			Key:   encodedKey,
 			Value: r.Bytes(),
-		}
+		}, promise)
 	}
+	wg.Wait()
 
-	results := p.client.ProduceSync(ctx, kafkaRecs...)
 	for i, r := range results {
 		if r.Err != nil {
 			return i, r.Err
