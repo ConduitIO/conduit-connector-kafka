@@ -52,11 +52,6 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
 
-	if err != nil {
-		cl.Close()
-		return nil, err
-	}
-
 	return &FranzConsumer{
 		client: cl,
 		acker:  newBatchAcker(cl, 1000),
