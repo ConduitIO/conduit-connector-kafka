@@ -21,12 +21,20 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
+// WithFranzClientOpts lets you specify custom kafka client options (meant for
+// test purposes).
+func (c Config) WithFranzClientOpts(opts ...kgo.Opt) Config {
+	c.franzClientOpts = append(c.franzClientOpts, opts...)
+	return c
+}
+
 // FranzClientOpts returns the kafka client options derived from the common config.
 func (c Config) FranzClientOpts(logger *zerolog.Logger) []kgo.Opt {
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(c.Servers...),
 		kgo.ClientID(c.ClientID),
 	}
+	opts = append(opts, c.franzClientOpts...)
 	if logger.GetLevel() != zerolog.Disabled {
 		opts = append(opts, kgo.WithLogger(franzLogger{logger: logger}))
 	}

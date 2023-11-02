@@ -29,6 +29,7 @@ func TestFranzProducer_Produce(t *testing.T) {
 	ctx := context.Background()
 
 	cfg := test.ParseConfigMap[Config](t, test.DestinationConfigMap(t))
+	cfg.Config = test.ConfigWithIntegrationTestOptions(cfg.Config)
 
 	p, err := NewFranzProducer(ctx, cfg)
 	is.NoErr(err)

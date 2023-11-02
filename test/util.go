@@ -100,6 +100,7 @@ func Consume(t T, cfg common.Config, limit int) []*kgo.Record {
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
 		kgo.ConsumeTopics(cfg.Topic),
+		kgo.MetadataMinAge(time.Millisecond*100),
 	)
 	is.NoErr(err)
 	defer cl.Close()
@@ -129,6 +130,7 @@ func Produce(t T, cfg common.Config, records []*kgo.Record, timeoutOpt ...time.D
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
 		kgo.DefaultProduceTopic(cfg.Topic),
+		kgo.MetadataMinAge(time.Millisecond*100),
 	)
 	is.NoErr(err)
 	defer cl.Close()
@@ -173,6 +175,7 @@ func CreateTopic(t T, cfg common.Config) {
 
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
+		kgo.MetadataMinAge(time.Millisecond*100),
 	)
 	is.NoErr(err)
 
@@ -219,4 +222,12 @@ func Certificates(t T) (clientCert, clientKey, caCert string) {
 	clientKey = readFile("client.key.pem")
 	caCert = readFile("server.cer.pem")
 	return
+}
+
+func ConfigWithIntegrationTestOptions(cfg common.Config) common.Config {
+	return cfg.WithFranzClientOpts(
+		// by default metadata is fetched every 5 seconds, for integration tests
+		// we set this to a lower value so the tests finish faster
+		kgo.MetadataMinAge(time.Millisecond * 100),
+	)
 }

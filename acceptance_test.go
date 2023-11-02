@@ -17,6 +17,7 @@ package kafka
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/source"
@@ -53,6 +54,9 @@ func TestAcceptance(t *testing.T) {
 					"TestSource_Configure_RequiredParams",
 					"TestDestination_Configure_RequiredParams",
 				},
+
+				WriteTimeout: time.Second * 10,
+				ReadTimeout:  time.Second * 10,
 			},
 		},
 	})

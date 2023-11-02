@@ -41,6 +41,8 @@ type Config struct {
 
 	ConfigSASL
 	ConfigTLS
+
+	franzClientOpts []kgo.Opt
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
