@@ -17,12 +17,75 @@ package common
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/matryer/is"
 )
+
+func TestConfig_Validate(t *testing.T) {
+	// Note that we are testing custom validations. Required fields and simple
+	// validations are already executed by the SDK via parameter specifications.
+	testCases := []struct {
+		name    string
+		cfg     Config
+		wantErr any
+	}{{
+		name: "empty SASL username",
+		cfg: Config{
+			ConfigSASL: ConfigSASL{
+				Mechanism: "PLAIN",
+				Username:  "", // empty
+				Password:  "not empty",
+			},
+		},
+		wantErr: ErrSASLInvalidAuth,
+	}, {
+		name: "empty SASL password",
+		cfg: Config{
+			ConfigSASL: ConfigSASL{
+				Mechanism: "PLAIN",
+				Username:  "not empty",
+				Password:  "", // empty
+			},
+		},
+		wantErr: ErrSASLInvalidAuth,
+	}, {
+		name: "invalid Client cert",
+		cfg: Config{
+			ConfigTLS: ConfigTLS{
+				ClientCert: "foo",
+			},
+		},
+		wantErr: "tls: failed to find any PEM data in certificate input",
+	}, {
+		name: "invalid Client key",
+		cfg: Config{
+			ConfigTLS: ConfigTLS{
+				ClientKey: "foo",
+			},
+		},
+		wantErr: "tls: failed to find any PEM data in certificate input",
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			err := tc.cfg.Validate()
+			is.True(err != nil)
+			if actualErr, ok := tc.wantErr.(error); ok {
+				is.True(errors.Is(err, actualErr))
+			} else {
+				// workaround for errors that are created on the fly
+				errMsg := fmt.Sprint(tc.wantErr)
+				is.True(strings.Contains(err.Error(), errMsg))
+			}
+		})
+	}
+}
 
 func TestConfig_TryDial(t *testing.T) {
 	is := is.New(t)

@@ -15,12 +15,15 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/twmb/franz-go/pkg/sasl"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
 )
+
+var ErrSASLInvalidAuth = errors.New("invalid sasl auth, please specify both saslUsername and saslPassword")
 
 type ConfigSASL struct {
 	// Mechanism configures the connector to use SASL authentication. If
@@ -34,8 +37,16 @@ type ConfigSASL struct {
 
 // Validate executes manual validations beyond what is defined in struct tags.
 func (c ConfigSASL) Validate() error {
-	_, err := c.sasl()
-	return err
+	var multierr []error
+
+	if _, err := c.sasl(); err != nil {
+		multierr = append(multierr, err)
+	}
+	if (c.Username == "") != (c.Password == "") {
+		multierr = append(multierr, ErrSASLInvalidAuth)
+	}
+
+	return errors.Join(multierr...)
 }
 
 // SASL returns the SASL mechanism or nil.

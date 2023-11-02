@@ -39,7 +39,7 @@ func TestFranzProducer_Produce(t *testing.T) {
 
 	wantRecords := test.GenerateSDKRecords(1, 6)
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	count, err := p.Produce(ctx, wantRecords)
