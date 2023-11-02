@@ -33,6 +33,9 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
+// timeout is the default timeout used in tests when interacting with Kafka.
+const timeout = 5 * time.Second
+
 // T reports when failures occur.
 // testing.T and testing.B implement this interface.
 type T interface {
@@ -89,7 +92,7 @@ func ParseConfigMap[C any](t T, cfg map[string]string) C {
 }
 
 func Consume(t T, cfg common.Config, limit int) []*kgo.Record {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	is := is.New(t)
 	is.Helper()
@@ -114,7 +117,7 @@ func Consume(t T, cfg common.Config, limit int) []*kgo.Record {
 func Produce(t T, cfg common.Config, records []*kgo.Record, timeoutOpt ...time.Duration) {
 	CreateTopic(t, cfg)
 
-	timeout := 5 * time.Second // default timeout
+	timeout := timeout // copy default timeout
 	if len(timeoutOpt) > 0 {
 		timeout = timeoutOpt[0]
 	}
@@ -163,10 +166,10 @@ func GenerateSDKRecords(from, to int) []sdk.Record {
 }
 
 func CreateTopic(t T, cfg common.Config) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	is := is.New(t)
-	// is.Helper()
+	is.Helper()
 
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Servers...),
@@ -189,7 +192,7 @@ func CreateTopic(t T, cfg common.Config) {
 
 	// we created the topic, so we should clean up after the test
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		resp, err := adminCl.DeleteTopics(ctx, cfg.Topic)
 		is.NoErr(err)

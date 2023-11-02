@@ -53,7 +53,7 @@ func TestFranzProducer_Opts(t *testing.T) {
 		},
 		BatchBytes:      512,
 		DeliveryTimeout: time.Second,
-		Acks:            "one",
+		Acks:            "all",
 	}
 
 	p, err := NewFranzProducer(context.Background(), cfg)
@@ -62,12 +62,50 @@ func TestFranzProducer_Opts(t *testing.T) {
 	is.Equal(p.client.OptValue(kgo.DefaultProduceTopic), cfg.Topic)
 	is.Equal(p.client.OptValue(kgo.AllowAutoTopicCreation), true)
 	is.Equal(p.client.OptValue(kgo.RecordDeliveryTimeout), cfg.DeliveryTimeout)
-	is.Equal(p.client.OptValue(kgo.RequiredAcks), cfg.RequiredAcks())
-	is.Equal(p.client.OptValue(kgo.DisableIdempotentWrite), true) // only true because Acks is "one"
+	is.Equal(p.client.OptValue(kgo.RequiredAcks), kgo.AllISRAcks())
+	is.Equal(p.client.OptValue(kgo.DisableIdempotentWrite), false)
 	is.Equal(p.client.OptValue(kgo.ProducerBatchCompression), cfg.CompressionCodecs())
 	is.Equal(p.client.OptValue(kgo.ProducerBatchMaxBytes), cfg.BatchBytes)
 
 	is.Equal(p.client.OptValue(kgo.ClientID), cfg.ClientID)
 	is.Equal(cmp.Diff(p.client.OptValue(kgo.DialTLSConfig), cfg.TLS(), cmpopts.IgnoreUnexported(tls.Config{})), "")
 	is.Equal(p.client.OptValue(kgo.SASL).([]sasl.Mechanism)[0].Name(), cfg.SASL().Name())
+}
+
+func TestFranzProducer_Opts_AcksDisableIdempotentWrite(t *testing.T) {
+	// minimal valid config
+	cfg := Config{
+		Config:     common.Config{Servers: []string{"test-host:9092"}},
+		BatchBytes: 512,
+	}
+
+	testCases := []struct {
+		acks                       string
+		wantRequiredAcks           kgo.Acks
+		wantDisableIdempotentWrite bool
+	}{{
+		acks:                       "all",
+		wantRequiredAcks:           kgo.AllISRAcks(),
+		wantDisableIdempotentWrite: false,
+	}, {
+		acks:                       "one",
+		wantRequiredAcks:           kgo.LeaderAck(),
+		wantDisableIdempotentWrite: true,
+	}, {
+		acks:                       "none",
+		wantRequiredAcks:           kgo.NoAck(),
+		wantDisableIdempotentWrite: true,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.acks, func(t *testing.T) {
+			is := is.New(t)
+			cfg.Acks = tc.acks
+			p, err := NewFranzProducer(context.Background(), cfg)
+			is.NoErr(err)
+
+			is.Equal(p.client.OptValue(kgo.RequiredAcks), tc.wantRequiredAcks)
+			is.Equal(p.client.OptValue(kgo.DisableIdempotentWrite), tc.wantDisableIdempotentWrite)
+		})
+	}
 }
