@@ -1,26 +1,21 @@
 # Conduit Connector Kafka
 
-### General
-
 The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) builtin plugins. It provides both, a
-source and a destination Kafka connector.
+source and a destination connector for [Apache Kafka](https://kafka.apache.org).
 
-### How to build it
+## How to build?
 
-Run `make`.
+Run `make build` to build the connector.
 
-### Testing
+## Testing
 
-Run `make test` to run all the unit and integration tests, which require Docker to be installed and running. The command
+Run `make test` to run all the unit and integration tests. Tests require Docker to be installed and running. The command
 will handle starting and stopping docker containers for you.
 
-### How it works
+Tests will run twice, once against an Apache Kafka instance and a second time against a
+[Redpanda](https://github.com/redpanda-data/redpanda) instance.
 
-Under the hood, the connector uses [Segment's Go Client for Apache Kafka(tm)](https://github.com/segmentio/kafka-go). It
-was chosen since it has no CGo dependency, making it possible to build the connector for a wider range of platforms and
-architectures. It also supports contexts, which will likely use in the future.
-
-#### Source
+## Source
 
 A Kafka source connector is represented by a single consumer in a Kafka consumer group. By virtue of that, a source's
 logical position is the respective consumer's offset in Kafka. Internally, though, we're not saving the offset as the
@@ -29,30 +24,61 @@ for our consumer.
 
 A source is getting associated with a consumer group ID the first time the `Read()` method is called.
 
-#### Destination
+### Configuration
 
-The destination connector uses **synchronous** writes to Kafka. Proper buffering support which will enable asynchronous
-(and more optimal) writes is planned.
+| name                 | description                                                                                                                                                                                                  | required | default value             |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------------------|
+| `servers`            | Servers is a list of Kafka bootstrap servers, which will be used to discover all the servers in a cluster.                                                                                                   | true     |                           |
+| `topic`              | Topic is the Kafka topic from which records will be read.                                                                                                                                                    | true     |                           |
+| `clientID`           | A Kafka client ID.                                                                                                                                                                                           | false    | `conduit-connector-kafka` |
+| `readFromBeginning`  | Determines from whence the consumer group should begin consuming when it finds a partition without a committed offset. If this option is set to true it will start with the first message in that partition. | false    | `false`                   |
+| `groupID`            | Defines the consumer group ID.                                                                                                                                                                               | false    |                           |
+| `clientCert`         | A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.                                                                                                    | false    |                           |
+| `clientKey`          | A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.                                                                                                    | false    |                           |
+| `caCert`             | The Kafka broker's certificate, in PEM format.                                                                                                                                                               | false    |                           |
+| `insecureSkipVerify` | Controls whether a client verifies the server's certificate chain and host name. If `true`, accepts any certificate presented by the server and any host name in that certificate.                           | false    | `false`                   |
+| `saslMechanism`      | SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512. If empty, authentication won't be performed.                                                                                | false    |                           |
+| `saslUsername`       | SASL username. If provided, a password needs to be provided too.                                                                                                                                             | false    |                           |
+| `saslPassword`       | SASL password. If provided, a username needs to be provided too.                                                                                                                                             | false    |                           |
+
+## Destination
+
+The destination connector sends records to Kafka.
 
 ### Configuration
 
 There's no global, connector configuration. Each connector instance is configured separately.
 
-| name                 | part of             | description                                                                                                                                                                        | required | default value |
-|----------------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
-| `servers`            | destination, source | A list of bootstrap servers to which the plugin will connect.                                                                                                                      | true     |               |
-| `topic`              | destination, source | The topic to which records will be read from/written to.                                                                                                                           | true     |               |
-| `clientID`           | destination, source | A Kafka client ID.                                                                                                                                                                 | false    |               |
-| `clientCert`         | destination, source | A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.                                                                          | false    |               |
-| `clientKey`          | destination, source | A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.                                                                          | false    |               |
-| `caCert`             | destination, source | The Kafka broker's certificate, in PEM format.                                                                                                                                     | false    |               |
-| `insecureSkipVerify` | destination, source | Controls whether a client verifies the server's certificate chain and host name. If `true`, accepts any certificate presented by the server and any host name in that certificate. | false    | `false`       |
-| `saslMechanism`      | destination, source | SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512                                                                                                    | false    | `PLAIN`       |
-| `saslUsername`       | destination, source | SASL username. If provided, a password needs to be provided too.                                                                                                                   | false    |               |
-| `saslPassword`       | destination, source | SASL password. If provided, a username needs to be provided too.                                                                                                                   | false    |               |
-| `acks`               | destination         | The number of acknowledgments required before considering a record written to Kafka. Valid values: none, one, all.                                                                 | false    | `all`         |
-| `deliveryTimeout`    | destination         | Message delivery timeout.                                                                                                                                                          | false    | `10s`         |
-| `readFromBeginning`  | source              | Whether or not to read a topic from beginning (i.e. existing messages or only new messages).                                                                                       | false    | `false`       |
-| `groupID`            | source              | The Consumer Group ID to use for the Kafka Consumer on the Source connector.                                                                                                       | false    |               |
-| `batchBytes`         | source              | The maximum size of a request in bytes before being sent to a partition.                                                                                                           | false    | 1048576       |
-| `compression`        | source              | Compression applied to messages. Possible values: gzip, snappy, lz4, zstd.                                                                                                         | false    |               |
+| name                 | description                                                                                                                                                                                                                                                          | required | default value             |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------------------|
+| `servers`            | Servers is a list of Kafka bootstrap servers, which will be used to discover all the servers in a cluster.                                                                                                                                                           | true     |                           |
+| `topic`              | Topic is the Kafka topic into which records will be written.                                                                                                                                                                                                         | true     |                           |
+| `clientID`           | A Kafka client ID.                                                                                                                                                                                                                                                   | false    | `conduit-connector-kafka` |
+| `acks`               | Acks defines the number of acknowledges from partition replicas required before receiving a response to a produce request. `none` = fire and forget, `one` = wait for the leader to acknowledge the writes, `all` = wait for the full ISR to acknowledge the writes. | false    | `all`                     |
+| `deliveryTimeout`    | Message delivery timeout.                                                                                                                                                                                                                                            | false    |                           |
+| `batchBytes`         | Limits the maximum size of a request in bytes before being sent to a partition. This mirrors Kafka's `max.message.bytes`.                                                                                                                                            | false    | 1000012                   |
+| `compression`        | Compression applied to messages. Possible values: `none`, `gzip`, `snappy`, `lz4`, `zstd`.                                                                                                                                                                           | false    | `snappy`                  |
+| `clientCert`         | A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.                                                                                                                                                            | false    |                           |
+| `clientKey`          | A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.                                                                                                                                                            | false    |                           |
+| `caCert`             | The Kafka broker's certificate, in PEM format.                                                                                                                                                                                                                       | false    |                           |
+| `insecureSkipVerify` | Controls whether a client verifies the server's certificate chain and host name. If `true`, accepts any certificate presented by the server and any host name in that certificate.                                                                                   | false    | `false`                   |
+| `saslMechanism`      | SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512. If empty, authentication won't be performed.                                                                                                                                        | false    |                           |
+| `saslUsername`       | SASL username. If provided, a password needs to be provided too.                                                                                                                                                                                                     | false    |                           |
+| `saslPassword`       | SASL password. If provided, a username needs to be provided too.                                                                                                                                                                                                     | false    |                           |
+
+### Output format
+
+The output format can be adjusted using configuration options provided by the connector SDK:
+
+- `sdk.record.format`: used to choose the format
+- `sdk.record.format.options`: used to configure the specifics of the chosen format
+
+See [this article](https://conduit.io/docs/connectors/output-formats) for more info
+on configuring the output format.
+
+### Batching
+
+Batching can also be configured using connector SDK provided options:
+
+- `sdk.batch.size`: maximum number of records in batch before it gets written to the destination (defaults to 0, no batching)
+- `sdk.batch.delay`: maximum delay before an incomplete batch is written to the destination (defaults to 0, no limit)
