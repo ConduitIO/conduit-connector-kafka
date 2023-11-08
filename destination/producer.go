@@ -1,4 +1,4 @@
-// Copyright © 2022 Meroxa, Inc.
+// Copyright © 2023 Meroxa, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka
+//go:generate mockgen -destination producer_mock.go -package destination -mock_names=Producer=MockProducer . Producer
 
-import "errors"
+package destination
 
-var (
-	ErrServersMissing = errors.New("servers missing")
-	ErrTopicMissing   = errors.New("topic missing")
+import (
+	"context"
+
+	sdk "github.com/conduitio/conduit-connector-sdk"
 )
+
+// Producer is a kafka producer.
+type Producer interface {
+	// Produce sends all records to Kafka synchronously.
+	Produce(context.Context, []sdk.Record) (int, error)
+	// Close this producer and the associated resources.
+	Close(context.Context) error
+}

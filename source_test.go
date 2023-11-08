@@ -12,114 +12,76 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka_test
+package kafka
 
 import (
 	"context"
-	"strings"
+	"strconv"
 	"testing"
-	"time"
 
-	kafka "github.com/conduitio/conduit-connector-kafka"
-	"github.com/conduitio/conduit-connector-kafka/mock"
+	"github.com/conduitio/conduit-connector-kafka/source"
+	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
-	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
 	"github.com/matryer/is"
-	skafka "github.com/segmentio/kafka-go"
+	"go.uber.org/mock/gomock"
 )
 
-func TestConfigureSource_FailsWhenConfigEmpty(t *testing.T) {
-	is := is.New(t)
-	underTest := kafka.Source{}
-	err := underTest.Configure(context.Background(), make(map[string]string))
-	is.True(err != nil)
-	is.True(strings.HasPrefix(err.Error(), "config is invalid:"))
-}
-
-func TestConfigureSource_FailsWhenConfigInvalid(t *testing.T) {
-	is := is.New(t)
-	underTest := kafka.Source{}
-	err := underTest.Configure(context.Background(), map[string]string{"foobar": "foobar"})
-	is.True(err != nil)
-	is.True(strings.HasPrefix(err.Error(), "config is invalid:"))
-}
-
-func TestTeardownSource_ClosesClient(t *testing.T) {
+func TestSource_Teardown_Success(t *testing.T) {
 	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
-	consumerMock := mock.NewConsumer(ctrl)
+	consumerMock := source.NewMockConsumer(ctrl)
 	consumerMock.
 		EXPECT().
-		Close().
+		Close(context.Background()).
 		Return(nil)
 
-	underTest := kafka.Source{Consumer: consumerMock, Config: connectorCfg()}
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t))
+
+	underTest := Source{consumer: consumerMock, config: cfg}
 	is.NoErr(underTest.Teardown(context.Background()))
 }
 
-func TestTeardownSource_NoOpen(t *testing.T) {
+func TestSource_Teardown_NoOpen(t *testing.T) {
 	is := is.New(t)
-	underTest := kafka.NewSource()
+	underTest := NewSource()
 	is.NoErr(underTest.Teardown(context.Background()))
 }
 
-func TestReadPosition(t *testing.T) {
+func TestSource_Read(t *testing.T) {
 	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
-	kafkaMsg := testKafkaMsg()
-	cfg := connectorCfg()
-	pos := []byte(uuid.NewString())
-
-	consumerMock := mock.NewConsumer(ctrl)
-	consumerMock.
-		EXPECT().
-		Get(gomock.Any()).
-		Return(kafkaMsg, pos, nil)
-
-	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
-	rec, err := underTest.Read(context.Background())
-	is.NoErr(err)
-	is.Equal(rec.Operation, sdk.OperationCreate)
-	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
-	is.Equal(rec.Payload.After.Bytes(), kafkaMsg.Value)
-
-	is.Equal(pos, []byte(rec.Position))
-}
-
-func TestRead(t *testing.T) {
-	is := is.New(t)
-	ctrl := gomock.NewController(t)
-
-	kafkaMsg := testKafkaMsg()
-	cfg := connectorCfg()
-	pos := []byte(uuid.NewString())
-
-	consumerMock := mock.NewConsumer(ctrl)
-	consumerMock.
-		EXPECT().
-		Get(gomock.Any()).
-		Return(kafkaMsg, pos, nil)
-
-	underTest := kafka.Source{Consumer: consumerMock, Config: cfg}
-	rec, err := underTest.Read(context.Background())
-	is.NoErr(err)
-	is.Equal(rec.Operation, sdk.OperationCreate)
-	is.Equal(rec.Key.Bytes(), kafkaMsg.Key)
-	is.Equal(rec.Payload.After.Bytes(), kafkaMsg.Value)
-	is.Equal(pos, []byte(rec.Position))
-}
-
-func testKafkaMsg() *skafka.Message {
-	return &skafka.Message{
-		Topic:         "test",
-		Partition:     0,
-		Offset:        123,
-		HighWaterMark: 234,
-		Key:           []byte("test-key"),
-		Value:         []byte("test-value"),
-		Time:          time.Time{},
+	rec := test.GenerateFranzRecords(0, 0)[0]
+	want := sdk.Record{
+		Position: source.Position{
+			GroupID:   "",
+			Topic:     rec.Topic,
+			Partition: rec.Partition,
+			Offset:    rec.Offset,
+		}.ToSDKPosition(),
+		Operation: sdk.OperationCreate,
+		Metadata: map[string]string{
+			MetadataKafkaTopic:    rec.Topic,
+			sdk.MetadataCreatedAt: strconv.FormatInt(rec.Timestamp.UnixNano(), 10),
+		},
+		Key: sdk.RawData(rec.Key),
+		Payload: sdk.Change{
+			After: sdk.RawData(rec.Value),
+		},
 	}
+
+	consumerMock := source.NewMockConsumer(ctrl)
+	consumerMock.
+		EXPECT().
+		Consume(gomock.Any()).
+		Return((*source.Record)(rec), nil)
+
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t))
+	underTest := Source{consumer: consumerMock, config: cfg}
+	got, err := underTest.Read(context.Background())
+	is.NoErr(err)
+	is.True(got.Metadata[sdk.MetadataReadAt] != "")
+	want.Metadata[sdk.MetadataReadAt] = got.Metadata[sdk.MetadataReadAt]
+	is.Equal(want, got)
 }

@@ -18,9 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/segmentio/kafka-go"
-
+	"github.com/conduitio/conduit-connector-kafka/source"
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/google/uuid"
 )
 
 const (
@@ -31,8 +31,8 @@ const (
 type Source struct {
 	sdk.UnimplementedSource
 
-	Consumer Consumer
-	Config   Config
+	consumer source.Consumer
+	config   source.Config
 }
 
 func NewSource() sdk.Source {
@@ -40,127 +40,85 @@ func NewSource() sdk.Source {
 }
 
 func (s *Source) Parameters() map[string]sdk.Parameter {
-	return map[string]sdk.Parameter{
-		Servers: {
-			Default:     "",
-			Validations: []sdk.Validation{sdk.ValidationRequired{}},
-			Description: "A list of bootstrap servers to which the plugin will connect.",
-		},
-		Topic: {
-			Default:     "",
-			Validations: []sdk.Validation{sdk.ValidationRequired{}},
-			Description: "The topic to which records will be written to.",
-		},
-		ReadFromBeginning: {
-			Default:     "false",
-			Description: "Whether or not to read a topic from beginning (i.e. existing messages or only new messages).",
-		},
-		ClientID: {
-			Default:     "",
-			Description: "A Kafka client ID.",
-		},
-		GroupID: {
-			Default:     "",
-			Description: "The Consumer Group ID to use for the Kafka Consumer on the Source connector.",
-		},
-		ClientCert: {
-			Default:     "",
-			Description: "A certificate for the Kafka client, in PEM format. If provided, the private key needs to be provided too.",
-		},
-		ClientKey: {
-			Default:     "",
-			Description: "A private key for the Kafka client, in PEM format. If provided, the certificate needs to be provided too.",
-		},
-		CACert: {
-			Default:     "",
-			Description: "The Kafka broker's certificate, in PEM format.",
-		},
-		InsecureSkipVerify: {
-			Default: "false",
-			Description: "Controls whether a client verifies the server's certificate chain and host name. " +
-				"If `true`, accepts any certificate presented by the server and any host name in that certificate.",
-		},
-		SASLMechanism: {
-			Default:     "",
-			Description: "SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512.",
-		},
-		SASLUsername: {
-			Default:     "",
-			Description: "SASL username. required if saslMechanism is provided.",
-		},
-		SASLPassword: {
-			Default:     "",
-			Description: "SASL password. required if saslMechanism is provided.",
-		},
-	}
+	return source.Config{}.Parameters()
 }
 
-func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
-	sdk.Logger(ctx).Info().Msg("Configuring a source...")
-	parsed, err := Parse(cfg)
+func (s *Source) Configure(_ context.Context, cfg map[string]string) error {
+	var config source.Config
+
+	err := sdk.Util.ParseConfig(cfg, &config)
 	if err != nil {
-		return fmt.Errorf("config is invalid: %w", err)
+		return err
 	}
-	s.Config = parsed
+	err = config.Validate()
+	if err != nil {
+		return err
+	}
+
+	s.config = config
 	return nil
 }
 
-func (s *Source) Open(ctx context.Context, pos sdk.Position) error {
-	sdk.Logger(ctx).Info().Bytes("position", pos).Msg("Opening a source...")
-
-	err := s.Config.Test(ctx)
+func (s *Source) Open(ctx context.Context, sdkPos sdk.Position) error {
+	err := s.config.TryDial(ctx)
 	if err != nil {
-		return fmt.Errorf("config validation failed: %w", err)
+		return fmt.Errorf("failed to dial broker: %w", err)
 	}
 
-	client, err := NewConsumer()
-	if err != nil {
-		return fmt.Errorf("failed to create Kafka client: %w", err)
+	if sdkPos != nil {
+		// update group ID in the config
+		p, err := source.ParseSDKPosition(sdkPos)
+		if err != nil {
+			return err
+		}
+		if s.config.GroupID != "" && s.config.GroupID != p.GroupID {
+			return fmt.Errorf("the old position contains a different consumer group ID than the connector configuration (%q vs %q), please check if the configured group ID changed since the last run", p.GroupID, s.config.GroupID)
+		}
+		s.config.GroupID = p.GroupID
 	}
-	s.Consumer = client
+	if s.config.GroupID == "" {
+		// this must be the first run of the connector, create a new group ID
+		s.config.GroupID = uuid.NewString()
+		sdk.Logger(ctx).Info().Str("groupId", s.config.GroupID).Msg("assigning source to new consumer group")
+	}
 
-	err = s.Consumer.StartFrom(s.Config, pos)
+	s.consumer, err = source.NewFranzConsumer(ctx, s.config)
 	if err != nil {
-		return fmt.Errorf("couldn't open source at position %v: %w", string(pos), err)
+		return fmt.Errorf("failed to create Kafka consumer: %w", err)
 	}
 
 	return nil
 }
 
 func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
-	message, pos, err := s.Consumer.Get(ctx)
+	rec, err := s.consumer.Consume(ctx)
 	if err != nil {
-		return sdk.Record{}, fmt.Errorf("failed getting a message: %w", err)
+		return sdk.Record{}, fmt.Errorf("failed getting a record: %w", err)
 	}
-	if message == nil {
-		return sdk.Record{}, sdk.ErrBackoffRetry
-	}
-	rec := s.buildRecord(message, pos)
-	return rec, nil
-}
 
-func (s *Source) buildRecord(message *kafka.Message, position []byte) sdk.Record {
-	metadata := sdk.Metadata{
-		MetadataKafkaTopic: message.Topic,
-	}
-	metadata.SetCreatedAt(message.Time)
+	metadata := sdk.Metadata{MetadataKafkaTopic: rec.Topic}
+	metadata.SetCreatedAt(rec.Timestamp)
 
 	return sdk.Util.Source.NewRecordCreate(
-		position,
+		source.Position{
+			GroupID:   s.config.GroupID,
+			Topic:     rec.Topic,
+			Partition: rec.Partition,
+			Offset:    rec.Offset,
+		}.ToSDKPosition(),
 		metadata,
-		sdk.RawData(message.Key),
-		sdk.RawData(message.Value),
-	)
+		sdk.RawData(rec.Key),
+		sdk.RawData(rec.Value),
+	), nil
 }
 
-func (s *Source) Ack(_ context.Context, position sdk.Position) error {
-	return s.Consumer.Ack(position)
+func (s *Source) Ack(ctx context.Context, _ sdk.Position) error {
+	return s.consumer.Ack(ctx)
 }
 
 func (s *Source) Teardown(ctx context.Context) error {
-	sdk.Logger(ctx).Info().Msg("Tearing down a Kafka Source...")
-	if s.Consumer != nil {
-		err := s.Consumer.Close()
+	if s.consumer != nil {
+		err := s.consumer.Close(ctx)
 		if err != nil {
 			return fmt.Errorf("failed closing Kafka consumer: %w", err)
 		}

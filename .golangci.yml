@@ -17,6 +17,14 @@ linters-settings:
       regexp:
         copyright-year: 20[2-9]\d
 
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dogsled
+        - gosec
+        - revive
+
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
