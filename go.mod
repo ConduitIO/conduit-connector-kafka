@@ -1,9 +1,11 @@
 module github.com/conduitio/conduit-connector-kafka
 
-go 1.20
+go 1.21
+
+toolchain go1.21.1
 
 require (
-	github.com/conduitio/conduit-connector-sdk v0.7.2
+	github.com/conduitio/conduit-connector-sdk v0.8.0
 	github.com/goccy/go-json v0.10.2
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.4.0
@@ -20,7 +22,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/conduitio/conduit-connector-protocol v0.5.0 // indirect
 	github.com/fatih/color v1.14.1 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/go-hclog v1.4.0 // indirect
 	github.com/hashicorp/go-plugin v1.4.8 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
@@ -40,16 +42,16 @@ require (
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.7.0 // indirect
-	go.uber.org/goleak v1.2.1 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20230131160201-f062dba9d201 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20230127162408-596548ed4efa // indirect
-	google.golang.org/grpc v1.53.0 // indirect
-	google.golang.org/protobuf v1.29.1 // indirect
+	golang.org/x/time v0.4.0 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/grpc v1.56.3 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
 )
