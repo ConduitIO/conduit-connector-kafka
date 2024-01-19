@@ -57,6 +57,7 @@ func TestConfig_Validate(t *testing.T) {
 		name: "invalid Client cert",
 		cfg: Config{
 			ConfigTLS: ConfigTLS{
+				TLSEnabled: true,
 				ClientCert: "foo",
 			},
 		},
@@ -65,6 +66,7 @@ func TestConfig_Validate(t *testing.T) {
 		name: "invalid Client key",
 		cfg: Config{
 			ConfigTLS: ConfigTLS{
+				TLSEnabled: true,
 				ClientKey: "foo",
 			},
 		},
