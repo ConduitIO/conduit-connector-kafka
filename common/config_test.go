@@ -67,7 +67,7 @@ func TestConfig_Validate(t *testing.T) {
 		cfg: Config{
 			ConfigTLS: ConfigTLS{
 				TLSEnabled: true,
-				ClientKey: "foo",
+				ClientKey:  "foo",
 			},
 		},
 		wantErr: "tls: failed to find any PEM data in certificate input",
