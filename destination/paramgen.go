@@ -95,9 +95,9 @@ func (Config) Parameters() map[string]sdk.Parameter {
 				sdk.ValidationRequired{},
 			},
 		},
-		"tls": {
+		"tls.enabled": {
 			Default:     "",
-			Description: "tls defines whether TLS is needed to communicate with the Kafka cluster.",
+			Description: "tls.enabled defines whether TLS is needed to communicate with the Kafka cluster.",
 			Type:        sdk.ParameterTypeBool,
 			Validations: []sdk.Validation{},
 		},

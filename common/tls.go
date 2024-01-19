@@ -22,7 +22,7 @@ import (
 
 type ConfigTLS struct {
 	// TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
-	TLSEnabled bool `json:"tls"`
+	TLSEnabled bool `json:"tls.enabled"`
 	// ClientCert is the Kafka client's certificate.
 	ClientCert string `json:"clientCert"`
 	// ClientKey is the Kafka client's private key.
