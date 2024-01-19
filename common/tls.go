@@ -21,6 +21,8 @@ import (
 )
 
 type ConfigTLS struct {
+	// TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
+	TLSEnabled bool `json:"tls.enabled"`
 	// ClientCert is the Kafka client's certificate.
 	ClientCert string `json:"clientCert"`
 	// ClientKey is the Kafka client's private key.
@@ -46,7 +48,7 @@ func (c ConfigTLS) TLS() *tls.Config {
 }
 
 func (c ConfigTLS) tls() (*tls.Config, error) {
-	if c.ClientCert == "" && c.CACert == "" && c.ClientKey == "" {
+	if !c.TLSEnabled {
 		return nil, nil
 	}
 

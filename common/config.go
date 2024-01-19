@@ -19,6 +19,7 @@ import (
 	"errors"
 	"time"
 
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -62,7 +63,8 @@ func (c Config) Validate() error {
 // TryDial tries to establish a connection to brokers and returns nil if it
 // succeeds to connect to at least one broker.
 func (c Config) TryDial(ctx context.Context) error {
-	cl, err := kgo.NewClient(kgo.SeedBrokers(c.Servers...))
+	opts := c.FranzClientOpts(sdk.Logger(ctx))
+	cl, err := kgo.NewClient(opts...)
 	if err != nil {
 		return err
 	}
