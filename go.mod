@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.5.0
 	github.com/matryer/is v1.4.1
 	github.com/rs/zerolog v1.31.0
-	github.com/twmb/franz-go v1.15.4
+	github.com/twmb/franz-go v1.16.0
 	github.com/twmb/franz-go/pkg/kadm v1.10.0
 	go.uber.org/mock v0.4.0
 )
@@ -30,7 +30,7 @@ require (
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jhump/protoreflect v1.10.2-0.20220118162304-602a8db873e3 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
