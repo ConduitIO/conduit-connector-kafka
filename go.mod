@@ -8,7 +8,7 @@ require (
 	github.com/conduitio/conduit-connector-sdk v0.8.0
 	github.com/goccy/go-json v0.10.2
 	github.com/google/go-cmp v0.6.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/matryer/is v1.4.1
 	github.com/rs/zerolog v1.31.0
 	github.com/twmb/franz-go v1.16.0
