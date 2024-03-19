@@ -16,6 +16,9 @@ package kafka
 
 import (
 	"context"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"strconv"
 	"testing"
 
@@ -53,6 +56,10 @@ func TestSource_Read(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	rec := test.GenerateFranzRecords(0, 0)[0]
+	rec.Headers = []kgo.RecordHeader{
+		{Key: "header-a", Value: []byte("value-a")},
+		{Key: "header-b", Value: []byte{0, 1, 2}},
+	}
 	want := sdk.Record{
 		Position: source.Position{
 			GroupID:   "",
@@ -62,8 +69,10 @@ func TestSource_Read(t *testing.T) {
 		}.ToSDKPosition(),
 		Operation: sdk.OperationCreate,
 		Metadata: map[string]string{
-			MetadataKafkaTopic:    rec.Topic,
-			sdk.MetadataCreatedAt: strconv.FormatInt(rec.Timestamp.UnixNano(), 10),
+			MetadataKafkaTopic:      rec.Topic,
+			sdk.MetadataCreatedAt:   strconv.FormatInt(rec.Timestamp.UnixNano(), 10),
+			"kafka.header.header-a": "value-a",
+			"kafka.header.header-b": string([]byte{0, 1, 2}),
 		},
 		Key: sdk.RawData(rec.Key),
 		Payload: sdk.Change{
@@ -83,5 +92,5 @@ func TestSource_Read(t *testing.T) {
 	is.NoErr(err)
 	is.True(got.Metadata[sdk.MetadataReadAt] != "")
 	want.Metadata[sdk.MetadataReadAt] = got.Metadata[sdk.MetadataReadAt]
-	is.Equal(want, got)
+	is.Equal(cmp.Diff(want, got, cmpopts.IgnoreUnexported(sdk.Record{})), "")
 }

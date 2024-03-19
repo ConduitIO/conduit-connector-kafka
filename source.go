@@ -25,7 +25,8 @@ import (
 
 const (
 	// MetadataKafkaTopic is the metadata key for storing the kafka topic
-	MetadataKafkaTopic = "kafka.topic"
+	MetadataKafkaTopic        = "kafka.topic"
+	MetadataKafkaHeaderPrefix = "kafka.header."
 )
 
 type Source struct {
@@ -98,6 +99,9 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 
 	metadata := sdk.Metadata{MetadataKafkaTopic: rec.Topic}
 	metadata.SetCreatedAt(rec.Timestamp)
+	for _, h := range rec.Headers {
+		metadata[MetadataKafkaHeaderPrefix+h.Key] = string(h.Value)
+	}
 
 	return sdk.Util.Source.NewRecordCreate(
 		source.Position{
