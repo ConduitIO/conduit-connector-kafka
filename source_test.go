@@ -16,16 +16,16 @@ package kafka
 
 import (
 	"context"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/twmb/franz-go/pkg/kgo"
 	"strconv"
 	"testing"
 
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/mock/gomock"
 )
 
