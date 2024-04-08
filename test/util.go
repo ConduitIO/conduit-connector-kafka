@@ -139,11 +139,15 @@ func Produce(t T, cfg common.Config, records []*kgo.Record, timeoutOpt ...time.D
 	is.NoErr(results.FirstErr())
 }
 
-func GenerateFranzRecords(from, to int) []*kgo.Record {
+func GenerateFranzRecords(from, to int, topicOpt ...string) []*kgo.Record {
+	topic := ""
+	if len(topicOpt) > 0 {
+		topic = topicOpt[0]
+	}
 	recs := make([]*kgo.Record, 0, to-from+1)
 	for i := from; i <= to; i++ {
 		recs = append(recs, &kgo.Record{
-			Topic: "foo",
+			Topic: topic,
 			Key:   []byte(fmt.Sprintf("test-key-%d", i)),
 			Value: []byte(fmt.Sprintf("test-payload-%d", i)),
 		})
@@ -156,6 +160,7 @@ func GenerateSDKRecords(from, to int) []sdk.Record {
 	sdkRecs := make([]sdk.Record, len(recs))
 	for i, rec := range recs {
 		metadata := sdk.Metadata{"kafka.topic": rec.Topic}
+		metadata.SetCollection(rec.Topic)
 		metadata.SetCreatedAt(rec.Timestamp)
 
 		sdkRecs[i] = sdk.Util.Source.NewRecordCreate(

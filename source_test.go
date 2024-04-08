@@ -55,7 +55,7 @@ func TestSource_Read(t *testing.T) {
 	is := is.New(t)
 	ctrl := gomock.NewController(t)
 
-	rec := test.GenerateFranzRecords(0, 0)[0]
+	rec := test.GenerateFranzRecords(0, 0, "foo")[0]
 	rec.Headers = []kgo.RecordHeader{
 		{Key: "header-a", Value: []byte("value-a")},
 		{Key: "header-b", Value: []byte{0, 1, 2}},
