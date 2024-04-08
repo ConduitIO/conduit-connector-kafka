@@ -16,9 +16,9 @@ package kafka
 
 import (
 	"context"
-	"github.com/conduitio/conduit-connector-kafka/source"
 	"testing"
 
+	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	"github.com/matryer/is"
 )

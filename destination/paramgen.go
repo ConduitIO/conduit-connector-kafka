@@ -102,12 +102,10 @@ func (Config) Parameters() map[string]sdk.Parameter {
 			Validations: []sdk.Validation{},
 		},
 		"topic": {
-			Default:     "",
+			Default:     "{{ .Metadata[\"opencdc.collection\"] }}",
 			Description: "topic is the Kafka topic.",
 			Type:        sdk.ParameterTypeString,
-			Validations: []sdk.Validation{
-				sdk.ValidationRequired{},
-			},
+			Validations: []sdk.Validation{},
 		},
 	}
 }
