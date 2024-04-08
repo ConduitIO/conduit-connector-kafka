@@ -75,6 +75,7 @@ func (d AcceptanceTestDriver) ReadFromDestination(t *testing.T, records []sdk.Re
 	recs := make([]sdk.Record, len(kgoRecs))
 	for i, rec := range kgoRecs {
 		metadata := sdk.Metadata{MetadataKafkaTopic: rec.Topic}
+		metadata.SetCollection(rec.Topic)
 		metadata.SetCreatedAt(rec.Timestamp)
 
 		recs[i] = sdk.Util.Source.NewRecordCreate(

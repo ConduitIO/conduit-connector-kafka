@@ -143,6 +143,7 @@ func GenerateFranzRecords(from, to int) []*kgo.Record {
 	recs := make([]*kgo.Record, 0, to-from+1)
 	for i := from; i <= to; i++ {
 		recs = append(recs, &kgo.Record{
+			Topic: "foo",
 			Key:   []byte(fmt.Sprintf("test-key-%d", i)),
 			Value: []byte(fmt.Sprintf("test-payload-%d", i)),
 		})

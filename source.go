@@ -98,6 +98,7 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 	}
 
 	metadata := sdk.Metadata{MetadataKafkaTopic: rec.Topic}
+	metadata.SetCollection(rec.Topic)
 	metadata.SetCreatedAt(rec.Timestamp)
 	for _, h := range rec.Headers {
 		metadata[MetadataKafkaHeaderPrefix+h.Key] = string(h.Value)
