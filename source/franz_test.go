@@ -37,7 +37,6 @@ func TestFranzConsumer_Opts(t *testing.T) {
 	cfg := Config{
 		Config: common.Config{
 			Servers:  []string{"test-host:9092"},
-			Topic:    "test-topic",
 			ClientID: "test-client-id",
 
 			ConfigSASL: common.ConfigSASL{
@@ -51,6 +50,7 @@ func TestFranzConsumer_Opts(t *testing.T) {
 				CACert:     caCert,
 			},
 		},
+		Topic:   "test-topic",
 		GroupID: "test-group-id",
 	}
 

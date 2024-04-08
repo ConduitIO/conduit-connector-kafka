@@ -25,7 +25,9 @@ import (
 
 type Config struct {
 	common.Config
-
+	
+	// Topic is the Kafka topic.
+	Topic string `json:"topic" validate:"required"`
 	// Acks defines the number of acknowledges from partition replicas required
 	// before receiving a response to a produce request.
 	// None = fire and forget, one = wait for the leader to acknowledge the

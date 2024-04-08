@@ -16,9 +16,9 @@ package kafka
 
 import (
 	"context"
+	"github.com/conduitio/conduit-connector-kafka/source"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
@@ -29,15 +29,15 @@ func TestSource_Integration_RestartFull(t *testing.T) {
 	t.Parallel()
 
 	cfgMap := test.SourceConfigMap(t)
-	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
+	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)
-	test.Produce(t, cfg, recs1)
+	test.Produce(t, cfg.Servers, cfg.Topic, recs1)
 	lastPosition := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
 
 	// produce more records and restart source from last position
 	recs2 := test.GenerateFranzRecords(4, 6)
-	test.Produce(t, cfg, recs2)
+	test.Produce(t, cfg.Servers, cfg.Topic, recs2)
 	testSourceIntegrationRead(t, cfgMap, lastPosition, recs2, false)
 }
 
@@ -45,16 +45,16 @@ func TestSource_Integration_RestartPartial(t *testing.T) {
 	t.Parallel()
 
 	cfgMap := test.SourceConfigMap(t)
-	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
+	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)
-	test.Produce(t, cfg, recs1)
+	test.Produce(t, cfg.Servers, cfg.Topic, recs1)
 	lastPosition := testSourceIntegrationRead(t, cfgMap, nil, recs1, true)
 
 	// only first record was acked, produce more records and expect to resume
 	// from last acked record
 	recs2 := test.GenerateFranzRecords(4, 6)
-	test.Produce(t, cfg, recs2)
+	test.Produce(t, cfg.Servers, cfg.Topic, recs2)
 
 	var wantRecs []*kgo.Record
 	wantRecs = append(wantRecs, recs1[1:]...)

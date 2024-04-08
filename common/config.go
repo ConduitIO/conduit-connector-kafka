@@ -33,8 +33,6 @@ type Config struct {
 	// Servers is a list of Kafka bootstrap servers, which will be used to
 	// discover all the servers in a cluster.
 	Servers []string `json:"servers" validate:"required"`
-	// Topic is the Kafka topic.
-	Topic string `json:"topic" validate:"required"`
 
 	// ClientID is a unique identifier for client connections established by
 	// this connector.

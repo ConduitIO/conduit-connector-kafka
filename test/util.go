@@ -91,15 +91,15 @@ func ParseConfigMap[C any](t T, cfg map[string]string) C {
 	return out
 }
 
-func Consume(t T, cfg common.Config, limit int) []*kgo.Record {
+func Consume(t T, servers []string, topic string, limit int) []*kgo.Record {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	is := is.New(t)
 	is.Helper()
 
 	cl, err := kgo.NewClient(
-		kgo.SeedBrokers(cfg.Servers...),
-		kgo.ConsumeTopics(cfg.Topic),
+		kgo.SeedBrokers(servers...),
+		kgo.ConsumeTopics(topic),
 		kgo.MetadataMinAge(time.Millisecond*100),
 	)
 	is.NoErr(err)
@@ -115,8 +115,8 @@ func Consume(t T, cfg common.Config, limit int) []*kgo.Record {
 	return records[:limit]
 }
 
-func Produce(t T, cfg common.Config, records []*kgo.Record, timeoutOpt ...time.Duration) {
-	CreateTopic(t, cfg)
+func Produce(t T, servers []string, topic string, records []*kgo.Record, timeoutOpt ...time.Duration) {
+	CreateTopic(t, servers, topic)
 
 	timeout := timeout // copy default timeout
 	if len(timeoutOpt) > 0 {
@@ -128,8 +128,8 @@ func Produce(t T, cfg common.Config, records []*kgo.Record, timeoutOpt ...time.D
 	is.Helper()
 
 	cl, err := kgo.NewClient(
-		kgo.SeedBrokers(cfg.Servers...),
-		kgo.DefaultProduceTopic(cfg.Topic),
+		kgo.SeedBrokers(servers...),
+		kgo.DefaultProduceTopic(topic),
 		kgo.MetadataMinAge(time.Millisecond*100),
 	)
 	is.NoErr(err)
@@ -155,8 +155,8 @@ func GenerateFranzRecords(from, to int, topicOpt ...string) []*kgo.Record {
 	return recs
 }
 
-func GenerateSDKRecords(from, to int) []sdk.Record {
-	recs := GenerateFranzRecords(from, to)
+func GenerateSDKRecords(from, to int, topicOpt ...string) []sdk.Record {
+	recs := GenerateFranzRecords(from, to, topicOpt...)
 	sdkRecs := make([]sdk.Record, len(recs))
 	for i, rec := range recs {
 		metadata := sdk.Metadata{}
@@ -173,14 +173,14 @@ func GenerateSDKRecords(from, to int) []sdk.Record {
 	return sdkRecs
 }
 
-func CreateTopic(t T, cfg common.Config) {
+func CreateTopic(t T, servers []string, topic string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	is := is.New(t)
 	is.Helper()
 
 	cl, err := kgo.NewClient(
-		kgo.SeedBrokers(cfg.Servers...),
+		kgo.SeedBrokers(servers...),
 		kgo.MetadataMinAge(time.Millisecond*100),
 	)
 	is.NoErr(err)
@@ -189,7 +189,7 @@ func CreateTopic(t T, cfg common.Config) {
 
 	adminCl := kadm.NewClient(cl)
 	resp, err := adminCl.CreateTopic(
-		ctx, 1, 1, nil, cfg.Topic)
+		ctx, 1, 1, nil, topic)
 	var kafkaErr *kerr.Error
 	if errors.As(err, &kafkaErr) && kafkaErr.Code == kerr.TopicAlreadyExists.Code {
 		// ignore topic if it already exists
@@ -203,10 +203,10 @@ func CreateTopic(t T, cfg common.Config) {
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		resp, err := adminCl.DeleteTopics(ctx, cfg.Topic)
+		resp, err := adminCl.DeleteTopics(ctx, topic)
 		is.NoErr(err)
-		is.Equal(resp[cfg.Topic].ErrMessage, "")
-		is.NoErr(resp[cfg.Topic].Err)
+		is.Equal(resp[topic].ErrMessage, "")
+		is.NoErr(resp[topic].Err)
 	})
 }
 
