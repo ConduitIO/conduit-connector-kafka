@@ -159,7 +159,7 @@ func GenerateSDKRecords(from, to int) []sdk.Record {
 	recs := GenerateFranzRecords(from, to)
 	sdkRecs := make([]sdk.Record, len(recs))
 	for i, rec := range recs {
-		metadata := sdk.Metadata{"kafka.topic": rec.Topic}
+		metadata := sdk.Metadata{}
 		metadata.SetCollection(rec.Topic)
 		metadata.SetCreatedAt(rec.Timestamp)
 

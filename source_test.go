@@ -69,7 +69,6 @@ func TestSource_Read(t *testing.T) {
 		}.ToSDKPosition(),
 		Operation: sdk.OperationCreate,
 		Metadata: map[string]string{
-			MetadataKafkaTopic:      rec.Topic,
 			sdk.MetadataCollection:  rec.Topic,
 			sdk.MetadataCreatedAt:   strconv.FormatInt(rec.Timestamp.UnixNano(), 10),
 			"kafka.header.header-a": "value-a",
