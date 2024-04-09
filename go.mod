@@ -5,6 +5,8 @@ go 1.21.1
 toolchain go1.22.2
 
 require (
+	github.com/Masterminds/sprig/v3 v3.2.3
+	github.com/conduitio/conduit-commons v0.1.2-0.20240405195636-cb5e072472b0
 	github.com/conduitio/conduit-connector-sdk v0.8.1-0.20240408123504-cec49fc57887
 	github.com/goccy/go-json v0.10.2
 	github.com/golangci/golangci-lint v1.57.2
@@ -31,7 +33,6 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
-	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/OpenPeeDeeP/depguard/v2 v2.2.0 // indirect
 	github.com/alecthomas/go-check-sumtype v0.1.4 // indirect
 	github.com/alexkohler/nakedret/v2 v2.0.4 // indirect
@@ -53,7 +54,6 @@ require (
 	github.com/charithe/durationcheck v0.0.10 // indirect
 	github.com/chavacava/garif v0.1.0 // indirect
 	github.com/ckaznocha/intrange v0.1.1 // indirect
-	github.com/conduitio/conduit-commons v0.1.2-0.20240405195636-cb5e072472b0 // indirect
 	github.com/conduitio/conduit-connector-protocol v0.5.1-0.20240408121719-ffe7a46af296 // indirect
 	github.com/curioswitch/go-reassign v0.2.0 // indirect
 	github.com/daixiang0/gci v0.12.3 // indirect

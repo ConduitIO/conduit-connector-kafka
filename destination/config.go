@@ -26,8 +26,10 @@ import (
 type Config struct {
 	common.Config
 
-	// Topic is the Kafka topic.
-	Topic string `json:"topic" default:"{{ .Metadata[\"opencdc.collection\"] }}"`
+	// Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
+	// that will be executed for each record to determine the topic. By default,
+	// the topic is the value of the `opencdc.collection` metadata field.
+	Topic string `json:"topic" default:"{{ index .Metadata \"opencdc.collection\" }}"`
 	// Acks defines the number of acknowledges from partition replicas required
 	// before receiving a response to a produce request.
 	// None = fire and forget, one = wait for the leader to acknowledge the

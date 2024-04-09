@@ -15,10 +15,14 @@
 package destination
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"sync"
+	"strings"
+	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
+	"github.com/conduitio/conduit-commons/csync"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
 	"github.com/goccy/go-json"
@@ -28,6 +32,11 @@ import (
 type FranzProducer struct {
 	client     *kgo.Client
 	keyEncoder dataEncoder
+
+	// getTopic is a function that returns the topic for a record. If nil, the
+	// producer will use the default topic. This function is not safe for
+	// concurrent use.
+	getTopic func(sdk.Record) (string, error)
 }
 
 var _ Producer = (*FranzProducer)(nil)
@@ -36,12 +45,31 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
 	opts = append(opts, []kgo.Opt{
 		kgo.AllowAutoTopicCreation(),
-		kgo.DefaultProduceTopic(cfg.Topic),
 		kgo.RecordDeliveryTimeout(cfg.DeliveryTimeout),
 		kgo.RequiredAcks(cfg.RequiredAcks()),
 		kgo.ProducerBatchCompression(cfg.CompressionCodecs()...),
 		kgo.ProducerBatchMaxBytes(cfg.BatchBytes),
 	}...)
+
+	var topicFn func(sdk.Record) (string, error)
+	if strings.Contains(cfg.Topic, "{{") && strings.Contains(cfg.Topic, "}}") {
+		// If the topic contains a template, the topic will be determined for
+		// each record individually, so we can't set the default topic here.
+		t, err := template.New("topic").Funcs(sprig.FuncMap()).Parse(cfg.Topic)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse topic template: %w", err)
+		}
+		var buf bytes.Buffer
+		topicFn = func(r sdk.Record) (string, error) {
+			buf.Reset()
+			if err := t.Execute(&buf, r); err != nil {
+				return "", fmt.Errorf("failed to execute topic template: %w", err)
+			}
+			return buf.String(), nil
+		}
+	} else {
+		opts = append(opts, kgo.DefaultProduceTopic(cfg.Topic))
+	}
 
 	if cfg.RequiredAcks() != kgo.AllISRAcks() {
 		sdk.Logger(ctx).Warn().Msgf("disabling idempotent writes because \"acks\" is set to %v", cfg.Acks)
@@ -61,39 +89,89 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 	return &FranzProducer{
 		client:     cl,
 		keyEncoder: keyEncoder,
+		getTopic:   topicFn,
 	}, nil
 }
 
 func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int, error) {
-	var (
-		wg      sync.WaitGroup
-		results = make(kgo.ProduceResults, 0, len(records))
-		promise = func(r *kgo.Record, err error) {
-			results = append(results, kgo.ProduceResult{Record: r, Err: err})
-			wg.Done()
+	if len(records) == 1 {
+		// Fast path for a single record.
+		rec, err := p.prepareRecord(records[0])
+		if err != nil {
+			return 0, fmt.Errorf("failed to prepare record: %w", err)
 		}
+		_, err = p.client.ProduceSync(ctx, rec).First()
+		if err != nil {
+			return 0, fmt.Errorf("failed to produce record: %w", err)
+		}
+		return 1, nil
+	}
+
+	var (
+		wg       csync.WaitGroup
+		results  = make([]error, 0, len(records))
+		errIndex = -1
+		err      error
+		rec      *kgo.Record
 	)
 
-	wg.Add(len(records))
 	for i, r := range records {
-		encodedKey, err := p.keyEncoder.Encode(r.Key)
+		rec, err = p.prepareRecord(r)
 		if err != nil {
-			return 0, fmt.Errorf("could not encode key of record %v: %w", i, err)
+			errIndex = i
+			err = fmt.Errorf("failed to prepare record: %w", err)
+			break
 		}
-		p.client.Produce(ctx, &kgo.Record{
-			Key:   encodedKey,
-			Value: r.Bytes(),
-		}, promise)
-	}
-	wg.Wait()
 
-	for i, r := range results {
-		if r.Err != nil {
-			return i, r.Err
+		wg.Add(1)
+		p.client.Produce(
+			ctx,
+			rec,
+			func(_ *kgo.Record, err error) {
+				results = append(results, err)
+				wg.Done()
+			},
+		)
+	}
+
+	err = wg.Wait(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to wait for all records to be produced: %w", err)
+	}
+
+	for i, err := range results {
+		if err != nil {
+			return i, fmt.Errorf("failed to produce record %v: %w", i, err)
 		}
+	}
+
+	if err != nil {
+		// We failed to prepare a record, return the error and the index of the
+		// record that failed.
+		return errIndex, err
 	}
 
 	return len(results), nil
+}
+
+func (p *FranzProducer) prepareRecord(r sdk.Record) (*kgo.Record, error) {
+	encodedKey, err := p.keyEncoder.Encode(r.Key)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode key: %w", err)
+	}
+
+	var topic string
+	if p.getTopic != nil {
+		topic, err = p.getTopic(r)
+		if err != nil {
+			return nil, fmt.Errorf("could not get topic: %w", err)
+		}
+	}
+	return &kgo.Record{
+		Key:   encodedKey,
+		Value: r.Bytes(),
+		Topic: topic,
+	}, nil
 }
 
 func (p *FranzProducer) Close(_ context.Context) error {
