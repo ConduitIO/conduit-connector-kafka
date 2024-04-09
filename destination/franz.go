@@ -108,18 +108,18 @@ func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int,
 	}
 
 	var (
-		wg       csync.WaitGroup
-		results  = make([]error, 0, len(records))
-		errIndex = -1
-		err      error
-		rec      *kgo.Record
+		wg              csync.WaitGroup
+		results         = make([]error, 0, len(records))
+		rec             *kgo.Record
+		prepareErr      error
+		prepareErrIndex = -1
 	)
 
 	for i, r := range records {
-		rec, err = p.prepareRecord(r)
-		if err != nil {
-			errIndex = i
-			err = fmt.Errorf("failed to prepare record: %w", err)
+		rec, prepareErr = p.prepareRecord(r)
+		if prepareErr != nil {
+			prepareErrIndex = i
+			prepareErr = fmt.Errorf("failed to prepare record: %w", prepareErr)
 			break
 		}
 
@@ -134,7 +134,7 @@ func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int,
 		)
 	}
 
-	err = wg.Wait(ctx)
+	err := wg.Wait(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to wait for all records to be produced: %w", err)
 	}
@@ -145,10 +145,10 @@ func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int,
 		}
 	}
 
-	if err != nil {
+	if prepareErr != nil {
 		// We failed to prepare a record, return the error and the index of the
 		// record that failed.
-		return errIndex, err
+		return prepareErrIndex, prepareErr
 	}
 
 	return len(results), nil
