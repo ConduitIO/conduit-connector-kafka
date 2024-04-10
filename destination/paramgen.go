@@ -102,12 +102,10 @@ func (Config) Parameters() map[string]sdk.Parameter {
 			Validations: []sdk.Validation{},
 		},
 		"topic": {
-			Default:     "",
-			Description: "topic is the Kafka topic.",
+			Default:     "{{ index .Metadata \"opencdc.collection\" }}",
+			Description: "topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template) that will be executed for each record to determine the topic. By default, the topic is the value of the `opencdc.collection` metadata field.",
 			Type:        sdk.ParameterTypeString,
-			Validations: []sdk.Validation{
-				sdk.ValidationRequired{},
-			},
+			Validations: []sdk.Validation{},
 		},
 	}
 }

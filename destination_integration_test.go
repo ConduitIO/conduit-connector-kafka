@@ -18,16 +18,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/common"
+	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	"github.com/matryer/is"
 )
 
 func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
 	cfgMap := test.DestinationConfigMap(t)
-	cfg := test.ParseConfigMap[common.Config](t, cfgMap)
+	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
-	test.CreateTopic(t, cfg)
+	test.CreateTopic(t, cfg.Servers, cfg.Topic)
 	testDestinationIntegrationWrite(t, cfgMap)
 }
 
@@ -58,7 +58,8 @@ func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 	is.NoErr(err)
 	is.Equal(count, len(wantRecords))
 
-	gotRecords := test.Consume(t, test.ParseConfigMap[common.Config](t, cfg), len(wantRecords))
+	srcCfg := test.ParseConfigMap[source.Config](t, cfg)
+	gotRecords := test.Consume(t, srcCfg.Servers, srcCfg.Topic, len(wantRecords))
 	is.Equal(len(wantRecords), len(gotRecords))
 	for i, got := range gotRecords {
 		is.Equal(got.Value, wantRecords[i].Bytes())

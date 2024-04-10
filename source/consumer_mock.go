@@ -5,6 +5,7 @@
 //
 //	mockgen -destination consumer_mock.go -package source -mock_names=Consumer=MockConsumer . Consumer
 //
+
 // Package source is a generated GoMock package.
 package source
 

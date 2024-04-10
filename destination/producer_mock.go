@@ -5,6 +5,7 @@
 //
 //	mockgen -destination producer_mock.go -package destination -mock_names=Producer=MockProducer . Producer
 //
+
 // Package destination is a generated GoMock package.
 package destination
 

@@ -22,6 +22,7 @@ import (
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -37,7 +38,6 @@ func TestFranzProducer_Opts(t *testing.T) {
 	cfg := Config{
 		Config: common.Config{
 			Servers:  []string{"test-host:9092"},
-			Topic:    "test-topic",
 			ClientID: "test-client-id",
 
 			ConfigSASL: common.ConfigSASL{
@@ -51,6 +51,7 @@ func TestFranzProducer_Opts(t *testing.T) {
 				CACert:     caCert,
 			},
 		},
+		Topic:           "test-topic",
 		BatchBytes:      512,
 		DeliveryTimeout: time.Second,
 		Acks:            "all",
@@ -76,6 +77,7 @@ func TestFranzProducer_Opts_AcksDisableIdempotentWrite(t *testing.T) {
 	// minimal valid config
 	cfg := Config{
 		Config:     common.Config{Servers: []string{"test-host:9092"}},
+		Topic:      "foo",
 		BatchBytes: 512,
 	}
 
@@ -108,4 +110,36 @@ func TestFranzProducer_Opts_AcksDisableIdempotentWrite(t *testing.T) {
 			is.Equal(p.client.OptValue(kgo.DisableIdempotentWrite), tc.wantDisableIdempotentWrite)
 		})
 	}
+}
+
+func TestFranzProducer_Opts_Topic(t *testing.T) {
+	// minimal valid config
+	cfg := Config{
+		Config:     common.Config{Servers: []string{"test-host:9092"}},
+		BatchBytes: 512,
+	}
+
+	t.Run("static topic", func(t *testing.T) {
+		is := is.New(t)
+		cfg.Topic = "foo"
+		p, err := NewFranzProducer(context.Background(), cfg)
+		is.NoErr(err)
+
+		is.Equal(p.client.OptValue(kgo.DefaultProduceTopic), cfg.Topic)
+		is.True(p.getTopic == nil)
+	})
+
+	t.Run("template topic", func(t *testing.T) {
+		is := is.New(t)
+		cfg.Topic = `{{ index .Metadata "foo" }}`
+		p, err := NewFranzProducer(context.Background(), cfg)
+		is.NoErr(err)
+
+		is.Equal(p.client.OptValue(kgo.DefaultProduceTopic), "")
+		is.True(p.getTopic != nil)
+
+		topic, err := p.getTopic(sdk.Record{Metadata: map[string]string{"foo": "bar"}})
+		is.NoErr(err)
+		is.Equal(topic, "bar")
+	})
 }

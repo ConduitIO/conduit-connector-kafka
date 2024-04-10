@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -69,8 +68,8 @@ type AcceptanceTestDriver struct {
 // ReadFromDestination is overwritten because the source connector uses a consumer
 // group which results in slow reads. This speeds up the destination tests.
 func (d AcceptanceTestDriver) ReadFromDestination(t *testing.T, records []sdk.Record) []sdk.Record {
-	cfg := test.ParseConfigMap[common.Config](t, d.SourceConfig(t))
-	kgoRecs := test.Consume(t, cfg, len(records))
+	cfg := test.ParseConfigMap[source.Config](t, d.SourceConfig(t))
+	kgoRecs := test.Consume(t, cfg.Servers, cfg.Topic, len(records))
 
 	recs := make([]sdk.Record, len(kgoRecs))
 	for i, rec := range kgoRecs {

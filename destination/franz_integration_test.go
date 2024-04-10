@@ -47,7 +47,7 @@ func TestFranzProducer_Produce(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(count, len(wantRecords))
 
-	gotRecords := test.Consume(t, cfg.Config, len(wantRecords))
+	gotRecords := test.Consume(t, cfg.Servers, cfg.Topic, len(wantRecords))
 	is.Equal(len(wantRecords), len(gotRecords))
 	for i, got := range gotRecords {
 		is.Equal(got.Value, wantRecords[i].Bytes())

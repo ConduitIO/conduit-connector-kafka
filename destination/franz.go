@@ -17,8 +17,8 @@ package destination
 import (
 	"context"
 	"fmt"
-	"sync"
 
+	"github.com/conduitio/conduit-commons/csync"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
 	"github.com/goccy/go-json"
@@ -28,19 +28,30 @@ import (
 type FranzProducer struct {
 	client     *kgo.Client
 	keyEncoder dataEncoder
+
+	// getTopic is a function that returns the topic for a record. If nil, the
+	// producer will use the default topic. This function is not safe for
+	// concurrent use.
+	getTopic func(sdk.Record) (string, error)
 }
 
 var _ Producer = (*FranzProducer)(nil)
 
 func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
+	topic, topicFn, err := cfg.ParseTopic()
+	if err != nil {
+		// Unlikely to happen, as the topic is validated in the config.
+		return nil, fmt.Errorf("failed to parse topic: %w", err)
+	}
+
 	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
 	opts = append(opts, []kgo.Opt{
 		kgo.AllowAutoTopicCreation(),
-		kgo.DefaultProduceTopic(cfg.Topic),
 		kgo.RecordDeliveryTimeout(cfg.DeliveryTimeout),
 		kgo.RequiredAcks(cfg.RequiredAcks()),
 		kgo.ProducerBatchCompression(cfg.CompressionCodecs()...),
 		kgo.ProducerBatchMaxBytes(cfg.BatchBytes),
+		kgo.DefaultProduceTopic(topic),
 	}...)
 
 	if cfg.RequiredAcks() != kgo.AllISRAcks() {
@@ -61,39 +72,89 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 	return &FranzProducer{
 		client:     cl,
 		keyEncoder: keyEncoder,
+		getTopic:   topicFn,
 	}, nil
 }
 
 func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int, error) {
-	var (
-		wg      sync.WaitGroup
-		results = make(kgo.ProduceResults, 0, len(records))
-		promise = func(r *kgo.Record, err error) {
-			results = append(results, kgo.ProduceResult{Record: r, Err: err})
-			wg.Done()
+	if len(records) == 1 {
+		// Fast path for a single record.
+		rec, err := p.prepareRecord(records[0])
+		if err != nil {
+			return 0, fmt.Errorf("failed to prepare record: %w", err)
 		}
+		_, err = p.client.ProduceSync(ctx, rec).First()
+		if err != nil {
+			return 0, fmt.Errorf("failed to produce record: %w", err)
+		}
+		return 1, nil
+	}
+
+	var (
+		wg              csync.WaitGroup
+		results         = make([]error, 0, len(records))
+		rec             *kgo.Record
+		prepareErr      error
+		prepareErrIndex = -1
 	)
 
-	wg.Add(len(records))
 	for i, r := range records {
-		encodedKey, err := p.keyEncoder.Encode(r.Key)
-		if err != nil {
-			return 0, fmt.Errorf("could not encode key of record %v: %w", i, err)
+		rec, prepareErr = p.prepareRecord(r)
+		if prepareErr != nil {
+			prepareErrIndex = i
+			prepareErr = fmt.Errorf("failed to prepare record: %w", prepareErr)
+			break
 		}
-		p.client.Produce(ctx, &kgo.Record{
-			Key:   encodedKey,
-			Value: r.Bytes(),
-		}, promise)
-	}
-	wg.Wait()
 
-	for i, r := range results {
-		if r.Err != nil {
-			return i, r.Err
+		wg.Add(1)
+		p.client.Produce(
+			ctx,
+			rec,
+			func(_ *kgo.Record, err error) {
+				results = append(results, err)
+				wg.Done()
+			},
+		)
+	}
+
+	err := wg.Wait(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to wait for all records to be produced: %w", err)
+	}
+
+	for i, err := range results {
+		if err != nil {
+			return i, fmt.Errorf("failed to produce record %v: %w", i, err)
 		}
+	}
+
+	if prepareErr != nil {
+		// We failed to prepare a record, return the error and the index of the
+		// record that failed.
+		return prepareErrIndex, prepareErr
 	}
 
 	return len(results), nil
+}
+
+func (p *FranzProducer) prepareRecord(r sdk.Record) (*kgo.Record, error) {
+	encodedKey, err := p.keyEncoder.Encode(r.Key)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode key: %w", err)
+	}
+
+	var topic string
+	if p.getTopic != nil {
+		topic, err = p.getTopic(r)
+		if err != nil {
+			return nil, fmt.Errorf("could not get topic: %w", err)
+		}
+	}
+	return &kgo.Record{
+		Key:   encodedKey,
+		Value: r.Bytes(),
+		Topic: topic,
+	}, nil
 }
 
 func (p *FranzProducer) Close(_ context.Context) error {

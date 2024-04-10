@@ -17,15 +17,32 @@
 package destination
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+	"text/template"
 	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/conduitio/conduit-connector-kafka/common"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
+)
+
+var (
+	topicRegex     = regexp.MustCompile(`^[a-zA-Z0-9\._\-]+$`)
+	maxTopicLength = 249
 )
 
 type Config struct {
 	common.Config
 
+	// Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
+	// that will be executed for each record to determine the topic. By default,
+	// the topic is the value of the `opencdc.collection` metadata field.
+	Topic string `json:"topic" default:"{{ index .Metadata \"opencdc.collection\" }}"`
 	// Acks defines the number of acknowledges from partition replicas required
 	// before receiving a response to a produce request.
 	// None = fire and forget, one = wait for the leader to acknowledge the
@@ -43,6 +60,8 @@ type Config struct {
 	// should be in the kafka connect format (i.e. JSON with schema).
 	useKafkaConnectKeyFormat bool
 }
+
+type TopicFn func(sdk.Record) (string, error)
 
 func (c Config) WithKafkaConnectKeyFormat() Config {
 	c.useKafkaConnectKeyFormat = true
@@ -83,5 +102,53 @@ func (c Config) CompressionCodecs() []kgo.CompressionCodec {
 
 // Validate executes manual validations beyond what is defined in struct tags.
 func (c Config) Validate() error {
-	return c.Config.Validate()
+	var multierr []error
+
+	err := c.Config.Validate()
+	if err != nil {
+		multierr = append(multierr, err)
+	}
+
+	_, _, err = c.ParseTopic()
+	if err != nil {
+		multierr = append(multierr, err)
+	}
+
+	return errors.Join(multierr...)
+}
+
+// ParseTopic returns either a static topic or a function that determines the
+// topic for each record individually. If the topic is neither static nor a
+// template, an error is returned.
+func (c Config) ParseTopic() (topic string, f TopicFn, err error) {
+	if topicRegex.MatchString(c.Topic) {
+		// The topic is static, check length.
+		if len(c.Topic) > maxTopicLength {
+			return "", nil, fmt.Errorf("topic is too long, maximum length is %d", maxTopicLength)
+		}
+		return c.Topic, nil, nil
+	}
+
+	// The topic must be a template, check if it contains at least one action {{ }},
+	// to prevent allowing invalid static topic names.
+	if !strings.Contains(c.Topic, "{{") || !strings.Contains(c.Topic, "}}") {
+		return "", nil, fmt.Errorf("topic is neither a valid static Kafka topic nor a valid Go template")
+	}
+
+	// Try to parse the topic
+	t, err := template.New("topic").Funcs(sprig.FuncMap()).Parse(c.Topic)
+	if err != nil {
+		// The topic is not a valid Go template.
+		return "", nil, fmt.Errorf("topic is neither a valid static Kafka topic nor a valid Go template: %w", err)
+	}
+
+	// The topic is a valid template, return TopicFn.
+	var buf bytes.Buffer
+	return "", func(r sdk.Record) (string, error) {
+		buf.Reset()
+		if err := t.Execute(&buf, r); err != nil {
+			return "", fmt.Errorf("failed to execute topic template: %w", err)
+		}
+		return buf.String(), nil
+	}, nil
 }
