@@ -15,13 +15,9 @@
 package destination
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"strings"
-	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
 	"github.com/conduitio/conduit-commons/csync"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
@@ -42,6 +38,12 @@ type FranzProducer struct {
 var _ Producer = (*FranzProducer)(nil)
 
 func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
+	topic, topicFn, err := cfg.ParseTopic()
+	if err != nil {
+		// Unlikely to happen, as the topic is validated in the config.
+		return nil, fmt.Errorf("failed to parse topic: %w", err)
+	}
+
 	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
 	opts = append(opts, []kgo.Opt{
 		kgo.AllowAutoTopicCreation(),
@@ -49,27 +51,8 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 		kgo.RequiredAcks(cfg.RequiredAcks()),
 		kgo.ProducerBatchCompression(cfg.CompressionCodecs()...),
 		kgo.ProducerBatchMaxBytes(cfg.BatchBytes),
+		kgo.DefaultProduceTopic(topic),
 	}...)
-
-	var topicFn func(sdk.Record) (string, error)
-	if strings.Contains(cfg.Topic, "{{") && strings.Contains(cfg.Topic, "}}") {
-		// If the topic contains a template, the topic will be determined for
-		// each record individually, so we can't set the default topic here.
-		t, err := template.New("topic").Funcs(sprig.FuncMap()).Parse(cfg.Topic)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse topic template: %w", err)
-		}
-		var buf bytes.Buffer
-		topicFn = func(r sdk.Record) (string, error) {
-			buf.Reset()
-			if err := t.Execute(&buf, r); err != nil {
-				return "", fmt.Errorf("failed to execute topic template: %w", err)
-			}
-			return buf.String(), nil
-		}
-	} else {
-		opts = append(opts, kgo.DefaultProduceTopic(cfg.Topic))
-	}
 
 	if cfg.RequiredAcks() != kgo.AllISRAcks() {
 		sdk.Logger(ctx).Warn().Msgf("disabling idempotent writes because \"acks\" is set to %v", cfg.Acks)

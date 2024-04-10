@@ -77,6 +77,7 @@ func TestFranzProducer_Opts_AcksDisableIdempotentWrite(t *testing.T) {
 	// minimal valid config
 	cfg := Config{
 		Config:     common.Config{Servers: []string{"test-host:9092"}},
+		Topic:      "foo",
 		BatchBytes: 512,
 	}
 

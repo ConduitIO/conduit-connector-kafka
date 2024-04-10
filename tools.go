@@ -14,7 +14,7 @@
 
 //go:build tools
 
-package postgres
+package main
 
 import (
 	_ "github.com/conduitio/conduit-connector-sdk/cmd/paramgen"
