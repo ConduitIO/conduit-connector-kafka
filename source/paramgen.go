@@ -87,7 +87,7 @@ func (Config) Parameters() map[string]sdk.Parameter {
 		},
 		"topic": {
 			Default:     "",
-			Description: "topic is the Kafka topic.",
+			Description: "topic is a comma separated list of Kafka topics to read from.",
 			Type:        sdk.ParameterTypeString,
 			Validations: []sdk.Validation{
 				sdk.ValidationRequired{},

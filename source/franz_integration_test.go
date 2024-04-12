@@ -28,12 +28,13 @@ func TestFranzConsumer_Consume_FromBeginning(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, true))
 	cfg.ReadFromBeginning = true
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopic(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic, records)
+	test.CreateTopics(t, cfg.Servers, cfg.Topic)
+	test.Produce(t, cfg.Servers, cfg.Topic[0], records[0:3])
+	test.Produce(t, cfg.Servers, cfg.Topic[1], records[3:])
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -56,12 +57,12 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, true))
 	cfg.ReadFromBeginning = false
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopic(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic, records)
+	test.CreateTopics(t, cfg.Servers, cfg.Topic)
+	test.Produce(t, cfg.Servers, cfg.Topic[0], records)
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -77,7 +78,7 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	is.Equal(got, nil)
 
 	records = test.GenerateFranzRecords(7, 9)
-	test.Produce(t, cfg.Servers, cfg.Topic, records)
+	test.Produce(t, cfg.Servers, cfg.Topic[1], records)
 
 	for i := 0; i < len(records); i++ {
 		ctx, cancel := context.WithTimeout(ctx, time.Second)

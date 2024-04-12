@@ -27,7 +27,7 @@ func TestDestination_Integration_WriteExistingTopic(t *testing.T) {
 	cfgMap := test.DestinationConfigMap(t)
 	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
-	test.CreateTopic(t, cfg.Servers, cfg.Topic)
+	test.CreateTopics(t, cfg.Servers, cfg.Topic)
 	testDestinationIntegrationWrite(t, cfgMap)
 }
 
@@ -59,7 +59,7 @@ func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 	is.Equal(count, len(wantRecords))
 
 	srcCfg := test.ParseConfigMap[source.Config](t, cfg)
-	gotRecords := test.Consume(t, srcCfg.Servers, srcCfg.Topic, len(wantRecords))
+	gotRecords := test.Consume(t, srcCfg.Servers, srcCfg.Topic[0], len(wantRecords))
 	is.Equal(len(wantRecords), len(gotRecords))
 	for i, got := range gotRecords {
 		is.Equal(got.Value, wantRecords[i].Bytes())

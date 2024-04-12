@@ -69,7 +69,7 @@ type AcceptanceTestDriver struct {
 // group which results in slow reads. This speeds up the destination tests.
 func (d AcceptanceTestDriver) ReadFromDestination(t *testing.T, records []sdk.Record) []sdk.Record {
 	cfg := test.ParseConfigMap[source.Config](t, d.SourceConfig(t))
-	kgoRecs := test.Consume(t, cfg.Servers, cfg.Topic, len(records))
+	kgoRecs := test.Consume(t, cfg.Servers, cfg.Topic[0], len(records))
 
 	recs := make([]sdk.Record, len(kgoRecs))
 	for i, rec := range kgoRecs {

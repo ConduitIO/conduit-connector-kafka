@@ -56,24 +56,32 @@ type T interface {
 	Cleanup(func())
 }
 
-func ConfigMap(t T) map[string]string {
+func getRandomTopicName(t T) string {
 	lastSlash := strings.LastIndex(t.Name(), "/")
-	topic := t.Name()[lastSlash+1:] + uuid.NewString()
-	t.Logf("using topic: %v", topic)
+	return t.Name()[lastSlash+1:] + uuid.NewString()
+}
+
+func ConfigMap(t T) map[string]string {
 	return map[string]string{
 		"servers": "localhost:9092",
-		"topic":   topic,
+		"topic":   getRandomTopicName(t),
 	}
 }
 
-func SourceConfigMap(t T) map[string]string {
+func SourceConfigMap(t T, multipleTopics bool) map[string]string {
 	m := ConfigMap(t)
 	m["readFromBeginning"] = "true"
+	if multipleTopics {
+		m["topic"] = m["topic"] + "," + getRandomTopicName(t)
+	}
+	t.Logf("using topics: %v", m["topic"])
 	return m
 }
 
 func DestinationConfigMap(t T) map[string]string {
 	m := ConfigMap(t)
+	t.Logf("using topic: %v", m["topic"])
+
 	m["batchBytes"] = "1000012"
 	m["acks"] = "all"
 	m["compression"] = "snappy"
@@ -116,7 +124,7 @@ func Consume(t T, servers []string, topic string, limit int) []*kgo.Record {
 }
 
 func Produce(t T, servers []string, topic string, records []*kgo.Record, timeoutOpt ...time.Duration) {
-	CreateTopic(t, servers, topic)
+	CreateTopics(t, servers, []string{topic})
 
 	timeout := timeout // copy default timeout
 	if len(timeoutOpt) > 0 {
@@ -173,7 +181,7 @@ func GenerateSDKRecords(from, to int, topicOpt ...string) []sdk.Record {
 	return sdkRecs
 }
 
-func CreateTopic(t T, servers []string, topic string) {
+func CreateTopics(t T, servers []string, topics []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	is := is.New(t)
@@ -188,25 +196,27 @@ func CreateTopic(t T, servers []string, topic string) {
 	t.Cleanup(cl.Close)
 
 	adminCl := kadm.NewClient(cl)
-	resp, err := adminCl.CreateTopic(
-		ctx, 1, 1, nil, topic)
+	resp, err := adminCl.CreateTopics(
+		ctx, 1, 1, nil, topics...)
 	var kafkaErr *kerr.Error
-	if errors.As(err, &kafkaErr) && kafkaErr.Code == kerr.TopicAlreadyExists.Code {
+	if errors.As(resp.Error(), &kafkaErr) && kafkaErr.Code == kerr.TopicAlreadyExists.Code {
 		// ignore topic if it already exists
 		cl.Close()
 		return
 	}
 	is.NoErr(err)
-	is.NoErr(resp.Err)
+	is.NoErr(resp.Error())
 
 	// we created the topic, so we should clean up after the test
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		resp, err := adminCl.DeleteTopics(ctx, topic)
+		responses, err := adminCl.DeleteTopics(ctx, topics...)
 		is.NoErr(err)
-		is.Equal(resp[topic].ErrMessage, "")
-		is.NoErr(resp[topic].Err)
+		for _, resp := range responses {
+			is.Equal(resp.ErrMessage, "")
+			is.NoErr(resp.Err)
+		}
 	})
 }
 

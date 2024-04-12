@@ -23,8 +23,8 @@ import (
 type Config struct {
 	common.Config
 
-	// Topic is the Kafka topic.
-	Topic string `json:"topic" validate:"required"`
+	// Topic is a comma separated list of Kafka topics to read from.
+	Topic []string `json:"topic" validate:"required"`
 	// ReadFromBeginning determines from whence the consumer group should begin
 	// consuming when it finds a partition without a committed offset. If this
 	// options is set to true it will start with the first message in that
