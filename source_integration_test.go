@@ -54,7 +54,7 @@ func TestSource_Integration_RestartPartial(t *testing.T) {
 	// only first record was acked, produce more records and expect to resume
 	// from last acked record
 	recs2 := test.GenerateFranzRecords(4, 6)
-	test.Produce(t, cfg.Servers, cfg.Topic[1], recs2)
+	test.Produce(t, cfg.Servers, cfg.Topic[0], recs2)
 
 	var wantRecs []*kgo.Record
 	wantRecs = append(wantRecs, recs1[1:]...)
