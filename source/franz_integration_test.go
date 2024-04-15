@@ -32,8 +32,8 @@ func TestFranzConsumer_Consume_FromBeginning(t *testing.T) {
 	cfg.ReadFromBeginning = true
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopics(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic[0], records)
+	test.CreateTopics(t, cfg.Servers, cfg.Topics)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -60,8 +60,8 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	cfg.ReadFromBeginning = false
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopics(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic[0], records)
+	test.CreateTopics(t, cfg.Servers, cfg.Topics)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -77,7 +77,7 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	is.Equal(got, nil)
 
 	records = test.GenerateFranzRecords(7, 9)
-	test.Produce(t, cfg.Servers, cfg.Topic[0], records)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
 	for i := 0; i < len(records); i++ {
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -97,9 +97,9 @@ func TestFranzConsumer_Consume_MultipleTopics(t *testing.T) {
 	cfg.ReadFromBeginning = true
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopics(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic[0], records[0:3])
-	test.Produce(t, cfg.Servers, cfg.Topic[1], records[3:])
+	test.CreateTopics(t, cfg.Servers, cfg.Topics)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records[0:3])
+	test.Produce(t, cfg.Servers, cfg.Topics[1], records[3:])
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -115,9 +115,9 @@ func TestFranzConsumer_Consume_MultipleTopics(t *testing.T) {
 		defer cancel()
 		got, err := c.Consume(ctx)
 		is.NoErr(err)
-		if got.Topic == cfg.Topic[0] {
+		if got.Topic == cfg.Topics[0] {
 			topic1++
-		} else if got.Topic == cfg.Topic[1] {
+		} else if got.Topic == cfg.Topics[1] {
 			topic2++
 		}
 	}

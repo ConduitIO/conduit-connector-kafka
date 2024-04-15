@@ -61,25 +61,26 @@ func getRandomTopicName(t T) string {
 	return t.Name()[lastSlash+1:] + uuid.NewString()
 }
 
-func ConfigMap(t T) map[string]string {
+func ConfigMap() map[string]string {
 	return map[string]string{
 		"servers": "localhost:9092",
-		"topic":   getRandomTopicName(t),
 	}
 }
 
 func SourceConfigMap(t T, multipleTopics bool) map[string]string {
-	m := ConfigMap(t)
+	m := ConfigMap()
 	m["readFromBeginning"] = "true"
+	m["topics"] = getRandomTopicName(t)
 	if multipleTopics {
-		m["topic"] = m["topic"] + "," + getRandomTopicName(t)
+		m["topics"] = m["topics"] + "," + getRandomTopicName(t)
 	}
-	t.Logf("using topics: %v", m["topic"])
+	t.Logf("using topics: %v", m["topics"])
 	return m
 }
 
 func DestinationConfigMap(t T) map[string]string {
-	m := ConfigMap(t)
+	m := ConfigMap()
+	m["topic"] = getRandomTopicName(t)
 	t.Logf("using topic: %v", m["topic"])
 
 	m["batchBytes"] = "1000012"
