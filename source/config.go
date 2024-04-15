@@ -17,14 +17,20 @@
 package source
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/conduitio/conduit-connector-kafka/common"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
 type Config struct {
 	common.Config
 
 	// Topics is a comma separated list of Kafka topics to read from.
-	Topics []string `json:"topics" validate:"required"`
+	Topics []string `json:"topics"`
+	// Topic {WARN will be deprecated soon} the kafka topic to read from.
+	Topic string `json:"topic"`
 	// ReadFromBeginning determines from whence the consumer group should begin
 	// consuming when it finds a partition without a committed offset. If this
 	// options is set to true it will start with the first message in that
@@ -35,6 +41,23 @@ type Config struct {
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
-func (c Config) Validate() error {
-	return c.Config.Validate()
+func (c *Config) Validate(ctx context.Context) error {
+	err := c.Config.Validate()
+	if err != nil {
+		return err
+	}
+	// validate and set the topics.
+	if len(c.Topic) == 0 && len(c.Topics) == 0 {
+		return fmt.Errorf("required parameter missing: %q", "topics")
+	}
+	if len(c.Topic) > 0 && len(c.Topics) > 0 {
+		return fmt.Errorf(`can't provide both "topic" and "topics" params, "topic" will be deprecated soon, please only provide the "topics" parameter instead`)
+	}
+	if len(c.Topic) > 0 && len(c.Topics) == 0 {
+		sdk.Logger(ctx).Warn().Msg(`"topic" parameter will be deprecated soon, please use "topics" instead.`)
+		// add the topic value to the topics slice.
+		c.Topics = make([]string, 1)
+		c.Topics[0] = c.Topic
+	}
+	return nil
 }
