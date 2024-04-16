@@ -18,6 +18,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
@@ -42,16 +43,17 @@ type Config struct {
 
 // Validate executes manual validations beyond what is defined in struct tags.
 func (c *Config) Validate(ctx context.Context) error {
+	var multierr []error
 	err := c.Config.Validate()
 	if err != nil {
-		return err
+		multierr = append(multierr, err)
 	}
 	// validate and set the topics.
 	if len(c.Topic) == 0 && len(c.Topics) == 0 {
-		return fmt.Errorf("required parameter missing: %q", "topics")
+		multierr = append(multierr, fmt.Errorf("required parameter missing: %q", "topics"))
 	}
 	if len(c.Topic) > 0 && len(c.Topics) > 0 {
-		return fmt.Errorf(`can't provide both "topic" and "topics" params, "topic" will be deprecated soon, please only provide the "topics" parameter instead`)
+		multierr = append(multierr, fmt.Errorf(`can't provide both "topic" and "topics" params, "topic" will be deprecated soon, please only provide the "topics" parameter instead`))
 	}
 	if len(c.Topic) > 0 && len(c.Topics) == 0 {
 		sdk.Logger(ctx).Warn().Msg(`"topic" parameter will be deprecated soon, please use "topics" instead.`)
@@ -59,5 +61,5 @@ func (c *Config) Validate(ctx context.Context) error {
 		c.Topics = make([]string, 1)
 		c.Topics[0] = c.Topic
 	}
-	return nil
+	return errors.Join(multierr...)
 }
