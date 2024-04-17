@@ -43,7 +43,7 @@ func TestConfig_ValidateTopics(t *testing.T) {
 			Topics: []string{"topic2"},
 			Topic:  "topic1",
 		},
-		wantErr: `can't provide both "topic" and "topics" params, "topic" will be deprecated soon, please only provide the "topics" parameter instead`,
+		wantErr: `can't provide both "topic" and "topics" parameters, "topic" is deprecated and will be removed, use the "topics" parameter instead`,
 	}, {
 		name: "valid with warning, will be deprecated soon",
 		cfg: Config{
