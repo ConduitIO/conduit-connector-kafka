@@ -50,14 +50,14 @@ func TestFranzConsumer_Opts(t *testing.T) {
 				CACert:     caCert,
 			},
 		},
-		Topic:   "test-topic",
+		Topics:  []string{"test-topic"},
 		GroupID: "test-group-id",
 	}
 
 	c, err := NewFranzConsumer(context.Background(), cfg)
 	is.NoErr(err)
 
-	is.Equal(c.client.OptValue(kgo.ConsumeTopics), map[string]*regexp.Regexp{cfg.Topic: nil})
+	is.Equal(c.client.OptValue(kgo.ConsumeTopics), map[string]*regexp.Regexp{cfg.Topics[0]: nil})
 	is.Equal(c.client.OptValue(kgo.ConsumerGroup), cfg.GroupID)
 
 	is.Equal(c.client.OptValue(kgo.ClientID), cfg.ClientID)

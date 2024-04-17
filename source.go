@@ -42,14 +42,14 @@ func (s *Source) Parameters() map[string]sdk.Parameter {
 	return source.Config{}.Parameters()
 }
 
-func (s *Source) Configure(_ context.Context, cfg map[string]string) error {
+func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
 	var config source.Config
 
 	err := sdk.Util.ParseConfig(cfg, &config)
 	if err != nil {
 		return err
 	}
-	err = config.Validate()
+	err = config.Validate(ctx)
 	if err != nil {
 		return err
 	}

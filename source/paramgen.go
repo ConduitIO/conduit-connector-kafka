@@ -87,11 +87,15 @@ func (Config) Parameters() map[string]sdk.Parameter {
 		},
 		"topic": {
 			Default:     "",
-			Description: "topic is the Kafka topic.",
+			Description: "topic {WARN will be deprecated soon} the kafka topic to read from.",
 			Type:        sdk.ParameterTypeString,
-			Validations: []sdk.Validation{
-				sdk.ValidationRequired{},
-			},
+			Validations: []sdk.Validation{},
+		},
+		"topics": {
+			Default:     "",
+			Description: "topics is a comma separated list of Kafka topics to read from.",
+			Type:        sdk.ParameterTypeString,
+			Validations: []sdk.Validation{},
 		},
 	}
 }

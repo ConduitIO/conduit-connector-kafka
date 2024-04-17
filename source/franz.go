@@ -37,7 +37,7 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
 	opts = append(opts, []kgo.Opt{
 		kgo.ConsumerGroup(cfg.GroupID),
-		kgo.ConsumeTopics(cfg.Topic),
+		kgo.ConsumeTopics(cfg.Topics...),
 	}...)
 
 	if !cfg.ReadFromBeginning {

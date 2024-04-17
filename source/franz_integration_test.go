@@ -28,12 +28,12 @@ func TestFranzConsumer_Consume_FromBeginning(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, false))
 	cfg.ReadFromBeginning = true
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopic(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic, records)
+	test.CreateTopics(t, cfg.Servers, cfg.Topics)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -56,12 +56,12 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, false))
 	cfg.ReadFromBeginning = false
 
 	records := test.GenerateFranzRecords(1, 6)
-	test.CreateTopic(t, cfg.Servers, cfg.Topic)
-	test.Produce(t, cfg.Servers, cfg.Topic, records)
+	test.CreateTopics(t, cfg.Servers, cfg.Topics)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
 	c, err := NewFranzConsumer(ctx, cfg)
 	is.NoErr(err)
@@ -77,7 +77,7 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	is.Equal(got, nil)
 
 	records = test.GenerateFranzRecords(7, 9)
-	test.Produce(t, cfg.Servers, cfg.Topic, records)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
 	for i := 0; i < len(records); i++ {
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -86,4 +86,41 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 		is.NoErr(err)
 		is.Equal(got.Key, records[i].Key)
 	}
+}
+
+func TestFranzConsumer_Consume_MultipleTopics(t *testing.T) {
+	t.Parallel()
+	is := is.New(t)
+	ctx := context.Background()
+
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, true))
+	cfg.ReadFromBeginning = true
+
+	records := test.GenerateFranzRecords(1, 6)
+	test.CreateTopics(t, cfg.Servers, cfg.Topics)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], records[0:3])
+	test.Produce(t, cfg.Servers, cfg.Topics[1], records[3:])
+
+	c, err := NewFranzConsumer(ctx, cfg)
+	is.NoErr(err)
+	defer func() {
+		err := c.Close(ctx)
+		is.NoErr(err)
+	}()
+
+	topic1 := 0
+	topic2 := 0
+	for i := 0; i < len(records); i++ {
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		got, err := c.Consume(ctx)
+		is.NoErr(err)
+		if got.Topic == cfg.Topics[0] {
+			topic1++
+		} else if got.Topic == cfg.Topics[1] {
+			topic2++
+		}
+	}
+	is.Equal(topic1, 3)
+	is.Equal(topic2, 3)
 }

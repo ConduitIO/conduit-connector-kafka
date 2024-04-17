@@ -26,10 +26,13 @@ import (
 )
 
 func TestAcceptance(t *testing.T) {
-	cfg := map[string]string{
+	srcCfg := map[string]string{
 		"servers": "localhost:9092",
 		// source params
 		"readFromBeginning": "true",
+	}
+	destCfg := map[string]string{
+		"servers": "localhost:9092",
 		// destination params
 		"batchBytes":  "1000012",
 		"acks":        "all",
@@ -40,12 +43,14 @@ func TestAcceptance(t *testing.T) {
 		ConfigurableAcceptanceTestDriver: sdk.ConfigurableAcceptanceTestDriver{
 			Config: sdk.ConfigurableAcceptanceTestDriverConfig{
 				Connector:         Connector,
-				SourceConfig:      cfg,
-				DestinationConfig: cfg,
+				SourceConfig:      srcCfg,
+				DestinationConfig: destCfg,
 
 				BeforeTest: func(t *testing.T) {
 					lastSlash := strings.LastIndex(t.Name(), "/")
-					cfg["topic"] = t.Name()[lastSlash+1:] + uuid.NewString()
+					randomName := t.Name()[lastSlash+1:] + uuid.NewString()
+					srcCfg["topics"] = randomName
+					destCfg["topic"] = randomName
 				},
 
 				Skip: []string{
@@ -69,7 +74,7 @@ type AcceptanceTestDriver struct {
 // group which results in slow reads. This speeds up the destination tests.
 func (d AcceptanceTestDriver) ReadFromDestination(t *testing.T, records []sdk.Record) []sdk.Record {
 	cfg := test.ParseConfigMap[source.Config](t, d.SourceConfig(t))
-	kgoRecs := test.Consume(t, cfg.Servers, cfg.Topic, len(records))
+	kgoRecs := test.Consume(t, cfg.Servers, cfg.Topics[0], len(records))
 
 	recs := make([]sdk.Record, len(kgoRecs))
 	for i, rec := range kgoRecs {
