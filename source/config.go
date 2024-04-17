@@ -53,10 +53,10 @@ func (c *Config) Validate(ctx context.Context) error {
 		multierr = append(multierr, fmt.Errorf("required parameter missing: %q", "topics"))
 	}
 	if len(c.Topic) > 0 && len(c.Topics) > 0 {
-		multierr = append(multierr, fmt.Errorf(`can't provide both "topic" and "topics" params, "topic" will be deprecated soon, please only provide the "topics" parameter instead`))
+		multierr = append(multierr, fmt.Errorf(`can't provide both "topic" and "topics" parameters, "topic" is deprecated and will be removed, use the "topics" parameter instead`))
 	}
 	if len(c.Topic) > 0 && len(c.Topics) == 0 {
-		sdk.Logger(ctx).Warn().Msg(`"topic" parameter will be deprecated soon, please use "topics" instead.`)
+		sdk.Logger(ctx).Warn().Msg(`"topic" parameter is deprecated and will be removed, please use "topics" instead.`)
 		// add the topic value to the topics slice.
 		c.Topics = make([]string, 1)
 		c.Topics[0] = c.Topic
