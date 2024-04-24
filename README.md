@@ -1,7 +1,7 @@
 # Conduit Connector Kafka
 
 The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) builtin plugins. It provides both, a
-source and a destination connector for [Apache Kafka](https://kafka.apache.org).
+source and a destination connector for [Apache Kafka](https://kafka.apache.org). <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0" />
 
 ## How to build?
 
