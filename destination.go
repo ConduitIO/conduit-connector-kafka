@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka
+package redpanda
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
-	"github.com/conduitio/conduit-connector-kafka/destination"
+	"github.com/conduitio-labs/conduit-connector-redpanda/destination"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 

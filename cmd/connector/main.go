@@ -15,10 +15,10 @@
 package main
 
 import (
-	kafka "github.com/conduitio/conduit-connector-kafka"
+	redpanda "github.com/conduitio-labs/conduit-connector-redpanda"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
 func main() {
-	sdk.Serve(kafka.Connector)
+	sdk.Serve(redpanda.Connector)
 }

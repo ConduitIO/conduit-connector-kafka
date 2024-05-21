@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka
+package redpanda
 
 import (
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -22,13 +22,13 @@ import (
 // Default version matches default from runtime/debug.
 var version = "(devel)"
 
-// Specification returns the Kafka plugin's specification.
+// Specification returns the Redpanda plugin's specification.
 // Any changes here must also be reflected in the ReadMe.
 func Specification() sdk.Specification {
 	return sdk.Specification{
-		Name:        "kafka",
-		Summary:     "A Kafka source and destination plugin for Conduit, written in Go.",
-		Description: "A Kafka source and destination plugin for Conduit, written in Go.",
+		Name:        "redpanda",
+		Summary:     "A Redpanda source and destination plugin for Conduit, written in Go.",
+		Description: "A Redpanda source and destination plugin for Conduit, written in Go.",
 		Version:     version,
 		Author:      "Meroxa, Inc.",
 	}

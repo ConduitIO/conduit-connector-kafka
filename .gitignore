@@ -2,9 +2,12 @@
 .idea
 
 # Binary built with `make build`
-/conduit-connector-kafka
+/conduit-connector-redpanda
 
 # GoReleaser output
 dist/
 
 .DS_Store
+
+# vim
+*.swp

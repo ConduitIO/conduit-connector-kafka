@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/conduitio/conduit-connector-kafka/common"
+	"github.com/conduitio-labs/conduit-connector-redpanda/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
 )

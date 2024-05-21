@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka
+package redpanda
 
 import (
 	"context"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/destination"
-	"github.com/conduitio/conduit-connector-kafka/test"
+	"github.com/conduitio-labs/conduit-connector-redpanda/destination"
+	"github.com/conduitio-labs/conduit-connector-redpanda/test"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 	"go.uber.org/mock/gomock"

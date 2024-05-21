@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package kafka contains implementations for Kafka source and destination
+// Package repanda contains implementations for Redpanda source and destination
 // connectors for Conduit.
-package kafka
+package redpanda
 
 import (
 	sdk "github.com/conduitio/conduit-connector-sdk"

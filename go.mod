@@ -1,4 +1,4 @@
-module github.com/conduitio/conduit-connector-kafka
+module github.com/conduitio-labs/conduit-connector-redpanda
 
 go 1.21.1
 

@@ -20,8 +20,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/common"
-	"github.com/conduitio/conduit-connector-kafka/test"
+	"github.com/conduitio-labs/conduit-connector-redpanda/common"
+	"github.com/conduitio-labs/conduit-connector-redpanda/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
