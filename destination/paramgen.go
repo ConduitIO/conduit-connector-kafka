@@ -36,7 +36,7 @@ func (Config) Parameters() map[string]sdk.Parameter {
 			Validations: []sdk.Validation{},
 		},
 		"clientID": {
-			Default:     "conduit-connector-kafka",
+			Default:     "conduit-connector-redpanda",
 			Description: "clientID is a unique identifier for client connections established by this connector.",
 			Type:        sdk.ParameterTypeString,
 			Validations: []sdk.Validation{},

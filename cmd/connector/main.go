@@ -1,4 +1,4 @@
-// Copyright © 2022 Meroxa, Inc.
+// Copyright © 2024 Meroxa, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 package main
 
 import (
-	kafka "github.com/conduitio/conduit-connector-kafka"
+	redpanda "github.com/conduitio-labs/conduit-connector-redpanda"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
 func main() {
-	sdk.Serve(kafka.Connector)
+	sdk.Serve(redpanda.Connector)
 }

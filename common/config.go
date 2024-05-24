@@ -36,7 +36,7 @@ type Config struct {
 
 	// ClientID is a unique identifier for client connections established by
 	// this connector.
-	ClientID string `json:"clientID" default:"conduit-connector-kafka"`
+	ClientID string `json:"clientID" default:"conduit-connector-redpanda"`
 
 	ConfigSASL
 	ConfigTLS

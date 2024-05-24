@@ -1,4 +1,4 @@
-// Copyright © 2022 Meroxa, Inc.
+// Copyright © 2024 Meroxa, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kafka
+package redpanda
 
 import (
 	"context"
 	"testing"
 
-	"github.com/conduitio/conduit-connector-kafka/destination"
-	"github.com/conduitio/conduit-connector-kafka/source"
-	"github.com/conduitio/conduit-connector-kafka/test"
+	"github.com/conduitio-labs/conduit-connector-redpanda/destination"
+	"github.com/conduitio-labs/conduit-connector-redpanda/source"
+	"github.com/conduitio-labs/conduit-connector-redpanda/test"
 	"github.com/matryer/is"
 )
 

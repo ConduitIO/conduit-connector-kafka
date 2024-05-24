@@ -1,8 +1,6 @@
-module github.com/conduitio/conduit-connector-kafka
+module github.com/conduitio-labs/conduit-connector-redpanda
 
-go 1.21.1
-
-toolchain go1.22.2
+go 1.22.3
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3

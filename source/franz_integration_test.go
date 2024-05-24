@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/conduitio/conduit-connector-kafka/test"
+	"github.com/conduitio-labs/conduit-connector-redpanda/test"
 	"github.com/matryer/is"
 )
 
