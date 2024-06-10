@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/matryer/is v1.4.1
 	github.com/rs/zerolog v1.32.0
-	github.com/twmb/franz-go v1.16.1
+	github.com/twmb/franz-go v1.17.0
 	github.com/twmb/franz-go/pkg/kadm v1.12.0
 	go.uber.org/mock v0.4.0
 )
