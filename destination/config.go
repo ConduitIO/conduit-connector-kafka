@@ -149,6 +149,11 @@ func (c Config) ParseTopic() (topic string, f TopicFn, err error) {
 		if err := t.Execute(&buf, r); err != nil {
 			return "", fmt.Errorf("failed to execute topic template: %w", err)
 		}
-		return buf.String(), nil
+		topic := buf.String()
+		if topic == "" {
+			return "", fmt.Errorf("topic not found on record %s", r.Key.Bytes())
+		}
+
+		return topic, nil
 	}, nil
 }
