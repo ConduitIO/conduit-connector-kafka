@@ -151,7 +151,10 @@ func (c Config) ParseTopic() (topic string, f TopicFn, err error) {
 		}
 		topic := buf.String()
 		if topic == "" {
-			return "", fmt.Errorf("topic not found on record %s using template %s", r.Key.Bytes(), c.Topic)
+			return "", fmt.Errorf(
+				"topic not found on record %s using template %s",
+				string(r.Key.Bytes()), c.Topic,
+			)
 		}
 
 		return topic, nil
