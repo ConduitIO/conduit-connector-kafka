@@ -98,11 +98,13 @@ func TestConfig_ParseTopic_DoesErrorOnTopicNotFound(t *testing.T) {
 	is.Equal(topic, "")
 
 	rec := sdk.Record{
+		Key: sdk.RawData("testkey"),
 		Metadata: map[string]string{
 			"topic": "testtopic",
 		},
 	}
 	topic, err = getTopic(rec)
+	is.True(err != nil)                                                 // expected error on topic not found
 	is.True(strings.Contains(err.Error(), "topic not found on record")) // expected topic not found error
 
 	is.Equal(topic, "")
