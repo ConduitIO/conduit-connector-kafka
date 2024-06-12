@@ -87,7 +87,7 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestConfig_ParseTopic_ErrorOnTopicNotFound(t *testing.T) {
+func TestConfig_ParseTopic_DoesErrorOnTopicNotFound(t *testing.T) {
 	is := is.New(t)
 	template := `{{ index .Metadata "topiccc" }}`
 
