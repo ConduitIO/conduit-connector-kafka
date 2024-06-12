@@ -87,7 +87,7 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestConfig_ParseTopic_ErrorOnIndexNotFound(t *testing.T) {
+func TestConfig_ParseTopic_ErrorOnTopicNotFound(t *testing.T) {
 	is := is.New(t)
 	template := `{{ index .Metadata "topiccc" }}`
 
@@ -103,7 +103,7 @@ func TestConfig_ParseTopic_ErrorOnIndexNotFound(t *testing.T) {
 		},
 	}
 	topic, err = getTopic(rec)
-	is.True(err != nil) // expected error on topic not found
+	is.True(strings.Contains(err.Error(), "topic not found on record")) // expected topic not found error
 
 	is.Equal(topic, "")
 }
