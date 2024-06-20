@@ -54,12 +54,6 @@ func TestAcceptance(t *testing.T) {
 					destCfg["topic"] = randomName
 				},
 
-				Skip: []string{
-					// Configure tests are faulty since we rely on paramgen to validate required parameters.
-					"TestSource_Configure_RequiredParams",
-					"TestDestination_Configure_RequiredParams",
-				},
-
 				WriteTimeout: time.Second * 10,
 				ReadTimeout:  time.Second * 10,
 			},
