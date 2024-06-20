@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/conduitio/conduit-commons/csync"
+	"github.com/conduitio/conduit-commons/opencdc"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/conduitio/conduit-connector-sdk/kafkaconnect"
 	"github.com/goccy/go-json"
@@ -32,7 +33,7 @@ type FranzProducer struct {
 	// getTopic is a function that returns the topic for a record. If nil, the
 	// producer will use the default topic. This function is not safe for
 	// concurrent use.
-	getTopic func(sdk.Record) (string, error)
+	getTopic func(opencdc.Record) (string, error)
 }
 
 var _ Producer = (*FranzProducer)(nil)
@@ -76,7 +77,7 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 	}, nil
 }
 
-func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int, error) {
+func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (int, error) {
 	if len(records) == 1 {
 		// Fast path for a single record.
 		rec, err := p.prepareRecord(records[0])
@@ -137,7 +138,7 @@ func (p *FranzProducer) Produce(ctx context.Context, records []sdk.Record) (int,
 	return len(results), nil
 }
 
-func (p *FranzProducer) prepareRecord(r sdk.Record) (*kgo.Record, error) {
+func (p *FranzProducer) prepareRecord(r opencdc.Record) (*kgo.Record, error) {
 	encodedKey, err := p.keyEncoder.Encode(r.Key)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode key: %w", err)
@@ -168,13 +169,13 @@ func (p *FranzProducer) Close(_ context.Context) error {
 // a certain format. The producer uses this to encode the key of the kafka
 // message.
 type dataEncoder interface {
-	Encode(sdk.Data) ([]byte, error)
+	Encode(opencdc.Data) ([]byte, error)
 }
 
 // bytesEncoder is a dataEncoder that simply calls data.Bytes().
 type bytesEncoder struct{}
 
-func (bytesEncoder) Encode(data sdk.Data) ([]byte, error) {
+func (bytesEncoder) Encode(data opencdc.Data) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
@@ -182,7 +183,7 @@ func (bytesEncoder) Encode(data sdk.Data) ([]byte, error) {
 // (NB: this is not the same as JSONSchema).
 type kafkaConnectEncoder struct{}
 
-func (e kafkaConnectEncoder) Encode(data sdk.Data) ([]byte, error) {
+func (e kafkaConnectEncoder) Encode(data opencdc.Data) ([]byte, error) {
 	sd := e.toStructuredData(data)
 	schema := kafkaconnect.Reflect(sd)
 	if schema == nil {
@@ -202,15 +203,15 @@ func (e kafkaConnectEncoder) Encode(data sdk.Data) ([]byte, error) {
 }
 
 // toStructuredData tries its best to return StructuredData.
-func (kafkaConnectEncoder) toStructuredData(d sdk.Data) sdk.Data {
+func (kafkaConnectEncoder) toStructuredData(d opencdc.Data) opencdc.Data {
 	switch d := d.(type) {
 	case nil:
 		return nil
-	case sdk.StructuredData:
+	case opencdc.StructuredData:
 		return d
-	case sdk.RawData:
+	case opencdc.RawData:
 		// try parsing the raw data as json
-		var sd sdk.StructuredData
+		var sd opencdc.StructuredData
 		err := json.Unmarshal(d, &sd)
 		if err != nil {
 			// it's not JSON, nothing more we can do

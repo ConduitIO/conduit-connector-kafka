@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -55,7 +55,7 @@ func (mr *MockProducerMockRecorder) Close(arg0 any) *gomock.Call {
 }
 
 // Produce mocks base method.
-func (m *MockProducer) Produce(arg0 context.Context, arg1 []sdk.Record) (int, error) {
+func (m *MockProducer) Produce(arg0 context.Context, arg1 []opencdc.Record) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Produce", arg0, arg1)
 	ret0, _ := ret[0].(int)

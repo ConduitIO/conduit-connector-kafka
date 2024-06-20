@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/conduitio/conduit-commons/config"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/destination"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
@@ -34,14 +36,14 @@ func NewDestination() sdk.Destination {
 	return sdk.DestinationWithMiddleware(&Destination{}, sdk.DefaultDestinationMiddleware()...)
 }
 
-func (d *Destination) Parameters() map[string]sdk.Parameter {
+func (d *Destination) Parameters() config.Parameters {
 	return destination.Config{}.Parameters()
 }
 
-func (d *Destination) Configure(_ context.Context, cfg map[string]string) error {
+func (d *Destination) Configure(_ context.Context, cfg config.Config) error {
 	var config destination.Config
 
-	err := sdk.Util.ParseConfig(cfg, &config)
+	err := sdk.Util.ParseConfig(ctx, cfg, &config)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func (d *Destination) Open(ctx context.Context) error {
 	return nil
 }
 
-func (d *Destination) Write(ctx context.Context, records []sdk.Record) (int, error) {
+func (d *Destination) Write(ctx context.Context, records []opencdc.Record) (int, error) {
 	return d.producer.Produce(ctx, records)
 }
 

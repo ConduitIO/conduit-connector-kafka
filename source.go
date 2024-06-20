@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/conduitio/conduit-commons/config"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
@@ -38,14 +40,14 @@ func NewSource() sdk.Source {
 	return sdk.SourceWithMiddleware(&Source{}, sdk.DefaultSourceMiddleware()...)
 }
 
-func (s *Source) Parameters() map[string]sdk.Parameter {
+func (s *Source) Parameters() config.Parameters {
 	return source.Config{}.Parameters()
 }
 
-func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
+func (s *Source) Configure(ctx context.Context, cfg config.Config) error {
 	var config source.Config
 
-	err := sdk.Util.ParseConfig(cfg, &config)
+	err := sdk.Util.ParseConfig(ctx, cfg, &config)
 	if err != nil {
 		return err
 	}
@@ -58,7 +60,7 @@ func (s *Source) Configure(ctx context.Context, cfg map[string]string) error {
 	return nil
 }
 
-func (s *Source) Open(ctx context.Context, sdkPos sdk.Position) error {
+func (s *Source) Open(ctx context.Context, sdkPos opencdc.Position) error {
 	err := s.config.TryDial(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to dial broker: %w", err)
@@ -89,13 +91,13 @@ func (s *Source) Open(ctx context.Context, sdkPos sdk.Position) error {
 	return nil
 }
 
-func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
+func (s *Source) Read(ctx context.Context) (opencdc.Record, error) {
 	rec, err := s.consumer.Consume(ctx)
 	if err != nil {
-		return sdk.Record{}, fmt.Errorf("failed getting a record: %w", err)
+		return opencdc.Record{}, fmt.Errorf("failed getting a record: %w", err)
 	}
 
-	metadata := sdk.Metadata{}
+	metadata := opencdc.Metadata{}
 	metadata.SetCollection(rec.Topic)
 	metadata.SetCreatedAt(rec.Timestamp)
 	for _, h := range rec.Headers {
@@ -110,12 +112,12 @@ func (s *Source) Read(ctx context.Context) (sdk.Record, error) {
 			Offset:    rec.Offset,
 		}.ToSDKPosition(),
 		metadata,
-		sdk.RawData(rec.Key),
-		sdk.RawData(rec.Value),
+		opencdc.RawData(rec.Key),
+		opencdc.RawData(rec.Value),
 	), nil
 }
 
-func (s *Source) Ack(ctx context.Context, _ sdk.Position) error {
+func (s *Source) Ack(ctx context.Context, _ opencdc.Position) error {
 	return s.consumer.Ack(ctx)
 }
 

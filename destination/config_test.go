@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/matryer/is"
 )
 
@@ -97,8 +97,8 @@ func TestConfig_ParseTopic_DoesErrorOnTopicNotFound(t *testing.T) {
 
 	is.Equal(topic, "")
 
-	rec := sdk.Record{
-		Key: sdk.RawData("testkey"),
+	rec := opencdc.Record{
+		Key: opencdc.RawData("testkey"),
 		Metadata: map[string]string{
 			"topic": "testtopic",
 		},
