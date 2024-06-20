@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	topicRegex     = regexp.MustCompile(`^[a-zA-Z0-9\._\-]+$`)
+	topicRegex     = regexp.MustCompile(`^[a-zA-Z0-9._\-]+$`)
 	maxTopicLength = 249
 )
 

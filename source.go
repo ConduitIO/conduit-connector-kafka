@@ -45,18 +45,14 @@ func (s *Source) Parameters() config.Parameters {
 }
 
 func (s *Source) Configure(ctx context.Context, cfg config.Config) error {
-	var config source.Config
-
-	err := sdk.Util.ParseConfig(ctx, cfg, &config)
+	err := sdk.Util.ParseConfig(ctx, cfg, &s.config, NewSource().Parameters())
 	if err != nil {
 		return err
 	}
-	err = config.Validate(ctx)
+	err = s.config.Validate(ctx)
 	if err != nil {
 		return err
 	}
-
-	s.config = config
 	return nil
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -76,7 +75,7 @@ func TestSource_Read(t *testing.T) {
 			"kafka.header.header-b":    string([]byte{0, 1, 2}),
 		},
 		Key: opencdc.RawData(rec.Key),
-		Payload: sdk.Change{
+		Payload: opencdc.Change{
 			After: opencdc.RawData(rec.Value),
 		},
 	}

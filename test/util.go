@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/conduitio/conduit-commons/config"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -90,12 +91,12 @@ func DestinationConfigMap(t T) map[string]string {
 	return m
 }
 
-func ParseConfigMap[C any](t T, cfg map[string]string) C {
+func ParseConfigMap[C any](t T, cfg config.Config) C {
 	is := is.New(t)
 	is.Helper()
 
 	var out C
-	err := sdk.Util.ParseConfig(ctx, cfg, &out)
+	err := cfg.DecodeInto(&out)
 	is.NoErr(err)
 
 	return out
