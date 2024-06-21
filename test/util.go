@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/conduitio/conduit-commons/config"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
@@ -89,12 +91,12 @@ func DestinationConfigMap(t T) map[string]string {
 	return m
 }
 
-func ParseConfigMap[C any](t T, cfg map[string]string) C {
+func ParseConfigMap[C any](t T, cfg config.Config) C {
 	is := is.New(t)
 	is.Helper()
 
 	var out C
-	err := sdk.Util.ParseConfig(cfg, &out)
+	err := cfg.DecodeInto(&out)
 	is.NoErr(err)
 
 	return out
@@ -164,19 +166,19 @@ func GenerateFranzRecords(from, to int, topicOpt ...string) []*kgo.Record {
 	return recs
 }
 
-func GenerateSDKRecords(from, to int, topicOpt ...string) []sdk.Record {
+func GenerateSDKRecords(from, to int, topicOpt ...string) []opencdc.Record {
 	recs := GenerateFranzRecords(from, to, topicOpt...)
-	sdkRecs := make([]sdk.Record, len(recs))
+	sdkRecs := make([]opencdc.Record, len(recs))
 	for i, rec := range recs {
-		metadata := sdk.Metadata{}
+		metadata := opencdc.Metadata{}
 		metadata.SetCollection(rec.Topic)
 		metadata.SetCreatedAt(rec.Timestamp)
 
 		sdkRecs[i] = sdk.Util.Source.NewRecordCreate(
 			[]byte(uuid.NewString()),
 			metadata,
-			sdk.RawData(rec.Key),
-			sdk.RawData(rec.Value),
+			opencdc.RawData(rec.Key),
+			opencdc.RawData(rec.Value),
 		)
 	}
 	return sdkRecs

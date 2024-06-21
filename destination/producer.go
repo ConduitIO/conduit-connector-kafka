@@ -19,13 +19,13 @@ package destination
 import (
 	"context"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 )
 
 // Producer is a kafka producer.
 type Producer interface {
 	// Produce sends all records to Kafka synchronously.
-	Produce(context.Context, []sdk.Record) (int, error)
+	Produce(context.Context, []opencdc.Record) (int, error)
 	// Close this producer and the associated resources.
 	Close(context.Context) error
 }

@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/destination"
 	"github.com/conduitio/conduit-connector-kafka/test"
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 	"go.uber.org/mock/gomock"
 )
@@ -54,7 +54,7 @@ func TestDestination_Write_Produce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ctx := context.Background()
 
-	recs := []sdk.Record{{}}
+	recs := []opencdc.Record{{}}
 	producerMock := destination.NewMockProducer(ctrl)
 	producerMock.EXPECT().Produce(ctx, recs).Return(1, nil)
 
