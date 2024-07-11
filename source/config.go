@@ -41,8 +41,6 @@ type Config struct {
 	GroupID string `json:"groupID"`
 	// RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.
 	RetryGroupJoinErrors bool `json:"retryGroupJoinErrors" default:"true"`
-	// RetryLeaderErrors determines whether the connector will continually retry on leader errors.
-	RetryLeaderErrors bool `json:"retryLeaderErrors" default:"true"`
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.

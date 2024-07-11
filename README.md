@@ -44,7 +44,6 @@ A source is getting associated with a consumer group ID the first time the `Read
 | `saslUsername`       | SASL username. If provided, a password needs to be provided too.                                                                                                                                             | false    |                           |
 | `saslPassword`       | SASL password. If provided, a username needs to be provided too.                                                                                                                                             | false    |                           |
 | `retryGroupJoinErrors`       | determines whether the connector will continually retry on group join errors                                                                                                                                              | false    | `true` |
-| `retryLeaderErrors`       |    determines whether the connector will continually retry on leader errors                                                                                       | false    | `true` |
 
 ## Destination
 

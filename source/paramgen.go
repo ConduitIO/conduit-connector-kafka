@@ -57,12 +57,6 @@ func (Config) Parameters() map[string]config.Parameter {
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"retryLeaderErrors": {
-			Default:     "true",
-			Description: "RetryLeaderErrors determines whether the connector will continually retry on leader errors.",
-			Type:        config.ParameterTypeBool,
-			Validations: []config.Validation{},
-		},
 		"saslMechanism": {
 			Default:     "",
 			Description: "Mechanism configures the connector to use SASL authentication. If\nempty, no authentication will be performed.",
