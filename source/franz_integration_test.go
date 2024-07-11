@@ -28,7 +28,7 @@ func TestFranzConsumer_Consume_FromBeginning(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, false))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, false, false, false))
 	cfg.ReadFromBeginning = true
 
 	records := test.GenerateFranzRecords(1, 6)
@@ -56,7 +56,7 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, false))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, false, false, false))
 	cfg.ReadFromBeginning = false
 
 	records := test.GenerateFranzRecords(1, 6)
@@ -93,7 +93,7 @@ func TestFranzConsumer_Consume_MultipleTopics(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, true))
+	cfg := test.ParseConfigMap[Config](t, test.SourceConfigMap(t, true, false, false))
 	cfg.ReadFromBeginning = true
 
 	records := test.GenerateFranzRecords(1, 6)

@@ -16,12 +16,14 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -39,7 +41,7 @@ func TestSource_Teardown_Success(t *testing.T) {
 		Close(context.Background()).
 		Return(nil)
 
-	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, true))
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, true, false, false))
 
 	underTest := Source{consumer: consumerMock, config: cfg}
 	is.NoErr(underTest.Teardown(context.Background()))
@@ -86,11 +88,34 @@ func TestSource_Read(t *testing.T) {
 		Consume(gomock.Any()).
 		Return((*source.Record)(rec), nil)
 
-	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, false))
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, false, false, false))
 	underTest := Source{consumer: consumerMock, config: cfg}
 	got, err := underTest.Read(context.Background())
 	is.NoErr(err)
 	is.True(got.Metadata[opencdc.MetadataReadAt] != "")
 	want.Metadata[opencdc.MetadataReadAt] = got.Metadata[opencdc.MetadataReadAt]
 	is.Equal(cmp.Diff(want, got, cmpopts.IgnoreUnexported(opencdc.Record{})), "")
+}
+
+func TestSource_Read_RetryJoinError(t *testing.T) {
+	is := is.New(t)
+	ctrl := gomock.NewController(t)
+
+	rec := test.GenerateFranzRecords(0, 0, "foo")[0]
+	rec.Headers = []kgo.RecordHeader{
+		{Key: "header-a", Value: []byte("value-a")},
+		{Key: "header-b", Value: []byte{0, 1, 2}},
+	}
+
+	consumerMock := source.NewMockConsumer(ctrl)
+	consumerMock.
+		EXPECT().
+		Consume(gomock.Any()).
+		Return(nil, errors.New("unable to join group session: unable to dial: dial tcp 127.0.0.1:9092: connect: connection refused"))
+
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, false, true, true))
+	underTest := Source{consumer: consumerMock, config: cfg}
+	_, err := underTest.Read(context.Background())
+	is.True(err != nil)
+	is.True(errors.Is(err, sdk.ErrBackoffRetry))
 }
