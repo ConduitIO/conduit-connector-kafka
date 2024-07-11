@@ -16,17 +16,13 @@ package kafka
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/conduitio/conduit-commons/config"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/uuid"
-	"github.com/twmb/franz-go/pkg/kerr"
-	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 const (
@@ -94,22 +90,6 @@ func (s *Source) Open(ctx context.Context, sdkPos opencdc.Position) error {
 func (s *Source) Read(ctx context.Context) (opencdc.Record, error) {
 	rec, err := s.consumer.Consume(ctx)
 	if err != nil {
-		var errGroupSession *kgo.ErrGroupSession
-		if s.config.RetryGroupJoinErrors &&
-			(errors.As(err, &errGroupSession) || strings.Contains(err.Error(), "unable to join group session")) {
-			sdk.Logger(ctx).Error().Msgf("group session error, retrying: %s", err.Error())
-			return opencdc.Record{}, sdk.ErrBackoffRetry
-		}
-		if s.config.RetryLeaderErrors {
-			switch err {
-			case kerr.LeaderNotAvailable,
-				kerr.EligibleLeadersNotAvailable,
-				kerr.PreferredLeaderNotAvailable,
-				kerr.BrokerNotAvailable:
-				sdk.Logger(ctx).Error().Msgf("ephemeral error connecting to broker or leader, retrying: %s", err.Error())
-				return opencdc.Record{}, sdk.ErrBackoffRetry
-			}
-		}
 		return opencdc.Record{}, fmt.Errorf("failed getting a record: %w", err)
 	}
 

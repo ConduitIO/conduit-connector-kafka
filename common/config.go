@@ -76,7 +76,7 @@ func (c Config) TryDial(ctx context.Context) error {
 		case <-ctx.Done():
 			return err
 		case <-time.After(time.Second):
-			sdk.Logger(ctx).Info().Msg("failed to dial broker, trying again...")
+			sdk.Logger(ctx).Warn().Msg("failed to dial broker, trying again...")
 			// ping again
 		}
 	}

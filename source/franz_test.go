@@ -17,16 +17,20 @@ package source
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
+	"go.uber.org/mock/gomock"
 )
 
 func TestFranzConsumer_Opts(t *testing.T) {
@@ -63,4 +67,74 @@ func TestFranzConsumer_Opts(t *testing.T) {
 	is.Equal(c.client.OptValue(kgo.ClientID), cfg.ClientID)
 	is.Equal(cmp.Diff(c.client.OptValue(kgo.DialTLSConfig), cfg.TLS(), cmpopts.IgnoreUnexported(tls.Config{})), "")
 	is.Equal(c.client.OptValue(kgo.SASL).([]sasl.Mechanism)[0].Name(), cfg.SASL().Name())
+}
+
+func Test_FranzConsumer_Consume_Success(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	cl := NewMockClient(gomock.NewController(t))
+	cl.EXPECT().
+		PollFetches(gomock.Any()).
+		Return([]kgo.Fetch{{
+			Topics: []kgo.FetchTopic{{
+				Topic: "test",
+				Partitions: []kgo.FetchPartition{{
+					Partition: 0,
+					Err:       nil,
+					Records: []*kgo.Record{
+						{
+							Key:       []byte("hi"),
+							Value:     []byte("hello"),
+							Partition: 0,
+							Offset:    1,
+							Timestamp: time.Now(),
+							Topic:     "test",
+						},
+					},
+				}},
+			}},
+		}}).
+		Times(1)
+
+	c := &FranzConsumer{
+		client:               cl,
+		acker:                newBatchAcker(cl, 1000),
+		iter:                 &kgo.FetchesRecordIter{},
+		retryGroupJoinErrors: true,
+	}
+
+	r, err := c.Consume(ctx)
+	is.NoErr(err)
+	is.Equal(r.Key, []byte("hi"))
+	is.Equal(r.Value, []byte("hello"))
+}
+
+func Test_FranzConsumer_Consume_RetryGroupJoinError(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	cl := NewMockClient(gomock.NewController(t))
+	cl.EXPECT().
+		PollFetches(gomock.Any()).
+		Return([]kgo.Fetch{{
+			Topics: []kgo.FetchTopic{{
+				Topic: "",
+				Partitions: []kgo.FetchPartition{{
+					Partition: 0,
+					Err:       errors.New("unable to join group session: unable to dial: dial tcp 127.0.0.1:9092: connect: connection refused"),
+				}},
+			}},
+		}}).
+		Times(1)
+
+	c := &FranzConsumer{
+		client:               cl,
+		acker:                newBatchAcker(cl, 1000),
+		iter:                 &kgo.FetchesRecordIter{},
+		retryGroupJoinErrors: true,
+	}
+
+	_, err := c.Consume(ctx)
+	is.True(errors.Is(err, sdk.ErrBackoffRetry))
 }
