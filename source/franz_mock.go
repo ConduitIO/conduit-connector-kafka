@@ -40,6 +40,18 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
+// AllowRebalance mocks base method.
+func (m *MockClient) AllowRebalance() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AllowRebalance")
+}
+
+// AllowRebalance indicates an expected call of AllowRebalance.
+func (mr *MockClientMockRecorder) AllowRebalance() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowRebalance", reflect.TypeOf((*MockClient)(nil).AllowRebalance))
+}
+
 // Close mocks base method.
 func (m *MockClient) Close() {
 	m.ctrl.T.Helper()

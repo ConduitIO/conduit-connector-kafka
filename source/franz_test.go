@@ -17,14 +17,12 @@ package source
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"regexp"
 	"testing"
 	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/conduitio/conduit-connector-kafka/test"
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -98,43 +96,13 @@ func Test_FranzConsumer_Consume_Success(t *testing.T) {
 		Times(1)
 
 	c := &FranzConsumer{
-		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
-		iter:                 &kgo.FetchesRecordIter{},
-		retryGroupJoinErrors: true,
+		client: cl,
+		acker:  newBatchAcker(cl, 1000),
+		iter:   &kgo.FetchesRecordIter{},
 	}
 
 	r, err := c.Consume(ctx)
 	is.NoErr(err)
 	is.Equal(r.Key, []byte("hi"))
 	is.Equal(r.Value, []byte("hello"))
-}
-
-func Test_FranzConsumer_Consume_RetryGroupJoinError(t *testing.T) {
-	is := is.New(t)
-	ctx := context.Background()
-
-	cl := NewMockClient(gomock.NewController(t))
-	cl.EXPECT().
-		PollFetches(gomock.Any()).
-		Return([]kgo.Fetch{{
-			Topics: []kgo.FetchTopic{{
-				Topic: "",
-				Partitions: []kgo.FetchPartition{{
-					Partition: 0,
-					Err:       errors.New("unable to join group session: unable to dial: dial tcp 127.0.0.1:9092: connect: connection refused"),
-				}},
-			}},
-		}}).
-		Times(1)
-
-	c := &FranzConsumer{
-		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
-		iter:                 &kgo.FetchesRecordIter{},
-		retryGroupJoinErrors: true,
-	}
-
-	_, err := c.Consume(ctx)
-	is.True(errors.Is(err, sdk.ErrBackoffRetry))
 }

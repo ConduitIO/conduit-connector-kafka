@@ -69,10 +69,9 @@ func ConfigMap() map[string]string {
 	}
 }
 
-func SourceConfigMap(t T, multipleTopics, retryGroupJoinErrors bool) map[string]string {
+func SourceConfigMap(t T, multipleTopics bool) map[string]string {
 	m := ConfigMap()
 	m["readFromBeginning"] = "true"
-	m["retryGroupJoinErrors"] = fmt.Sprint(retryGroupJoinErrors)
 	m["topics"] = getRandomTopicName(t)
 	if multipleTopics {
 		m["topics"] = m["topics"] + "," + getRandomTopicName(t)

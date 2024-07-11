@@ -51,12 +51,6 @@ func (Config) Parameters() map[string]config.Parameter {
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"retryGroupJoinErrors": {
-			Default:     "true",
-			Description: "RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.",
-			Type:        config.ParameterTypeBool,
-			Validations: []config.Validation{},
-		},
 		"saslMechanism": {
 			Default:     "",
 			Description: "Mechanism configures the connector to use SASL authentication. If\nempty, no authentication will be performed.",

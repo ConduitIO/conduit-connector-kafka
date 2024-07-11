@@ -28,7 +28,7 @@ import (
 func TestSource_Integration_RestartFull(t *testing.T) {
 	t.Parallel()
 
-	cfgMap := test.SourceConfigMap(t, true, false)
+	cfgMap := test.SourceConfigMap(t, true)
 	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)
@@ -44,7 +44,7 @@ func TestSource_Integration_RestartFull(t *testing.T) {
 func TestSource_Integration_RestartPartial(t *testing.T) {
 	t.Parallel()
 
-	cfgMap := test.SourceConfigMap(t, true, false)
+	cfgMap := test.SourceConfigMap(t, true)
 	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)

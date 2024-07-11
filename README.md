@@ -43,7 +43,6 @@ A source is getting associated with a consumer group ID the first time the `Read
 | `saslMechanism`      | SASL mechanism to be used. Possible values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512. If empty, authentication won't be performed.                                                                                | false    |                           |
 | `saslUsername`       | SASL username. If provided, a password needs to be provided too.                                                                                                                                             | false    |                           |
 | `saslPassword`       | SASL password. If provided, a username needs to be provided too.                                                                                                                                             | false    |                           |
-| `retryGroupJoinErrors`       | determines whether the connector will continually retry on group join errors                                                                                                                                              | false    | `true` |
 
 ## Destination
 

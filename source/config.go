@@ -39,8 +39,6 @@ type Config struct {
 	ReadFromBeginning bool `json:"readFromBeginning"`
 	// GroupID defines the consumer group id.
 	GroupID string `json:"groupID"`
-	// RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.
-	RetryGroupJoinErrors bool `json:"retryGroupJoinErrors" default:"true"`
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
