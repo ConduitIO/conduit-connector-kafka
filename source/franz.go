@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate mockgen -destination franz_mock.go -package source -mock_names=Client=MockClient . Client
+//go:generate mockgen -typed -destination franz_mock.go -package source -mock_names=Client=MockClient . Client
 
 package source
 
