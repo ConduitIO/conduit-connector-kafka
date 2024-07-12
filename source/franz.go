@@ -80,7 +80,7 @@ func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
 			var errGroupSession *kgo.ErrGroupSession
 			if c.retryGroupJoinErrors &&
 				(errors.As(err, &errGroupSession) || strings.Contains(err.Error(), "unable to join group session")) {
-				sdk.Logger(ctx).Error().Msgf("group session error, retrying: %s", err.Error())
+				sdk.Logger(ctx).Warn().Err(err).Msgf("group session error, retrying")
 				return nil, sdk.ErrBackoffRetry
 			}
 
