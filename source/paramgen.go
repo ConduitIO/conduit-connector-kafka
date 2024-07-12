@@ -54,8 +54,8 @@ func (Config) Parameters() map[string]sdk.Parameter {
 		"retryGroupJoinErrors": {
 			Default:     "true",
 			Description: "RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.",
-			Type:        config.ParameterTypeBool,
-			Validations: []config.Validation{},
+			Type:        sdk.ParameterTypeBool,
+			Validations: []sdk.Validation{},
 		},
 		"saslMechanism": {
 			Default:     "",
