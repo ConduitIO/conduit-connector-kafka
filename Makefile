@@ -27,6 +27,11 @@ test: test-kafka test-redpanda
 generate:
 	go generate ./...
 
+.PHONY: fmt
+fmt: ## Format Go files using gofumpt and gci.
+	gofumpt -l -w .
+	gci write --skip-generated  .
+
 .PHONY: lint
 lint:
 	golangci-lint run

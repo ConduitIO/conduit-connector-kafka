@@ -51,6 +51,12 @@ func (Config) Parameters() map[string]sdk.Parameter {
 			Type:        sdk.ParameterTypeBool,
 			Validations: []sdk.Validation{},
 		},
+		"retryGroupJoinErrors": {
+			Default:     "true",
+			Description: "RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.",
+			Type:        config.ParameterTypeBool,
+			Validations: []config.Validation{},
+		},
 		"saslMechanism": {
 			Default:     "",
 			Description: "saslMechanism configures the connector to use SASL authentication. If empty, no authentication will be performed.",

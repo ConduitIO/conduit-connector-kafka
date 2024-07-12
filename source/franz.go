@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate mockgen -typed -destination franz_mock.go -package source -mock_names=Client=MockClient . Client
+
 package source
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -25,10 +28,20 @@ import (
 )
 
 type FranzConsumer struct {
-	client *kgo.Client
+	client Client
 	acker  *batchAcker
 
 	iter *kgo.FetchesRecordIter
+
+	retryGroupJoinErrors bool
+}
+
+// Client is a franz-go kafka client.
+type Client interface {
+	Close()
+	CommitRecords(ctx context.Context, rs ...*kgo.Record) error
+	OptValue(opt any) any
+	PollFetches(ctx context.Context) kgo.Fetches
 }
 
 var _ Consumer = (*FranzConsumer)(nil)
@@ -53,9 +66,10 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 	}
 
 	return &FranzConsumer{
-		client: cl,
-		acker:  newBatchAcker(cl, 1000),
-		iter:   &kgo.FetchesRecordIter{}, // empty iterator is done
+		client:               cl,
+		acker:                newBatchAcker(cl, 1000),
+		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
+		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
 	}, nil
 }
 
@@ -63,6 +77,13 @@ func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
 	for c.iter.Done() {
 		fetches := c.client.PollFetches(ctx)
 		if err := fetches.Err(); err != nil {
+			var errGroupSession *kgo.ErrGroupSession
+			if c.retryGroupJoinErrors &&
+				(errors.As(err, &errGroupSession) || strings.Contains(err.Error(), "unable to join group session")) {
+				sdk.Logger(ctx).Warn().Err(err).Msgf("group session error, retrying")
+				return nil, sdk.ErrBackoffRetry
+			}
+
 			return nil, err
 		}
 		if fetches.Empty() {
@@ -92,7 +113,7 @@ func (c *FranzConsumer) Close(ctx context.Context) error {
 
 // batchAcker commits acks in batches.
 type batchAcker struct {
-	client *kgo.Client
+	client Client
 
 	batchSize     int
 	curBatchIndex int
@@ -101,7 +122,7 @@ type batchAcker struct {
 	m       sync.Mutex
 }
 
-func newBatchAcker(client *kgo.Client, batchSize int) *batchAcker {
+func newBatchAcker(client Client, batchSize int) *batchAcker {
 	return &batchAcker{
 		client:        client,
 		batchSize:     batchSize,
