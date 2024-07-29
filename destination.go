@@ -50,7 +50,7 @@ func (d *Destination) Configure(ctx context.Context, cfg config.Config) error {
 		return err
 	}
 
-	recordFormat := cfg[sdk.DestinationWithRecordFormat{}.RecordFormatParameterName()]
+	recordFormat := cfg[sdk.DestinationWithRecordFormatConfig{}.RecordFormatParameterName()]
 	if recordFormat != "" {
 		recordFormatType, _, _ := strings.Cut(recordFormat, "/")
 		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
