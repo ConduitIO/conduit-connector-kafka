@@ -7,9 +7,27 @@ import (
 	"github.com/conduitio/conduit-commons/config"
 )
 
+const (
+	ConfigAcks               = "acks"
+	ConfigBatchBytes         = "batchBytes"
+	ConfigCaCert             = "caCert"
+	ConfigClientCert         = "clientCert"
+	ConfigClientID           = "clientID"
+	ConfigClientKey          = "clientKey"
+	ConfigCompression        = "compression"
+	ConfigDeliveryTimeout    = "deliveryTimeout"
+	ConfigInsecureSkipVerify = "insecureSkipVerify"
+	ConfigSaslMechanism      = "saslMechanism"
+	ConfigSaslPassword       = "saslPassword"
+	ConfigSaslUsername       = "saslUsername"
+	ConfigServers            = "servers"
+	ConfigTlsEnabled         = "tls.enabled"
+	ConfigTopic              = "topic"
+)
+
 func (Config) Parameters() map[string]config.Parameter {
 	return map[string]config.Parameter{
-		"acks": {
+		ConfigAcks: {
 			Default:     "all",
 			Description: "Acks defines the number of acknowledges from partition replicas required\nbefore receiving a response to a produce request.\nNone = fire and forget, one = wait for the leader to acknowledge the\nwrites, all = wait for the full ISR to acknowledge the writes.",
 			Type:        config.ParameterTypeString,
@@ -17,37 +35,37 @@ func (Config) Parameters() map[string]config.Parameter {
 				config.ValidationInclusion{List: []string{"none", "one", "all"}},
 			},
 		},
-		"batchBytes": {
+		ConfigBatchBytes: {
 			Default:     "1000012",
 			Description: "BatchBytes limits the maximum size of a request in bytes before being\nsent to a partition. This mirrors Kafka's max.message.bytes.",
 			Type:        config.ParameterTypeInt,
 			Validations: []config.Validation{},
 		},
-		"caCert": {
+		ConfigCaCert: {
 			Default:     "",
 			Description: "CACert is the Kafka broker's certificate.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"clientCert": {
+		ConfigClientCert: {
 			Default:     "",
 			Description: "ClientCert is the Kafka client's certificate.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"clientID": {
+		ConfigClientID: {
 			Default:     "conduit-connector-kafka",
 			Description: "ClientID is a unique identifier for client connections established by\nthis connector.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"clientKey": {
+		ConfigClientKey: {
 			Default:     "",
 			Description: "ClientKey is the Kafka client's private key.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"compression": {
+		ConfigCompression: {
 			Default:     "snappy",
 			Description: "Compression set the compression codec to be used to compress messages.",
 			Type:        config.ParameterTypeString,
@@ -55,19 +73,19 @@ func (Config) Parameters() map[string]config.Parameter {
 				config.ValidationInclusion{List: []string{"none", "gzip", "snappy", "lz4", "zstd"}},
 			},
 		},
-		"deliveryTimeout": {
+		ConfigDeliveryTimeout: {
 			Default:     "",
 			Description: "DeliveryTimeout for write operation performed by the Writer.",
 			Type:        config.ParameterTypeDuration,
 			Validations: []config.Validation{},
 		},
-		"insecureSkipVerify": {
+		ConfigInsecureSkipVerify: {
 			Default:     "",
 			Description: "InsecureSkipVerify defines whether to validate the broker's certificate\nchain and host name. If 'true', accepts any certificate presented by the\nserver and any host name in that certificate.",
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"saslMechanism": {
+		ConfigSaslMechanism: {
 			Default:     "",
 			Description: "Mechanism configures the connector to use SASL authentication. If\nempty, no authentication will be performed.",
 			Type:        config.ParameterTypeString,
@@ -75,19 +93,19 @@ func (Config) Parameters() map[string]config.Parameter {
 				config.ValidationInclusion{List: []string{"PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"}},
 			},
 		},
-		"saslPassword": {
+		ConfigSaslPassword: {
 			Default:     "",
 			Description: "Password sets up the password used with SASL authentication.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"saslUsername": {
+		ConfigSaslUsername: {
 			Default:     "",
 			Description: "Username sets up the username used with SASL authentication.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"servers": {
+		ConfigServers: {
 			Default:     "",
 			Description: "Servers is a list of Kafka bootstrap servers, which will be used to\ndiscover all the servers in a cluster.",
 			Type:        config.ParameterTypeString,
@@ -95,13 +113,13 @@ func (Config) Parameters() map[string]config.Parameter {
 				config.ValidationRequired{},
 			},
 		},
-		"tls.enabled": {
+		ConfigTlsEnabled: {
 			Default:     "",
 			Description: "TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.",
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"topic": {
+		ConfigTopic: {
 			Default:     "{{ index .Metadata \"opencdc.collection\" }}",
 			Description: "Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)\nthat will be executed for each record to determine the topic. By default,\nthe topic is the value of the `opencdc.collection` metadata field.",
 			Type:        config.ParameterTypeString,

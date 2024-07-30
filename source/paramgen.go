@@ -7,57 +7,75 @@ import (
 	"github.com/conduitio/conduit-commons/config"
 )
 
+const (
+	ConfigCaCert               = "caCert"
+	ConfigClientCert           = "clientCert"
+	ConfigClientID             = "clientID"
+	ConfigClientKey            = "clientKey"
+	ConfigGroupID              = "groupID"
+	ConfigInsecureSkipVerify   = "insecureSkipVerify"
+	ConfigReadFromBeginning    = "readFromBeginning"
+	ConfigRetryGroupJoinErrors = "retryGroupJoinErrors"
+	ConfigSaslMechanism        = "saslMechanism"
+	ConfigSaslPassword         = "saslPassword"
+	ConfigSaslUsername         = "saslUsername"
+	ConfigServers              = "servers"
+	ConfigTlsEnabled           = "tls.enabled"
+	ConfigTopic                = "topic"
+	ConfigTopics               = "topics"
+)
+
 func (Config) Parameters() map[string]config.Parameter {
 	return map[string]config.Parameter{
-		"caCert": {
+		ConfigCaCert: {
 			Default:     "",
 			Description: "CACert is the Kafka broker's certificate.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"clientCert": {
+		ConfigClientCert: {
 			Default:     "",
 			Description: "ClientCert is the Kafka client's certificate.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"clientID": {
+		ConfigClientID: {
 			Default:     "conduit-connector-kafka",
 			Description: "ClientID is a unique identifier for client connections established by\nthis connector.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"clientKey": {
+		ConfigClientKey: {
 			Default:     "",
 			Description: "ClientKey is the Kafka client's private key.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"groupID": {
+		ConfigGroupID: {
 			Default:     "",
 			Description: "GroupID defines the consumer group id.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"insecureSkipVerify": {
+		ConfigInsecureSkipVerify: {
 			Default:     "",
 			Description: "InsecureSkipVerify defines whether to validate the broker's certificate\nchain and host name. If 'true', accepts any certificate presented by the\nserver and any host name in that certificate.",
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"readFromBeginning": {
+		ConfigReadFromBeginning: {
 			Default:     "",
 			Description: "ReadFromBeginning determines from whence the consumer group should begin\nconsuming when it finds a partition without a committed offset. If this\noptions is set to true it will start with the first message in that\npartition.",
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"retryGroupJoinErrors": {
+		ConfigRetryGroupJoinErrors: {
 			Default:     "true",
 			Description: "RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.",
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"saslMechanism": {
+		ConfigSaslMechanism: {
 			Default:     "",
 			Description: "Mechanism configures the connector to use SASL authentication. If\nempty, no authentication will be performed.",
 			Type:        config.ParameterTypeString,
@@ -65,19 +83,19 @@ func (Config) Parameters() map[string]config.Parameter {
 				config.ValidationInclusion{List: []string{"PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"}},
 			},
 		},
-		"saslPassword": {
+		ConfigSaslPassword: {
 			Default:     "",
 			Description: "Password sets up the password used with SASL authentication.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"saslUsername": {
+		ConfigSaslUsername: {
 			Default:     "",
 			Description: "Username sets up the username used with SASL authentication.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"servers": {
+		ConfigServers: {
 			Default:     "",
 			Description: "Servers is a list of Kafka bootstrap servers, which will be used to\ndiscover all the servers in a cluster.",
 			Type:        config.ParameterTypeString,
@@ -85,19 +103,19 @@ func (Config) Parameters() map[string]config.Parameter {
 				config.ValidationRequired{},
 			},
 		},
-		"tls.enabled": {
+		ConfigTlsEnabled: {
 			Default:     "",
 			Description: "TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.",
 			Type:        config.ParameterTypeBool,
 			Validations: []config.Validation{},
 		},
-		"topic": {
+		ConfigTopic: {
 			Default:     "",
 			Description: "Topic {WARN will be deprecated soon} the kafka topic to read from.",
 			Type:        config.ParameterTypeString,
 			Validations: []config.Validation{},
 		},
-		"topics": {
+		ConfigTopics: {
 			Default:     "",
 			Description: "Topics is a comma separated list of Kafka topics to read from.",
 			Type:        config.ParameterTypeString,
