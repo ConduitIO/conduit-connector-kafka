@@ -1,9 +1,4 @@
 version: '3.7'
-networks:
-  redpanda_network:
-    driver: bridge
-volumes:
-  redpanda: null
 services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v23.1.4
@@ -18,7 +13,3 @@ services:
     ports:
       - 9092:9092
       - 29092:29092
-    volumes:
-      - redpanda:/var/lib/redpanda/data
-    networks:
-      - redpanda_network
