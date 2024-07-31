@@ -36,8 +36,21 @@ type Source struct {
 	config   source.Config
 }
 
+func ptr[T any](t T) *T {
+	return &t
+}
+
 func NewSource() sdk.Source {
-	return sdk.SourceWithMiddleware(&Source{}, sdk.DefaultSourceMiddleware()...)
+	return sdk.SourceWithMiddleware(
+		&Source{},
+		sdk.DefaultSourceMiddleware(
+			// disable schema extraction by default, because the source produces raw data
+			sdk.SourceWithSchemaExtractionConfig{
+				PayloadEnabled: ptr(false),
+				KeyEnabled:     ptr(false),
+			}.Apply,
+		)...,
+	)
 }
 
 func (s *Source) Parameters() config.Parameters {
