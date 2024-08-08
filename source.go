@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/conduitio/conduit-commons/config"
+	"github.com/conduitio/conduit-commons/lang"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -36,19 +37,15 @@ type Source struct {
 	config   source.Config
 }
 
-func ptr[T any](t T) *T {
-	return &t
-}
-
 func NewSource() sdk.Source {
 	return sdk.SourceWithMiddleware(
 		&Source{},
 		sdk.DefaultSourceMiddleware(
 			// disable schema extraction by default, because the source produces raw data
 			sdk.SourceWithSchemaExtractionConfig{
-				PayloadEnabled: ptr(false),
-				KeyEnabled:     ptr(false),
-			}.Apply,
+				PayloadEnabled: lang.Ptr((false)),
+				KeyEnabled:     lang.Ptr(false),
+			},
 		)...,
 	)
 }
