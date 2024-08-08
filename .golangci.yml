@@ -2,8 +2,6 @@ run:
   timeout: 5m
 
 linters-settings:
-  gofmt:
-    simplify: false
   nolintlint:
     allow-unused: false # report any unused nolint directives
     require-explanation: true # require an explanation for nolint directives
