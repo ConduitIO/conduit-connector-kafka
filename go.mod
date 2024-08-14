@@ -13,7 +13,7 @@ require (
 	github.com/matryer/is v1.4.1
 	github.com/rs/zerolog v1.33.0
 	github.com/twmb/franz-go v1.17.1
-	github.com/twmb/franz-go/pkg/kadm v1.12.0
+	github.com/twmb/franz-go/pkg/kadm v1.13.0
 	go.uber.org/mock v0.4.0
 )
 
