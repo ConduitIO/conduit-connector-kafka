@@ -17,7 +17,6 @@
 package destination
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
@@ -143,13 +142,13 @@ func (c Config) ParseTopic() (topic string, f TopicFn, err error) {
 	}
 
 	// The topic is a valid template, return TopicFn.
-	var buf bytes.Buffer
+	var sb strings.Builder
 	return "", func(r opencdc.Record) (string, error) {
-		buf.Reset()
-		if err := t.Execute(&buf, r); err != nil {
+		sb.Reset()
+		if err := t.Execute(&sb, r); err != nil {
 			return "", fmt.Errorf("failed to execute topic template: %w", err)
 		}
-		topic := buf.String()
+		topic := sb.String()
 		if topic == "" {
 			return "", fmt.Errorf(
 				"topic not found on record %s using template %s",
