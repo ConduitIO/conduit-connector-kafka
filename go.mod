@@ -14,7 +14,7 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/twmb/franz-go v1.18.0
 	github.com/twmb/franz-go/pkg/kadm v1.14.0
-	go.uber.org/mock v0.4.0
+	go.uber.org/mock v0.5.0
 )
 
 require (
