@@ -21,6 +21,7 @@ import (
 type MockClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockClientMockRecorder
+	isgomock struct{}
 }
 
 // MockClientMockRecorder is the mock recorder for MockClient.
@@ -77,10 +78,10 @@ func (c *MockClientCloseCall) DoAndReturn(f func()) *MockClientCloseCall {
 }
 
 // CommitRecords mocks base method.
-func (m *MockClient) CommitRecords(arg0 context.Context, arg1 ...*kgo.Record) error {
+func (m *MockClient) CommitRecords(ctx context.Context, rs ...*kgo.Record) error {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0}
-	for _, a := range arg1 {
+	varargs := []any{ctx}
+	for _, a := range rs {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "CommitRecords", varargs...)
@@ -89,9 +90,9 @@ func (m *MockClient) CommitRecords(arg0 context.Context, arg1 ...*kgo.Record) er
 }
 
 // CommitRecords indicates an expected call of CommitRecords.
-func (mr *MockClientMockRecorder) CommitRecords(arg0 any, arg1 ...any) *MockClientCommitRecordsCall {
+func (mr *MockClientMockRecorder) CommitRecords(ctx any, rs ...any) *MockClientCommitRecordsCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0}, arg1...)
+	varargs := append([]any{ctx}, rs...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitRecords", reflect.TypeOf((*MockClient)(nil).CommitRecords), varargs...)
 	return &MockClientCommitRecordsCall{Call: call}
 }
@@ -120,17 +121,17 @@ func (c *MockClientCommitRecordsCall) DoAndReturn(f func(context.Context, ...*kg
 }
 
 // OptValue mocks base method.
-func (m *MockClient) OptValue(arg0 any) any {
+func (m *MockClient) OptValue(opt any) any {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OptValue", arg0)
+	ret := m.ctrl.Call(m, "OptValue", opt)
 	ret0, _ := ret[0].(any)
 	return ret0
 }
 
 // OptValue indicates an expected call of OptValue.
-func (mr *MockClientMockRecorder) OptValue(arg0 any) *MockClientOptValueCall {
+func (mr *MockClientMockRecorder) OptValue(opt any) *MockClientOptValueCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OptValue", reflect.TypeOf((*MockClient)(nil).OptValue), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OptValue", reflect.TypeOf((*MockClient)(nil).OptValue), opt)
 	return &MockClientOptValueCall{Call: call}
 }
 
@@ -158,17 +159,17 @@ func (c *MockClientOptValueCall) DoAndReturn(f func(any) any) *MockClientOptValu
 }
 
 // PollFetches mocks base method.
-func (m *MockClient) PollFetches(arg0 context.Context) kgo.Fetches {
+func (m *MockClient) PollFetches(ctx context.Context) kgo.Fetches {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PollFetches", arg0)
+	ret := m.ctrl.Call(m, "PollFetches", ctx)
 	ret0, _ := ret[0].(kgo.Fetches)
 	return ret0
 }
 
 // PollFetches indicates an expected call of PollFetches.
-func (mr *MockClientMockRecorder) PollFetches(arg0 any) *MockClientPollFetchesCall {
+func (mr *MockClientMockRecorder) PollFetches(ctx any) *MockClientPollFetchesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PollFetches", reflect.TypeOf((*MockClient)(nil).PollFetches), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PollFetches", reflect.TypeOf((*MockClient)(nil).PollFetches), ctx)
 	return &MockClientPollFetchesCall{Call: call}
 }
 
