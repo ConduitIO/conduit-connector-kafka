@@ -20,7 +20,7 @@ import (
 
 	"github.com/conduitio-labs/conduit-connector-redpanda/destination"
 	"github.com/conduitio-labs/conduit-connector-redpanda/test"
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/matryer/is"
 	"go.uber.org/mock/gomock"
 )
@@ -54,7 +54,7 @@ func TestDestination_Write_Produce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ctx := context.Background()
 
-	recs := []sdk.Record{{}}
+	recs := []opencdc.Record{{}}
 	producerMock := destination.NewMockProducer(ctrl)
 	producerMock.EXPECT().Produce(ctx, recs).Return(1, nil)
 

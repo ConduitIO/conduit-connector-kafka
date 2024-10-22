@@ -22,7 +22,7 @@ import (
 
 	"github.com/conduitio-labs/conduit-connector-redpanda/common"
 	"github.com/conduitio-labs/conduit-connector-redpanda/test"
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -138,7 +138,7 @@ func TestFranzProducer_Opts_Topic(t *testing.T) {
 		is.Equal(p.client.OptValue(kgo.DefaultProduceTopic), "")
 		is.True(p.getTopic != nil)
 
-		topic, err := p.getTopic(sdk.Record{Metadata: map[string]string{"foo": "bar"}})
+		topic, err := p.getTopic(opencdc.Record{Metadata: map[string]string{"foo": "bar"}})
 		is.NoErr(err)
 		is.Equal(topic, "bar")
 	})

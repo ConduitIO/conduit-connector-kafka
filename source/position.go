@@ -17,7 +17,7 @@ package source
 import (
 	"fmt"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/goccy/go-json"
 )
 
@@ -28,7 +28,7 @@ type Position struct {
 	Offset    int64
 }
 
-func ParseSDKPosition(sdkPos sdk.Position) (Position, error) {
+func ParseSDKPosition(sdkPos opencdc.Position) (Position, error) {
 	var p Position
 	err := json.Unmarshal(sdkPos, &p)
 	if err != nil {
@@ -37,7 +37,7 @@ func ParseSDKPosition(sdkPos sdk.Position) (Position, error) {
 	return p, nil
 }
 
-func (p Position) ToSDKPosition() sdk.Position {
+func (p Position) ToSDKPosition() opencdc.Position {
 	b, err := json.Marshal(p)
 	if err != nil {
 		// this error should not be possible

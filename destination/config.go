@@ -17,7 +17,6 @@
 package destination
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
@@ -27,12 +26,12 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/conduitio-labs/conduit-connector-redpanda/common"
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 var (
-	topicRegex     = regexp.MustCompile(`^[a-zA-Z0-9\._\-]+$`)
+	topicRegex     = regexp.MustCompile(`^[a-zA-Z0-9._\-]+$`)
 	maxTopicLength = 249
 )
 
@@ -61,7 +60,7 @@ type Config struct {
 	useKafkaConnectKeyFormat bool
 }
 
-type TopicFn func(sdk.Record) (string, error)
+type TopicFn func(opencdc.Record) (string, error)
 
 func (c Config) WithKafkaConnectKeyFormat() Config {
 	c.useKafkaConnectKeyFormat = true
@@ -143,12 +142,20 @@ func (c Config) ParseTopic() (topic string, f TopicFn, err error) {
 	}
 
 	// The topic is a valid template, return TopicFn.
-	var buf bytes.Buffer
-	return "", func(r sdk.Record) (string, error) {
-		buf.Reset()
-		if err := t.Execute(&buf, r); err != nil {
+	var sb strings.Builder
+	return "", func(r opencdc.Record) (string, error) {
+		sb.Reset()
+		if err := t.Execute(&sb, r); err != nil {
 			return "", fmt.Errorf("failed to execute topic template: %w", err)
 		}
-		return buf.String(), nil
+		topic := sb.String()
+		if topic == "" {
+			return "", fmt.Errorf(
+				"topic not found on record %s using template %s",
+				string(r.Key.Bytes()), c.Topic,
+			)
+		}
+
+		return topic, nil
 	}, nil
 }

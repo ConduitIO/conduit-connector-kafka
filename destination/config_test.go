@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/matryer/is"
 )
 
@@ -84,4 +85,27 @@ func TestConfig_Validate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfig_ParseTopic_DoesErrorOnTopicNotFound(t *testing.T) {
+	is := is.New(t)
+	template := `{{ index .Metadata "topiccc" }}`
+
+	cfg := Config{Topic: template}
+	topic, getTopic, err := cfg.ParseTopic()
+	is.NoErr(err)
+
+	is.Equal(topic, "")
+
+	rec := opencdc.Record{
+		Key: opencdc.RawData("testkey"),
+		Metadata: map[string]string{
+			"topic": "testtopic",
+		},
+	}
+	topic, err = getTopic(rec)
+	is.True(err != nil)                                                 // expected error on topic not found
+	is.True(strings.Contains(err.Error(), "topic not found on record")) // expected topic not found error
+
+	is.Equal(topic, "")
 }

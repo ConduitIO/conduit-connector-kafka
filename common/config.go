@@ -23,10 +23,8 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-var (
-	// TODO make the timeout configurable
-	connectionTimeout = time.Second * 10
-)
+// TODO make the timeout configurable
+var connectionTimeout = time.Second * 10
 
 // Config contains common configuration parameters.
 type Config struct {
@@ -78,6 +76,7 @@ func (c Config) TryDial(ctx context.Context) error {
 		case <-ctx.Done():
 			return err
 		case <-time.After(time.Second):
+			sdk.Logger(ctx).Warn().Msg("failed to dial broker, trying again...")
 			// ping again
 		}
 	}

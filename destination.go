@@ -20,6 +20,8 @@ import (
 	"strings"
 
 	"github.com/conduitio-labs/conduit-connector-redpanda/destination"
+	"github.com/conduitio/conduit-commons/config"
+	"github.com/conduitio/conduit-commons/opencdc"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
@@ -34,31 +36,28 @@ func NewDestination() sdk.Destination {
 	return sdk.DestinationWithMiddleware(&Destination{}, sdk.DefaultDestinationMiddleware()...)
 }
 
-func (d *Destination) Parameters() map[string]sdk.Parameter {
+func (d *Destination) Parameters() config.Parameters {
 	return destination.Config{}.Parameters()
 }
 
-func (d *Destination) Configure(_ context.Context, cfg map[string]string) error {
-	var config destination.Config
-
-	err := sdk.Util.ParseConfig(cfg, &config)
+func (d *Destination) Configure(ctx context.Context, cfg config.Config) error {
+	err := sdk.Util.ParseConfig(ctx, cfg, &d.config, NewDestination().Parameters())
 	if err != nil {
 		return err
 	}
-	err = config.Validate()
+	err = d.config.Validate()
 	if err != nil {
 		return err
 	}
 
-	recordFormat := cfg[sdk.DestinationWithRecordFormat{}.RecordFormatParameterName()]
+	recordFormat := cfg[sdk.DestinationWithRecordFormatConfig{}.RecordFormatParameterName()]
 	if recordFormat != "" {
 		recordFormatType, _, _ := strings.Cut(recordFormat, "/")
 		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
-			config = config.WithKafkaConnectKeyFormat()
+			d.config = d.config.WithKafkaConnectKeyFormat()
 		}
 	}
 
-	d.config = config
 	return nil
 }
 
@@ -70,22 +69,22 @@ func (d *Destination) Open(ctx context.Context) error {
 
 	d.producer, err = destination.NewFranzProducer(ctx, d.config)
 	if err != nil {
-		return fmt.Errorf("failed to create Kafka producer: %w", err)
+		return fmt.Errorf("failed to create Redpanda producer: %w", err)
 	}
 
 	return nil
 }
 
-func (d *Destination) Write(ctx context.Context, records []sdk.Record) (int, error) {
+func (d *Destination) Write(ctx context.Context, records []opencdc.Record) (int, error) {
 	return d.producer.Produce(ctx, records)
 }
 
-// Teardown shuts down the Kafka client.
+// Teardown shuts down the Redpanda client.
 func (d *Destination) Teardown(ctx context.Context) error {
 	if d.producer != nil {
 		err := d.producer.Close(ctx)
 		if err != nil {
-			return fmt.Errorf("failed closing Kafka producer: %w", err)
+			return fmt.Errorf("failed closing Redpanda producer: %w", err)
 		}
 	}
 	return nil

@@ -21,7 +21,7 @@ import (
 
 	"github.com/conduitio-labs/conduit-connector-redpanda/source"
 	"github.com/conduitio-labs/conduit-connector-redpanda/test"
-	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
@@ -39,7 +39,7 @@ func TestSource_Teardown_Success(t *testing.T) {
 		Close(context.Background()).
 		Return(nil)
 
-	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, true))
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, true, false))
 
 	underTest := Source{consumer: consumerMock, config: cfg}
 	is.NoErr(underTest.Teardown(context.Background()))
@@ -60,23 +60,23 @@ func TestSource_Read(t *testing.T) {
 		{Key: "header-a", Value: []byte("value-a")},
 		{Key: "header-b", Value: []byte{0, 1, 2}},
 	}
-	want := sdk.Record{
+	want := opencdc.Record{
 		Position: source.Position{
 			GroupID:   "",
 			Topic:     rec.Topic,
 			Partition: rec.Partition,
 			Offset:    rec.Offset,
 		}.ToSDKPosition(),
-		Operation: sdk.OperationCreate,
+		Operation: opencdc.OperationCreate,
 		Metadata: map[string]string{
-			sdk.MetadataCollection:  rec.Topic,
-			sdk.MetadataCreatedAt:   strconv.FormatInt(rec.Timestamp.UnixNano(), 10),
-			"kafka.header.header-a": "value-a",
-			"kafka.header.header-b": string([]byte{0, 1, 2}),
+			opencdc.MetadataCollection: rec.Topic,
+			opencdc.MetadataCreatedAt:  strconv.FormatInt(rec.Timestamp.UnixNano(), 10),
+			"kafka.header.header-a":    "value-a",
+			"kafka.header.header-b":    string([]byte{0, 1, 2}),
 		},
-		Key: sdk.RawData(rec.Key),
-		Payload: sdk.Change{
-			After: sdk.RawData(rec.Value),
+		Key: opencdc.RawData(rec.Key),
+		Payload: opencdc.Change{
+			After: opencdc.RawData(rec.Value),
 		},
 	}
 
@@ -86,11 +86,11 @@ func TestSource_Read(t *testing.T) {
 		Consume(gomock.Any()).
 		Return((*source.Record)(rec), nil)
 
-	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, false))
+	cfg := test.ParseConfigMap[source.Config](t, test.SourceConfigMap(t, false, false))
 	underTest := Source{consumer: consumerMock, config: cfg}
 	got, err := underTest.Read(context.Background())
 	is.NoErr(err)
-	is.True(got.Metadata[sdk.MetadataReadAt] != "")
-	want.Metadata[sdk.MetadataReadAt] = got.Metadata[sdk.MetadataReadAt]
-	is.Equal(cmp.Diff(want, got, cmpopts.IgnoreUnexported(sdk.Record{})), "")
+	is.True(got.Metadata[opencdc.MetadataReadAt] != "")
+	want.Metadata[opencdc.MetadataReadAt] = got.Metadata[opencdc.MetadataReadAt]
+	is.Equal(cmp.Diff(want, got, cmpopts.IgnoreUnexported(opencdc.Record{})), "")
 }
