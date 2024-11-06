@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate paramgen -output=paramgen.go Config
-
 package destination
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"text/template"
 	"time"
+
+	sdk "github.com/conduitio/conduit-connector-sdk"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/conduitio/conduit-commons/opencdc"
@@ -36,6 +37,7 @@ var (
 )
 
 type Config struct {
+	sdk.DefaultDestinationMiddleware
 	common.Config
 
 	// Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
@@ -100,10 +102,10 @@ func (c Config) CompressionCodecs() []kgo.CompressionCodec {
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
-func (c Config) Validate() error {
+func (c Config) Validate(ctx context.Context) error {
 	var multierr []error
 
-	err := c.Config.Validate()
+	err := c.Config.Validate(ctx)
 	if err != nil {
 		multierr = append(multierr, err)
 	}

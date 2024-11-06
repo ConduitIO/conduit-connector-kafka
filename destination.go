@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/conduitio/conduit-commons/config"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/destination"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -33,35 +32,22 @@ type Destination struct {
 }
 
 func NewDestination() sdk.Destination {
-	return sdk.DestinationWithMiddleware(&Destination{}, sdk.DefaultDestinationMiddleware()...)
+	return sdk.DestinationWithMiddleware(&Destination{})
 }
 
-func (d *Destination) Parameters() config.Parameters {
-	return destination.Config{}.Parameters()
+func (d *Destination) Config() sdk.DestinationConfig {
+	return &d.config
 }
 
-func (d *Destination) Configure(ctx context.Context, cfg config.Config) error {
-	err := sdk.Util.ParseConfig(ctx, cfg, &d.config, NewDestination().Parameters())
-	if err != nil {
-		return err
-	}
-	err = d.config.Validate()
-	if err != nil {
-		return err
-	}
-
-	recordFormat := cfg[sdk.DestinationWithRecordFormatConfig{}.RecordFormatParameterName()]
-	if recordFormat != "" {
-		recordFormatType, _, _ := strings.Cut(recordFormat, "/")
+func (d *Destination) Open(ctx context.Context) error {
+	recordFormat := d.config.RecordFormat
+	if recordFormat != nil && *recordFormat != "" {
+		recordFormatType, _, _ := strings.Cut(*recordFormat, "/")
 		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
 			d.config = d.config.WithKafkaConnectKeyFormat()
 		}
 	}
 
-	return nil
-}
-
-func (d *Destination) Open(ctx context.Context) error {
 	err := d.config.TryDial(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to dial broker: %w", err)

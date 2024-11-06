@@ -1,0 +1,325 @@
+version: "1.0"
+connector:
+  name: kafka
+  summary: A Kafka source and destination plugin for Conduit, written in Go.
+  description: |-
+    This is the description of this connector.
+
+    You can use _markdown_ .....
+  version: (devel)
+  author: Meroxa, Inc.
+  source:
+    parameters:
+      - name: caCert
+        description: CACert is the Kafka broker's certificate.
+        type: string
+        default: ""
+        validations: []
+      - name: clientCert
+        description: ClientCert is the Kafka client's certificate.
+        type: string
+        default: ""
+        validations: []
+      - name: clientID
+        description: |-
+          ClientID is a unique identifier for client connections established by
+          this connector.
+        type: string
+        default: conduit-connector-kafka
+        validations: []
+      - name: clientKey
+        description: ClientKey is the Kafka client's private key.
+        type: string
+        default: ""
+        validations: []
+      - name: groupID
+        description: GroupID defines the consumer group id.
+        type: string
+        default: ""
+        validations: []
+      - name: insecureSkipVerify
+        description: |-
+          InsecureSkipVerify defines whether to validate the broker's certificate
+          chain and host name. If 'true', accepts any certificate presented by the
+          server and any host name in that certificate.
+        type: bool
+        default: ""
+        validations: []
+      - name: readFromBeginning
+        description: |-
+          ReadFromBeginning determines from whence the consumer group should begin
+          consuming when it finds a partition without a committed offset. If this
+          options is set to true it will start with the first message in that
+          partition.
+        type: bool
+        default: ""
+        validations: []
+      - name: retryGroupJoinErrors
+        description: RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.
+        type: bool
+        default: "true"
+        validations: []
+      - name: saslMechanism
+        description: |-
+          Mechanism configures the connector to use SASL authentication. If
+          empty, no authentication will be performed.
+        type: string
+        default: ""
+        validations:
+          - type: inclusion
+            value: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
+      - name: saslPassword
+        description: Password sets up the password used with SASL authentication.
+        type: string
+        default: ""
+        validations: []
+      - name: saslUsername
+        description: Username sets up the username used with SASL authentication.
+        type: string
+        default: ""
+        validations: []
+      - name: sdk.batch.delay
+        description: Maximum delay before an incomplete batch is read from the source.
+        type: duration
+        default: "0"
+        validations:
+          - type: greater-than
+            value: "-1.000000"
+      - name: sdk.batch.size
+        description: Maximum size of batch before it gets read from the source.
+        type: int
+        default: "0"
+        validations:
+          - type: greater-than
+            value: "-1.000000"
+      - name: sdk.schema.context.enabled
+        description: |-
+          Specifies whether to use a schema context name. If set to false, no schema context name will
+          be used, and schemas will be saved with the subject name specified in the connector
+          (not safe because of name conflicts).
+        type: bool
+        default: "true"
+        validations: []
+      - name: sdk.schema.context.name
+        description: |-
+          Schema context name to be used. Used as a prefix for all schema subject names.
+          If empty, defaults to the connector ID.
+        type: string
+        default: ""
+        validations: []
+      - name: sdk.schema.extract.key.enabled
+        description: Whether to extract and encode the record key with a schema.
+        type: bool
+        default: "true"
+        validations: []
+      - name: sdk.schema.extract.key.subject
+        description: |-
+          The subject of the key schema. If the record metadata contains the field
+          "opencdc.collection" it is prepended to the subject name and separated
+          with a dot.
+        type: string
+        default: key
+        validations: []
+      - name: sdk.schema.extract.payload.enabled
+        description: Whether to extract and encode the record payload with a schema.
+        type: bool
+        default: "true"
+        validations: []
+      - name: sdk.schema.extract.payload.subject
+        description: |-
+          The subject of the payload schema. If the record metadata contains the
+          field "opencdc.collection" it is prepended to the subject name and
+          separated with a dot.
+        type: string
+        default: payload
+        validations: []
+      - name: sdk.schema.extract.type
+        description: The type of the payload schema.
+        type: int
+        default: avro
+        validations:
+          - type: inclusion
+            value: avro
+      - name: servers
+        description: |-
+          Servers is a list of Kafka bootstrap servers, which will be used to
+          discover all the servers in a cluster.
+        type: string
+        default: ""
+        validations:
+          - type: required
+            value: ""
+      - name: tls.enabled
+        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
+        type: bool
+        default: ""
+        validations: []
+      - name: topics
+        description: Topics is a comma separated list of Kafka topics to read from.
+        type: string
+        default: ""
+        validations:
+          - type: required
+            value: ""
+  destination:
+    parameters:
+      - name: acks
+        description: |-
+          Acks defines the number of acknowledges from partition replicas required
+          before receiving a response to a produce request.
+          None = fire and forget, one = wait for the leader to acknowledge the
+          writes, all = wait for the full ISR to acknowledge the writes.
+        type: string
+        default: all
+        validations:
+          - type: inclusion
+            value: none,one,all
+      - name: batchBytes
+        description: |-
+          BatchBytes limits the maximum size of a request in bytes before being
+          sent to a partition. This mirrors Kafka's max.message.bytes.
+        type: int
+        default: "1000012"
+        validations: []
+      - name: caCert
+        description: CACert is the Kafka broker's certificate.
+        type: string
+        default: ""
+        validations: []
+      - name: clientCert
+        description: ClientCert is the Kafka client's certificate.
+        type: string
+        default: ""
+        validations: []
+      - name: clientID
+        description: |-
+          ClientID is a unique identifier for client connections established by
+          this connector.
+        type: string
+        default: conduit-connector-kafka
+        validations: []
+      - name: clientKey
+        description: ClientKey is the Kafka client's private key.
+        type: string
+        default: ""
+        validations: []
+      - name: compression
+        description: Compression set the compression codec to be used to compress messages.
+        type: string
+        default: snappy
+        validations:
+          - type: inclusion
+            value: none,gzip,snappy,lz4,zstd
+      - name: deliveryTimeout
+        description: DeliveryTimeout for write operation performed by the Writer.
+        type: duration
+        default: ""
+        validations: []
+      - name: insecureSkipVerify
+        description: |-
+          InsecureSkipVerify defines whether to validate the broker's certificate
+          chain and host name. If 'true', accepts any certificate presented by the
+          server and any host name in that certificate.
+        type: bool
+        default: ""
+        validations: []
+      - name: saslMechanism
+        description: |-
+          Mechanism configures the connector to use SASL authentication. If
+          empty, no authentication will be performed.
+        type: string
+        default: ""
+        validations:
+          - type: inclusion
+            value: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
+      - name: saslPassword
+        description: Password sets up the password used with SASL authentication.
+        type: string
+        default: ""
+        validations: []
+      - name: saslUsername
+        description: Username sets up the username used with SASL authentication.
+        type: string
+        default: ""
+        validations: []
+      - name: sdk.batch.delay
+        description: Maximum delay before an incomplete batch is written to the destination.
+        type: duration
+        default: "0"
+        validations:
+          - type: greater-than
+            value: "-1.000000"
+      - name: sdk.batch.size
+        description: Maximum size of batch before it gets written to the destination.
+        type: int
+        default: "0"
+        validations:
+          - type: greater-than
+            value: "-1.000000"
+      - name: sdk.rate.burst
+        description: |-
+          Allow bursts of at most X records (0 or less means that bursts are not
+          limited). Only takes effect if a rate limit per second is set. Note that
+          if `sdk.batch.size` is bigger than `sdk.rate.burst`, the effective batch
+          size will be equal to `sdk.rate.burst`.
+        type: int
+        default: "0"
+        validations:
+          - type: greater-than
+            value: "-1.000000"
+      - name: sdk.rate.perSecond
+        description: Maximum number of records written per second (0 means no rate limit).
+        type: float
+        default: "0"
+        validations:
+          - type: greater-than
+            value: "-1.000000"
+      - name: sdk.record.format
+        description: |-
+          The format of the output record. See the Conduit documentation for a full
+          list of supported formats (https://conduit.io/docs/using/connectors/configuration-parameters/output-format).
+        type: string
+        default: ""
+        validations:
+          - type: required
+            value: ""
+      - name: sdk.record.format.options
+        description: |-
+          Options to configure the chosen output record format. Options are normally
+          key=value pairs separated with comma (e.g. opt1=val2,opt2=val2), except
+          for the `template` record format, where options are a Go template.
+        type: string
+        default: ""
+        validations: []
+      - name: sdk.schema.extract.key.enabled
+        description: Whether to extract and decode the record key with a schema.
+        type: bool
+        default: "true"
+        validations: []
+      - name: sdk.schema.extract.payload.enabled
+        description: Whether to extract and decode the record payload with a schema.
+        type: bool
+        default: "true"
+        validations: []
+      - name: servers
+        description: |-
+          Servers is a list of Kafka bootstrap servers, which will be used to
+          discover all the servers in a cluster.
+        type: string
+        default: ""
+        validations:
+          - type: required
+            value: ""
+      - name: tls.enabled
+        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
+        type: bool
+        default: ""
+        validations: []
+      - name: topic
+        description: |-
+          Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
+          that will be executed for each record to determine the topic. By default,
+          the topic is the value of the `opencdc.collection` metadata field.
+        type: string
+        default: '{{ index .Metadata "opencdc.collection" }}'
+        validations: []
