@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/conduitio/conduit-commons/lang"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -36,7 +37,16 @@ type Source struct {
 }
 
 func NewSource() sdk.Source {
-	return sdk.SourceWithMiddleware(&Source{})
+	return sdk.SourceWithMiddleware(&Source{
+		config: source.Config{
+			DefaultSourceMiddleware: sdk.DefaultSourceMiddleware{
+				SourceWithSchemaExtraction: sdk.SourceWithSchemaExtraction{
+					PayloadEnabled: lang.Ptr(false),
+					KeyEnabled:     lang.Ptr(false),
+				},
+			},
+		},
+	})
 }
 
 // Config returns the currently active configuration of the source.

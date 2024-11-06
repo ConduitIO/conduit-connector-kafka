@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate specgen
+
 // Package kafka contains implementations for Kafka source and destination
 // connectors for Conduit.
 package kafka
