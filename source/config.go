@@ -15,6 +15,8 @@
 package source
 
 import (
+	"context"
+
 	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
@@ -34,4 +36,8 @@ type Config struct {
 	GroupID string `json:"groupID"`
 	// RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.
 	RetryGroupJoinErrors bool `json:"retryGroupJoinErrors" default:"true"`
+}
+
+func (o Config) Validate(context.Context) error {
+	return nil
 }
