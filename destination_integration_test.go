@@ -16,6 +16,7 @@ package kafka
 
 import (
 	"context"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"testing"
 
 	"github.com/conduitio/conduit-connector-kafka/destination"
@@ -49,7 +50,10 @@ func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 		is.NoErr(err)
 	}()
 
-	err := underTest.Configure(ctx, cfg)
+	err := sdk.Util.ParseConfig(ctx, cfg, underTest.Config(), Connector.NewSpecification().DestinationParams)
+	is.NoErr(err)
+
+	err = underTest.Config().Validate(ctx)
 	is.NoErr(err)
 
 	err = underTest.Open(ctx)

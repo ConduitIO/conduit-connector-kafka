@@ -16,6 +16,7 @@ package kafka
 
 import (
 	"context"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"testing"
 
 	"github.com/conduitio/conduit-commons/opencdc"
@@ -81,8 +82,12 @@ func testSourceIntegrationRead(
 		is.NoErr(err)
 	}()
 
-	err := underTest.Configure(ctx, cfgMap)
+	err := sdk.Util.ParseConfig(ctx, cfgMap, underTest.Config(), Connector.NewSpecification().SourceParams)
 	is.NoErr(err)
+
+	err = underTest.Config().Validate(ctx)
+	is.NoErr(err)
+
 	err = underTest.Open(ctx, startFrom)
 	is.NoErr(err)
 
