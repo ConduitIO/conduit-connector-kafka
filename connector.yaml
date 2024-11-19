@@ -1,7 +1,7 @@
 version: "1.0"
 specification:
-  name: kafka
-  summary: A Kafka source and destination plugin for Conduit, written in Go.
+  name: ""
+  summary: ""
   description: |-
     This is the description of this connector.
 
