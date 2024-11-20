@@ -135,7 +135,7 @@ specification:
         validations: []
       - name: sdk.schema.extract.type
         description: The type of the payload schema.
-        type: int
+        type: string
         default: avro
         validations:
           - type: inclusion
@@ -279,10 +279,8 @@ specification:
           The format of the output record. See the Conduit documentation for a full
           list of supported formats (https://conduit.io/docs/using/connectors/configuration-parameters/output-format).
         type: string
-        default: ""
-        validations:
-          - type: required
-            value: ""
+        default: opencdc/json
+        validations: []
       - name: sdk.record.format.options
         description: |-
           Options to configure the chosen output record format. Options are normally

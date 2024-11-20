@@ -38,6 +38,7 @@ type Config struct {
 	RetryGroupJoinErrors bool `json:"retryGroupJoinErrors" default:"true"`
 }
 
-func (o Config) Validate(context.Context) error {
-	return nil
+func (c *Config) Validate(ctx context.Context) error {
+	// custom validation can be added here
+	return c.DefaultSourceMiddleware.Validate(ctx)
 }
