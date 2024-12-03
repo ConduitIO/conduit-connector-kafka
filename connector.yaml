@@ -6,7 +6,7 @@ specification:
     This is the description of this connector.
 
     You can use _markdown_ .....
-  version: v0.10.0-17-g3f0cefe-dirty
+  version: v0.10.0-18-g78a2d22-dirty
   author: Meroxa, Inc.
   source:
     parameters:
@@ -246,9 +246,7 @@ specification:
         description: Maximum delay before an incomplete batch is written to the destination.
         type: duration
         default: "0"
-        validations:
-          - type: greater-than
-            value: "-1"
+        validations: []
       - name: sdk.batch.size
         description: Maximum size of batch before it gets written to the destination.
         type: int
