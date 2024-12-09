@@ -6,7 +6,7 @@ specification:
     This is the description of this connector.
 
     You can use _markdown_ .....
-  version: v0.10.0-18-g78a2d22-dirty
+  version: v0.10.0-19-gbbd95f5
   author: Meroxa, Inc.
   source:
     parameters:
