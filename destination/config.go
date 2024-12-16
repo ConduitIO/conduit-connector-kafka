@@ -23,11 +23,10 @@ import (
 	"text/template"
 	"time"
 
-	sdk "github.com/conduitio/conduit-connector-sdk"
-
 	"github.com/Masterminds/sprig/v3"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/common"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 

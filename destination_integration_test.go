@@ -16,12 +16,12 @@ package kafka
 
 import (
 	"context"
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"testing"
 
 	"github.com/conduitio/conduit-connector-kafka/destination"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 )
 

@@ -76,7 +76,7 @@ func TestConfig_Validate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
-			err := tc.cfg.Validate()
+			err := tc.cfg.Validate(context.Background())
 			is.True(err != nil)
 			if actualErr, ok := tc.wantErr.(error); ok {
 				is.True(errors.Is(err, actualErr))

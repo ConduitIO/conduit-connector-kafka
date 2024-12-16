@@ -16,12 +16,12 @@ package kafka
 
 import (
 	"context"
-	sdk "github.com/conduitio/conduit-connector-sdk"
 	"testing"
 
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
