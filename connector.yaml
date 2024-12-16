@@ -10,6 +10,22 @@ specification:
   author: Meroxa, Inc.
   source:
     parameters:
+      - name: servers
+        description: |-
+          Servers is a list of Kafka bootstrap servers, which will be used to
+          discover all the servers in a cluster.
+        type: string
+        default: ""
+        validations:
+          - type: required
+            value: ""
+      - name: topics
+        description: Topics is a comma separated list of Kafka topics to read from.
+        type: string
+        default: ""
+        validations:
+          - type: required
+            value: ""
       - name: caCert
         description: CACert is the Kafka broker's certificate.
         type: string
@@ -140,6 +156,13 @@ specification:
         validations:
           - type: inclusion
             value: avro
+      - name: tls.enabled
+        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
+        type: bool
+        default: ""
+        validations: []
+  destination:
+    parameters:
       - name: servers
         description: |-
           Servers is a list of Kafka bootstrap servers, which will be used to
@@ -149,20 +172,6 @@ specification:
         validations:
           - type: required
             value: ""
-      - name: tls.enabled
-        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
-        type: bool
-        default: ""
-        validations: []
-      - name: topics
-        description: Topics is a comma separated list of Kafka topics to read from.
-        type: string
-        default: ""
-        validations:
-          - type: required
-            value: ""
-  destination:
-    parameters:
       - name: acks
         description: |-
           Acks defines the number of acknowledges from partition replicas required
@@ -297,15 +306,6 @@ specification:
         type: bool
         default: "true"
         validations: []
-      - name: servers
-        description: |-
-          Servers is a list of Kafka bootstrap servers, which will be used to
-          discover all the servers in a cluster.
-        type: string
-        default: ""
-        validations:
-          - type: required
-            value: ""
       - name: tls.enabled
         description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
         type: bool
