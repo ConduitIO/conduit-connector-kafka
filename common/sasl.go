@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -36,7 +37,7 @@ type ConfigSASL struct {
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
-func (c ConfigSASL) Validate() error {
+func (c ConfigSASL) Validate(context.Context) error {
 	var multierr []error
 
 	if _, err := c.sasl(); err != nil {

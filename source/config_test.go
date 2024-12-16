@@ -32,27 +32,6 @@ func TestConfig_ValidateTopics(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: `one of "topic" and "topics" should be provided.`,
-			cfg: Config{
-				Topics: []string{},
-				Topic:  "",
-			},
-			wantErr: `required parameter missing: "topics"`,
-		}, {
-			name: "invalid, only provide one.",
-			cfg: Config{
-				Topics: []string{"topic2"},
-				Topic:  "topic1",
-			},
-			wantErr: `can't provide both "topic" and "topics" parameters, "topic" is deprecated and will be removed, use the "topics" parameter instead`,
-		}, {
-			name: "valid with warning, will be deprecated soon",
-			cfg: Config{
-				Topics: []string{},
-				Topic:  "topic1",
-			},
-			wantErr: "",
-		}, {
 			name: "valid",
 			cfg: Config{
 				Topics: []string{"topic1"},

@@ -15,6 +15,7 @@
 package destination
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -72,7 +73,7 @@ func TestConfig_Validate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
-			err := tc.config.Validate()
+			err := tc.config.Validate(context.Background())
 
 			if tc.wantErr != "" && err == nil {
 				t.Errorf("expected error, got nil")

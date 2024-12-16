@@ -21,6 +21,7 @@ import (
 	"github.com/conduitio/conduit-connector-kafka/destination"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 )
 
@@ -49,7 +50,10 @@ func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 		is.NoErr(err)
 	}()
 
-	err := underTest.Configure(ctx, cfg)
+	err := sdk.Util.ParseConfig(ctx, cfg, underTest.Config(), Connector.NewSpecification().DestinationParams)
+	is.NoErr(err)
+
+	err = underTest.Config().Validate(ctx)
 	is.NoErr(err)
 
 	err = underTest.Open(ctx)
