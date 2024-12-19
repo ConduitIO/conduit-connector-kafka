@@ -12,16 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate specgen
+
 // Package kafka contains implementations for Kafka source and destination
 // connectors for Conduit.
 package kafka
 
 import (
+	_ "embed"
+
 	sdk "github.com/conduitio/conduit-connector-sdk"
 )
 
+//go:embed connector.yaml
+var specs string
+
 var Connector = sdk.Connector{
-	NewSpecification: Specification,
+	NewSpecification: sdk.YAMLSpecification(specs),
 	NewSource:        NewSource,
 	NewDestination:   NewDestination,
 }

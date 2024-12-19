@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -36,7 +37,7 @@ type ConfigTLS struct {
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
-func (c ConfigTLS) Validate() error {
+func (c ConfigTLS) Validate(context.Context) error {
 	_, err := c.tls()
 	return err
 }

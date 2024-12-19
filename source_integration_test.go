@@ -21,6 +21,7 @@ import (
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
 	"github.com/conduitio/conduit-connector-kafka/test"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -81,8 +82,12 @@ func testSourceIntegrationRead(
 		is.NoErr(err)
 	}()
 
-	err := underTest.Configure(ctx, cfgMap)
+	err := sdk.Util.ParseConfig(ctx, cfgMap, underTest.Config(), Connector.NewSpecification().SourceParams)
 	is.NoErr(err)
+
+	err = underTest.Config().Validate(ctx)
+	is.NoErr(err)
+
 	err = underTest.Open(ctx, startFrom)
 	is.NoErr(err)
 
