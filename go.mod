@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/conduitio/conduit-commons v0.5.1-0.20241212191338-65107596b166
-	github.com/conduitio/conduit-connector-sdk v0.12.1-0.20241216152649-1cfa153e93c1
+	github.com/conduitio/conduit-connector-sdk v0.12.1-0.20241219170721-0ae99ed015b8
 	github.com/goccy/go-json v0.10.4
 	github.com/golangci/golangci-lint v1.62.2
 	github.com/google/go-cmp v0.6.0
