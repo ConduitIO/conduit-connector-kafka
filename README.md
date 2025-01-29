@@ -1,5 +1,4 @@
 # Conduit Connector Kafka
-![scarf pixel](https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0)
 
 The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) builtin plugins. It provides both, a
 source and a destination connector for [Apache Kafka](https://kafka.apache.org).
@@ -86,3 +85,5 @@ Batching can also be configured using connector SDK provided options:
 
 - `sdk.batch.size`: maximum number of records in batch before it gets written to the destination (defaults to 0, no batching)
 - `sdk.batch.delay`: maximum delay before an incomplete batch is written to the destination (defaults to 0, no limit)
+
+![scarf pixel](https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0)
