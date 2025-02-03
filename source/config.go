@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate paramgen -output=paramgen.go Config
-
 package source
 
 import (
@@ -26,6 +24,7 @@ import (
 )
 
 type Config struct {
+	sdk.DefaultSourceMiddleware
 	common.Config
 
 	// Topics is a comma separated list of Kafka topics to read from.
