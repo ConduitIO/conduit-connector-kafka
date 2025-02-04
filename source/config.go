@@ -43,7 +43,7 @@ type Config struct {
 func (c *Config) Validate(ctx context.Context) error {
 	var multierr []error
 
-	err := c.Config.Validate()
+	err := c.Config.Validate(ctx)
 	if err != nil {
 		multierr = append(multierr, err)
 	}

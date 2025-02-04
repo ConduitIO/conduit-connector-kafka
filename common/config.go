@@ -43,13 +43,13 @@ type Config struct {
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
-func (c Config) Validate() error {
+func (c Config) Validate(ctx context.Context) error {
 	var multierr []error
 
-	if err := c.ConfigSASL.Validate(); err != nil {
+	if err := c.ConfigSASL.Validate(ctx); err != nil {
 		multierr = append(multierr, err)
 	}
-	if err := c.ConfigTLS.Validate(); err != nil {
+	if err := c.ConfigTLS.Validate(ctx); err != nil {
 		multierr = append(multierr, err)
 	}
 
