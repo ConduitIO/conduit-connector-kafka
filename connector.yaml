@@ -2,12 +2,9 @@ version: "1.0"
 specification:
   name: kafka
   summary: A Kafka source and destination plugin for Conduit, written in Go.
-  description: |-
-    This is the description of this connector.
-
-    You can use _markdown_ .....
-  version: v0.11.1-25-g8c62739-dirty
-  author: Meroxa, Inc. Something
+  description: A Kafka source and destination plugin for Conduit, written in Go.
+  version: v0.11.1-26-ge70de90-dirty
+  author: Meroxa, Inc.
   source:
     parameters:
       - name: servers
@@ -94,6 +91,11 @@ specification:
         type: string
         default: ""
         validations: []
+      - name: tls.enabled
+        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
+        type: bool
+        default: ""
+        validations: []
       - name: sdk.batch.delay
         description: Maximum delay before an incomplete batch is read from the source.
         type: duration
@@ -156,11 +158,6 @@ specification:
         validations:
           - type: inclusion
             value: avro
-      - name: tls.enabled
-        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
-        type: bool
-        default: ""
-        validations: []
   destination:
     parameters:
       - name: servers
@@ -251,6 +248,19 @@ specification:
         type: string
         default: ""
         validations: []
+      - name: tls.enabled
+        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
+        type: bool
+        default: ""
+        validations: []
+      - name: topic
+        description: |-
+          Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
+          that will be executed for each record to determine the topic. By default,
+          the topic is the value of the `opencdc.collection` metadata field.
+        type: string
+        default: '{{ index .Metadata "opencdc.collection" }}'
+        validations: []
       - name: sdk.batch.delay
         description: Maximum delay before an incomplete batch is written to the destination.
         type: duration
@@ -305,17 +315,4 @@ specification:
         description: Whether to extract and decode the record payload with a schema.
         type: bool
         default: "true"
-        validations: []
-      - name: tls.enabled
-        description: TLSEnabled defines whether TLS is needed to communicate with the Kafka cluster.
-        type: bool
-        default: ""
-        validations: []
-      - name: topic
-        description: |-
-          Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
-          that will be executed for each record to determine the topic. By default,
-          the topic is the value of the `opencdc.collection` metadata field.
-        type: string
-        default: '{{ index .Metadata "opencdc.collection" }}'
         validations: []

@@ -17,7 +17,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/destination"
@@ -40,14 +39,6 @@ func (d *Destination) Config() sdk.DestinationConfig {
 }
 
 func (d *Destination) Open(ctx context.Context) error {
-	recordFormat := d.config.RecordFormat
-	if recordFormat != nil && *recordFormat != "" {
-		recordFormatType, _, _ := strings.Cut(*recordFormat, "/")
-		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
-			d.config = d.config.WithKafkaConnectKeyFormat()
-		}
-	}
-
 	err := d.config.TryDial(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to dial broker: %w", err)

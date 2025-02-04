@@ -2,8 +2,7 @@ VERSION=$(shell git describe --tags --dirty --always)
 
 .PHONY: build
 build:
-	sed -i '/specification:/,/version:/ s/version: .*/version: '"${VERSION}"'/' connector.yaml
-	go build -o conduit-connector-kafka cmd/connector/main.go
+	go build -ldflags "-X 'github.com/conduitio/conduit-connector-kafka.version=${VERSION}'" -o conduit-connector-kafka cmd/connector/main.go
 
 .PHONY: test-kafka
 test-kafka:
@@ -27,6 +26,7 @@ test: test-kafka test-redpanda
 .PHONY: generate
 generate:
 	go generate ./...
+	conn-sdk-cli readmegen -w
 
 .PHONY: fmt
 fmt: ## Format Go files using gofumpt and gci.

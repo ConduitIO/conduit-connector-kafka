@@ -16,42 +16,26 @@ package source
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"errors"
 	"testing"
 
+	"github.com/conduitio/conduit-connector-kafka/common"
 	"github.com/matryer/is"
 )
 
-func TestConfig_ValidateTopics(t *testing.T) {
-	// Note that we are testing custom validations. Required fields and simple
-	// validations are already executed by the SDK via parameter specifications.
-	testCases := []struct {
-		name    string
-		cfg     Config
-		wantErr string
-	}{
-		{
-			name: "valid",
-			cfg: Config{
-				Topics: []string{"topic1"},
+func TestConfig_BaseValidationsDone(t *testing.T) {
+	// Required fields and simple validations are already executed
+	// by the SDK via parameter specifications.
+	// Here we are making sure that the base config's validation is done.
+	is := is.New(t)
+	underTest := Config{
+		Config: common.Config{
+			ConfigSASL: common.ConfigSASL{
+				Password: "password",
 			},
-			wantErr: "",
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			is := is.New(t)
-			err := tc.cfg.Validate(context.Background())
-			fmt.Println(err)
-			if tc.wantErr != "" {
-				is.True(err != nil)
-				is.True(strings.Contains(err.Error(), tc.wantErr))
-			} else {
-				is.NoErr(err)
-				is.Equal(tc.cfg.Topics, []string{"topic1"})
-			}
-		})
-	}
+	err := underTest.Validate(context.Background())
+	is.True(errors.Is(err, common.ErrSASLInvalidAuth))
 }

@@ -85,9 +85,6 @@ func testSourceIntegrationRead(
 	err := sdk.Util.ParseConfig(ctx, cfgMap, underTest.Config(), Connector.NewSpecification().SourceParams)
 	is.NoErr(err)
 
-	err = underTest.Config().Validate(ctx)
-	is.NoErr(err)
-
 	err = underTest.Open(ctx, startFrom)
 	is.NoErr(err)
 

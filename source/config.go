@@ -16,6 +16,7 @@ package source
 
 import (
 	"context"
+	"errors"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -39,6 +40,17 @@ type Config struct {
 }
 
 func (c *Config) Validate(ctx context.Context) error {
-	// custom validation can be added here
-	return c.DefaultSourceMiddleware.Validate(ctx)
+	var multierr []error
+
+	err := c.Config.Validate(ctx)
+	if err != nil {
+		multierr = append(multierr, err)
+	}
+
+	err = c.DefaultSourceMiddleware.Validate(ctx)
+	if err != nil {
+		multierr = append(multierr, err)
+	}
+
+	return errors.Join(multierr...)
 }

@@ -53,9 +53,6 @@ func testDestinationIntegrationWrite(t *testing.T, cfg map[string]string) {
 	err := sdk.Util.ParseConfig(ctx, cfg, underTest.Config(), Connector.NewSpecification().DestinationParams)
 	is.NoErr(err)
 
-	err = underTest.Config().Validate(ctx)
-	is.NoErr(err)
-
 	err = underTest.Open(ctx)
 	is.NoErr(err)
 
