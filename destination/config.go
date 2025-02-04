@@ -113,7 +113,7 @@ func (c *Config) Validate(context.Context) error {
 		multierr = append(multierr, err)
 	}
 
-	if c.RecordFormat != nil {
+	if c.RecordFormat != nil && *c.RecordFormat != "" {
 		recordFormatType, _, _ := strings.Cut(*c.RecordFormat, "/")
 		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
 			c.WithKafkaConnectKeyFormat()
