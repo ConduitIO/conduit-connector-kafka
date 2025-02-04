@@ -26,6 +26,7 @@ test: test-kafka test-redpanda
 .PHONY: generate
 generate:
 	go generate ./...
+	conn-sdk-cli readmegen -w
 
 .PHONY: fmt
 fmt: ## Format Go files using gofumpt and gci.

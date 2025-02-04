@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/conduitio/conduit-commons/config"
 	"github.com/conduitio/conduit-commons/lang"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
@@ -38,32 +37,21 @@ type Source struct {
 }
 
 func NewSource() sdk.Source {
-	return sdk.SourceWithMiddleware(
-		&Source{},
-		sdk.DefaultSourceMiddleware(
-			// disable schema extraction by default, because the source produces raw data
-			sdk.SourceWithSchemaExtractionConfig{
-				PayloadEnabled: lang.Ptr((false)),
-				KeyEnabled:     lang.Ptr(false),
+	return sdk.SourceWithMiddleware(&Source{
+		config: source.Config{
+			DefaultSourceMiddleware: sdk.DefaultSourceMiddleware{
+				SourceWithSchemaExtraction: sdk.SourceWithSchemaExtraction{
+					PayloadEnabled: lang.Ptr(false),
+					KeyEnabled:     lang.Ptr(false),
+				},
 			},
-		)...,
-	)
+		},
+	})
 }
 
-func (s *Source) Parameters() config.Parameters {
-	return source.Config{}.Parameters()
-}
-
-func (s *Source) Configure(ctx context.Context, cfg config.Config) error {
-	err := sdk.Util.ParseConfig(ctx, cfg, &s.config, NewSource().Parameters())
-	if err != nil {
-		return err
-	}
-	err = s.config.Validate(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
+// Config returns the currently active configuration of the source.
+func (s *Source) Config() sdk.SourceConfig {
+	return &s.config
 }
 
 func (s *Source) Open(ctx context.Context, sdkPos opencdc.Position) error {

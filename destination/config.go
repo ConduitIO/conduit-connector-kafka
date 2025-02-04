@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate paramgen -output=paramgen.go Config
-
 package destination
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -27,6 +26,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/common"
+	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -36,6 +36,7 @@ var (
 )
 
 type Config struct {
+	sdk.DefaultDestinationMiddleware
 	common.Config
 
 	// Topic is the Kafka topic. It can contain a [Go template](https://pkg.go.dev/text/template)
@@ -62,12 +63,11 @@ type Config struct {
 
 type TopicFn func(opencdc.Record) (string, error)
 
-func (c Config) WithKafkaConnectKeyFormat() Config {
+func (c *Config) WithKafkaConnectKeyFormat() {
 	c.useKafkaConnectKeyFormat = true
-	return c
 }
 
-func (c Config) RequiredAcks() kgo.Acks {
+func (c *Config) RequiredAcks() kgo.Acks {
 	switch c.Acks {
 	case "none":
 		return kgo.NoAck()
@@ -81,7 +81,7 @@ func (c Config) RequiredAcks() kgo.Acks {
 	}
 }
 
-func (c Config) CompressionCodecs() []kgo.CompressionCodec {
+func (c *Config) CompressionCodecs() []kgo.CompressionCodec {
 	switch c.Compression {
 	case "none":
 		return []kgo.CompressionCodec{kgo.NoCompression()}
@@ -100,10 +100,10 @@ func (c Config) CompressionCodecs() []kgo.CompressionCodec {
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.
-func (c Config) Validate() error {
+func (c *Config) Validate(ctx context.Context) error {
 	var multierr []error
 
-	err := c.Config.Validate()
+	err := c.Config.Validate(ctx)
 	if err != nil {
 		multierr = append(multierr, err)
 	}
@@ -113,13 +113,20 @@ func (c Config) Validate() error {
 		multierr = append(multierr, err)
 	}
 
+	if c.RecordFormat != nil && *c.RecordFormat != "" {
+		recordFormatType, _, _ := strings.Cut(*c.RecordFormat, "/")
+		if recordFormatType == (sdk.DebeziumConverter{}.Name()) {
+			c.WithKafkaConnectKeyFormat()
+		}
+	}
+
 	return errors.Join(multierr...)
 }
 
 // ParseTopic returns either a static topic or a function that determines the
 // topic for each record individually. If the topic is neither static nor a
 // template, an error is returned.
-func (c Config) ParseTopic() (topic string, f TopicFn, err error) {
+func (c *Config) ParseTopic() (topic string, f TopicFn, err error) {
 	if topicRegex.MatchString(c.Topic) {
 		// The topic is static, check length.
 		if len(c.Topic) > maxTopicLength {
