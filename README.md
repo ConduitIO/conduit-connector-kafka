@@ -3,19 +3,7 @@
 The Kafka connector is one of [Conduit](https://github.com/ConduitIO/conduit) builtin plugins. It provides both, a
 source and a destination connector for [Apache Kafka](https://kafka.apache.org).
 
-## How to build?
-
-Run `make build` to build the connector.
-
-## Testing
-
-Run `make test` to run all the unit and integration tests. Tests require Docker
-to be installed and running. The command will handle starting and stopping
-docker containers for you.
-
-Tests will run twice, once against an Apache Kafka instance and a second time
-against a [Redpanda](https://github.com/redpanda-data/redpanda) instance.
-
+<!-- readmegen:description -->
 ## Source
 
 A Kafka source connector is represented by a single consumer in a Kafka consumer
@@ -27,7 +15,31 @@ which is needed for Kafka to find the offsets for our consumer.
 A source is getting associated with a consumer group ID the first time the
 `Read()` method is called.
 
-### Configuration
+## Destination
+
+The destination connector writes records to Kafka.
+
+### Output format
+
+The output format can be adjusted using configuration options provided by the
+connector SDK:
+
+- `sdk.record.format`: used to choose the format
+- `sdk.record.format.options`: used to configure the specifics of the chosen format
+
+See [this article](https://conduit.io/docs/connectors/output-formats) for more
+info on configuring the output format.
+
+### Batching
+
+Batching can also be configured using connector SDK provided options:
+
+- `sdk.batch.size`: maximum number of records in batch before it gets written to
+  the destination (defaults to 0, no batching)
+- `sdk.batch.delay`: maximum delay before an incomplete batch is written to the
+  destination (defaults to 0, no limit)<!-- /readmegen:description -->
+
+## Source Configuration Parameters
 
 <!-- readmegen:source.parameters.yaml -->
 ```yaml
@@ -129,13 +141,7 @@ pipelines:
 ```
 <!-- /readmegen:source.parameters.yaml -->
 
-## Destination
-
-The destination connector sends records to Kafka.
-
-### Configuration
-
-There's no global, connector configuration. Each connector instance is configured separately.
+## Destination Configuration Parameters
 
 <!-- readmegen:destination.parameters.yaml -->
 ```yaml
@@ -243,21 +249,17 @@ pipelines:
 ```
 <!-- /readmegen:destination.parameters.yaml -->
 
-### Output format
+## How to build?
 
-The output format can be adjusted using configuration options provided by the connector SDK:
+Run `make build` to build the connector.
 
-- `sdk.record.format`: used to choose the format
-- `sdk.record.format.options`: used to configure the specifics of the chosen format
+## Testing
 
-See [this article](https://conduit.io/docs/connectors/output-formats) for more info
-on configuring the output format.
+Run `make test` to run all the unit and integration tests. Tests require Docker
+to be installed and running. The command will handle starting and stopping
+docker containers for you.
 
-### Batching
-
-Batching can also be configured using connector SDK provided options:
-
-- `sdk.batch.size`: maximum number of records in batch before it gets written to the destination (defaults to 0, no batching)
-- `sdk.batch.delay`: maximum delay before an incomplete batch is written to the destination (defaults to 0, no limit)
+Tests will run twice, once against an Apache Kafka instance and a second time
+against a [Redpanda](https://github.com/redpanda-data/redpanda) instance.
 
 ![scarf pixel](https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0)
