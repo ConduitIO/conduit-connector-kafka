@@ -176,6 +176,9 @@ type dataEncoder interface {
 type bytesEncoder struct{}
 
 func (bytesEncoder) Encode(data opencdc.Data) ([]byte, error) {
+	if data == nil {
+		return nil, nil
+	}
 	return data.Bytes(), nil
 }
 

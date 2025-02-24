@@ -143,3 +143,13 @@ func TestFranzProducer_Opts_Topic(t *testing.T) {
 		is.Equal(topic, "bar")
 	})
 }
+
+func TestBytesEncoder_Encode_NilData(t *testing.T) {
+	is := is.New(t)
+
+	var encoder bytesEncoder
+	result, err := encoder.Encode(nil)
+
+	is.NoErr(err)
+	is.Equal(result, nil)
+}
