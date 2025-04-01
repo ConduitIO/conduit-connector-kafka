@@ -1,6 +1,6 @@
 module github.com/conduitio/conduit-connector-kafka/tools
 
-go 1.24.1
+go 1.24.2
 
 tool (
 	github.com/conduitio/conduit-connector-sdk/conn-sdk-cli
