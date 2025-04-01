@@ -115,10 +115,13 @@ func TestFranzConsumer_Consume_MultipleTopics(t *testing.T) {
 		defer cancel()
 		got, err := c.Consume(ctx)
 		is.NoErr(err)
-		if got.Topic == cfg.Topics[0] {
+		switch got.Topic {
+		case cfg.Topics[0]:
 			topic1++
-		} else if got.Topic == cfg.Topics[1] {
+		case cfg.Topics[1]:
 			topic2++
+		default:
+			is.Fail() // unknown topic
 		}
 	}
 	is.Equal(topic1, 3)
