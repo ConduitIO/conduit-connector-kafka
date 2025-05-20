@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -65,12 +66,25 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
 
-	return &FranzConsumer{
+	consumer := &FranzConsumer{
 		client:               cl,
 		acker:                newBatchAcker(cl, 1000),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
-	}, nil
+	}
+
+	go consumer.scheduleFlushing(ctx)
+
+	return consumer, nil
+}
+
+func (c *FranzConsumer) scheduleFlushing(ctx context.Context) {
+	for range time.Tick(10 * time.Second) {
+		err := c.acker.Flush(ctx)
+		if err != nil {
+			sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
+		}
+	}
 }
 
 func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
