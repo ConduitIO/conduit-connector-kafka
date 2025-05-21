@@ -89,7 +89,7 @@ func (c *FranzConsumer) scheduleFlushing(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			sdk.Logger(ctx).Warn().Err(ctx.Err()).
+			sdk.Logger(ctx).Debug().Err(ctx.Err()).
 				Msg("FranzConsumer context done, exiting scheduleFlushing goroutine")
 			return
 		case <-ticker:
