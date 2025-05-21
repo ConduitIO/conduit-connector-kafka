@@ -151,10 +151,10 @@ func Produce(t T, servers []string, topic string, records []*kgo.Record, timeout
 	is.NoErr(results.FirstErr())
 }
 
+// ListCommittedOffsets returns the committed offsets for the given group ID and topic.
 func ListCommittedOffsets(t T, servers []string, groupID, topic string) map[int32]kadm.OffsetResponse {
 	is := is.New(t)
 
-	// Create a Kafka client
 	client, err := kgo.NewClient(
 		kgo.SeedBrokers(servers...),
 	)
@@ -162,11 +162,11 @@ func ListCommittedOffsets(t T, servers []string, groupID, topic string) map[int3
 	defer client.Close()
 
 	admin := kadm.NewClient(client)
+	defer admin.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Fetch the list of committed offsets for the consumer group
 	offsets, err := admin.FetchOffsetsForTopics(ctx, groupID, topic)
 	is.NoErr(err) // failed to fetch consumer group offsets
 
