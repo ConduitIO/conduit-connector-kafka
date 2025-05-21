@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: apache/kafka-native:3.8.0
+    image: apache/kafka-native:4.0.0
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9092"]
       # health checks happen every 2s, failures in the first 30s are not counted toward the maximum number of retries,
