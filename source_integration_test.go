@@ -86,6 +86,8 @@ func TestSource_Integration_CommitOnTeardown(t *testing.T) {
 	recs1 := test.GenerateFranzRecords(1, 3)
 	test.Produce(t, cfg.Servers, cfg.Topics[0], recs1)
 
+	// When the source is torn down, all acks should be flushed
+	// (i.e., all Kafka messages should be committed)
 	underTest, posSDK := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
 	err := underTest.Teardown(ctx)
 	is.NoErr(err)
@@ -111,6 +113,8 @@ func TestSource_Integration_CommitPeriodically(t *testing.T) {
 	recs1 := test.GenerateFranzRecords(1, 3)
 	test.Produce(t, cfg.Servers, cfg.Topics[0], recs1)
 
+	// The source should send all collected acks every 5 seconds
+	// (i.e., the acked Kafka messages should be committed)
 	underTest, posSDK := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
 	defer func() {
 		err := underTest.Teardown(ctx)
@@ -120,7 +124,7 @@ func TestSource_Integration_CommitPeriodically(t *testing.T) {
 	pos, err := source.ParseSDKPosition(posSDK)
 	is.NoErr(err)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	offsets := test.ListCommittedOffsets(t, cfg.Servers, pos.GroupID, cfg.Topics[0])
 	// sanity check, our test utils should create topics with only 1 partition

@@ -28,6 +28,11 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
+var (
+	ackBatchSize = 1000
+	ackBatchTime = 5 * time.Second
+)
+
 type FranzConsumer struct {
 	client Client
 	acker  *batchAcker
@@ -68,7 +73,7 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 
 	consumer := &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
+		acker:                newBatchAcker(cl, ackBatchSize),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
 	}
@@ -79,7 +84,7 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 }
 
 func (c *FranzConsumer) scheduleFlushing(ctx context.Context) {
-	for range time.Tick(10 * time.Second) {
+	for range time.Tick(ackBatchTime) {
 		err := c.acker.Flush(ctx)
 		if err != nil {
 			sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
