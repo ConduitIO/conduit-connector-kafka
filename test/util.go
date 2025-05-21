@@ -151,6 +151,28 @@ func Produce(t T, servers []string, topic string, records []*kgo.Record, timeout
 	is.NoErr(results.FirstErr())
 }
 
+func ListCommittedOffsets(t T, servers []string, groupID, topic string) map[int32]kadm.OffsetResponse {
+	is := is.New(t)
+
+	// Create a Kafka client
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(servers...),
+	)
+	is.NoErr(err) // failed to create a Kafka client
+	defer client.Close()
+
+	admin := kadm.NewClient(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Fetch the list of committed offsets for the consumer group
+	offsets, err := admin.FetchOffsetsForTopics(ctx, groupID, topic)
+	is.NoErr(err) // failed to fetch consumer group offsets
+
+	return offsets[topic]
+}
+
 func GenerateFranzRecords(from, to int, topicOpt ...string) []*kgo.Record {
 	topic := ""
 	if len(topicOpt) > 0 {
@@ -200,8 +222,7 @@ func CreateTopics(t T, servers []string, topics []string) {
 	t.Cleanup(cl.Close)
 
 	adminCl := kadm.NewClient(cl)
-	resp, err := adminCl.CreateTopics(
-		ctx, 1, 1, nil, topics...)
+	resp, err := adminCl.CreateTopics(ctx, 1, 1, nil, topics...)
 	var kafkaErr *kerr.Error
 	if errors.As(resp.Error(), &kafkaErr) && kafkaErr.Code == kerr.TopicAlreadyExists.Code {
 		// ignore topic if it already exists
