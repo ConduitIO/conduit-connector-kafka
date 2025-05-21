@@ -79,6 +79,18 @@ specification:
         type: string
         default: ""
         validations: []
+      - name: commitOffsetsDelay
+        description: CommitOffsetsDelay defines on how often consumed offsets should be commited.
+        type: duration
+        default: 5s
+        validations: []
+      - name: commitOffsetsSize
+        description: CommitOffsetsSize defines the number of consumed offsets to be committed at a time.
+        type: int
+        default: "1000"
+        validations:
+          - type: greater-than
+            value: "-1"
       - name: groupID
         description: GroupID defines the consumer group id.
         type: string
