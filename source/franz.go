@@ -175,7 +175,6 @@ func (a *batchAcker) Ack(ctx context.Context) error {
 	if curBatchIndex < a.batchSize {
 		return nil
 	}
-	// TODO flush on timeout
 	return a.Flush(ctx)
 }
 
