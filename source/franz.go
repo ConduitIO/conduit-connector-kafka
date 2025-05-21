@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -67,7 +68,7 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 
 	return &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
+		acker:                newBatchAcker(cl, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
 	}, nil
@@ -116,16 +117,20 @@ type batchAcker struct {
 	client Client
 
 	batchSize     int
+	batchDelay    time.Duration
+	flushTimer    *time.Timer
 	curBatchIndex int
 
 	records []*kgo.Record
 	m       sync.Mutex
 }
 
-func newBatchAcker(client Client, batchSize int) *batchAcker {
+func newBatchAcker(client Client, batchSize int, delay time.Duration) *batchAcker {
 	return &batchAcker{
 		client:        client,
 		batchSize:     batchSize,
+		batchDelay:    delay,
+		flushTimer:    time.NewTimer(delay),
 		curBatchIndex: 0,
 		records:       make([]*kgo.Record, 0, 10000), // prepare generous capacity
 	}
@@ -139,20 +144,25 @@ func (a *batchAcker) Records(recs ...*kgo.Record) {
 
 func (a *batchAcker) Ack(ctx context.Context) error {
 	a.curBatchIndex++
-	if a.curBatchIndex < a.batchSize {
-		return nil
+	select {
+	case <-a.flushTimer.C:
+	default:
+		if a.curBatchIndex < a.batchSize {
+			return nil
+		}
 	}
-	// TODO flush on timeout
+
 	return a.Flush(ctx)
 }
 
 func (a *batchAcker) Flush(ctx context.Context) error {
+	a.m.Lock()
+	defer a.m.Unlock()
+	defer a.flushTimer.Reset(a.batchDelay)
+
 	if a.curBatchIndex == 0 {
 		return nil // nothing to flush
 	}
-
-	a.m.Lock()
-	defer a.m.Unlock()
 
 	err := a.client.CommitRecords(ctx, a.records[:a.curBatchIndex]...)
 	if err != nil {

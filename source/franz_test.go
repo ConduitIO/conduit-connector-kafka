@@ -99,7 +99,7 @@ func Test_FranzConsumer_Consume_Success(t *testing.T) {
 
 	c := &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
+		acker:                newBatchAcker(cl, 1000, 2*time.Second),
 		iter:                 &kgo.FetchesRecordIter{},
 		retryGroupJoinErrors: true,
 	}
@@ -130,7 +130,7 @@ func Test_FranzConsumer_Consume_RetryGroupJoinError(t *testing.T) {
 
 	c := &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
+		acker:                newBatchAcker(cl, 1000, 2*time.Second),
 		iter:                 &kgo.FetchesRecordIter{},
 		retryGroupJoinErrors: true,
 	}
