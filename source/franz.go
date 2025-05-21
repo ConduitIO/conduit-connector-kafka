@@ -84,10 +84,19 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 }
 
 func (c *FranzConsumer) scheduleFlushing(ctx context.Context) {
-	for range time.Tick(ackBatchTime) {
-		err := c.acker.Flush(ctx)
-		if err != nil {
-			sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
+	ticker := time.Tick(ackBatchTime)
+
+	for {
+		select {
+		case <-ctx.Done():
+			sdk.Logger(ctx).Warn().Err(ctx.Err()).
+				Msg("FranzConsumer context done, exiting scheduleFlushing goroutine")
+			return
+		case <-ticker:
+			err := c.acker.Flush(ctx)
+			if err != nil {
+				sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
+			}
 		}
 	}
 }
@@ -138,7 +147,8 @@ type batchAcker struct {
 	curBatchIndex int
 
 	records []*kgo.Record
-	m       sync.Mutex
+	// m is used to synchronize access to records and curBatchIndex
+	m sync.Mutex
 }
 
 func newBatchAcker(client Client, batchSize int) *batchAcker {
@@ -157,8 +167,12 @@ func (a *batchAcker) Records(recs ...*kgo.Record) {
 }
 
 func (a *batchAcker) Ack(ctx context.Context) error {
+	a.m.Lock()
 	a.curBatchIndex++
-	if a.curBatchIndex < a.batchSize {
+	curBatchIndex := a.curBatchIndex
+	a.m.Unlock()
+
+	if curBatchIndex < a.batchSize {
 		return nil
 	}
 	// TODO flush on timeout
@@ -166,12 +180,12 @@ func (a *batchAcker) Ack(ctx context.Context) error {
 }
 
 func (a *batchAcker) Flush(ctx context.Context) error {
+	a.m.Lock()
+	defer a.m.Unlock()
+
 	if a.curBatchIndex == 0 {
 		return nil // nothing to flush
 	}
-
-	a.m.Lock()
-	defer a.m.Unlock()
 
 	err := a.client.CommitRecords(ctx, a.records[:a.curBatchIndex]...)
 	if err != nil {
