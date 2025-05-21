@@ -158,7 +158,10 @@ func (a *batchAcker) Ack(ctx context.Context) error {
 func (a *batchAcker) Flush(ctx context.Context) error {
 	a.m.Lock()
 	defer a.m.Unlock()
-	defer a.flushTimer.Reset(a.batchDelay)
+
+	if a.batchDelay > 0 {
+		defer a.flushTimer.Reset(a.batchDelay)
+	}
 
 	if a.curBatchIndex == 0 {
 		return nil // nothing to flush
