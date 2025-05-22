@@ -25,3 +25,13 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "Go tools:"
+
+  # Maintain dependencies for Go tools
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "test/compose-kafka.yaml"
+      - "test/compose-redpanda.yaml"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "docker-compose:"
