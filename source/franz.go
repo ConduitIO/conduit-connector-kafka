@@ -73,7 +73,7 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 
 	consumer := &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, ackBatchSize),
+		acker:                newBatchAcker(cl, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
 	}
@@ -143,18 +143,20 @@ func (c *FranzConsumer) Close(ctx context.Context) error {
 type batchAcker struct {
 	client Client
 
-	batchSize     int
-	curBatchIndex int
+	batchSize  int
+	batchDelay time.Duration
 
-	records []*kgo.Record
+	curBatchIndex int
+	records       []*kgo.Record
 	// m is used to synchronize access to records and curBatchIndex
 	m sync.Mutex
 }
 
-func newBatchAcker(client Client, batchSize int) *batchAcker {
+func newBatchAcker(client Client, batchSize int, batchDelay time.Duration) *batchAcker {
 	return &batchAcker{
 		client:        client,
 		batchSize:     batchSize,
+		batchDelay:    batchDelay,
 		curBatchIndex: 0,
 		records:       make([]*kgo.Record, 0, 10000), // prepare generous capacity
 	}

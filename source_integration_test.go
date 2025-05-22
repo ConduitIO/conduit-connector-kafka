@@ -108,6 +108,7 @@ func TestSource_Integration_CommitPeriodically(t *testing.T) {
 	ctx := context.Background()
 
 	cfgMap := test.SourceConfigMap(t, false, false)
+	cfgMap["commitOffsetsDelay"] = "1s"
 	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)
@@ -124,7 +125,7 @@ func TestSource_Integration_CommitPeriodically(t *testing.T) {
 	pos, err := source.ParseSDKPosition(posSDK)
 	is.NoErr(err)
 
-	time.Sleep(6 * time.Second)
+	time.Sleep(1500 * time.Millisecond)
 
 	offsets := test.ListCommittedOffsets(t, cfg.Servers, pos.GroupID, cfg.Topics[0])
 	// sanity check, our test utils should create topics with only 1 partition
