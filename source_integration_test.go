@@ -17,6 +17,7 @@ package kafka
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/conduitio/conduit-connector-kafka/source"
@@ -28,29 +29,39 @@ import (
 
 func TestSource_Integration_RestartFull(t *testing.T) {
 	t.Parallel()
+	is := is.New(t)
+	ctx := context.Background()
 
 	cfgMap := test.SourceConfigMap(t, true, false)
 	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)
 	test.Produce(t, cfg.Servers, cfg.Topics[0], recs1)
-	lastPosition := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
+	underTest, lastPosition := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
+	err := underTest.Teardown(ctx)
+	is.NoErr(err)
 
 	// produce more records and restart source from last position
 	recs2 := test.GenerateFranzRecords(4, 6)
 	test.Produce(t, cfg.Servers, cfg.Topics[1], recs2)
-	testSourceIntegrationRead(t, cfgMap, lastPosition, recs2, false)
+	underTest, _ = testSourceIntegrationRead(t, cfgMap, lastPosition, recs2, false)
+	err = underTest.Teardown(ctx)
+	is.NoErr(err)
 }
 
 func TestSource_Integration_RestartPartial(t *testing.T) {
 	t.Parallel()
+	is := is.New(t)
+	ctx := context.Background()
 
 	cfgMap := test.SourceConfigMap(t, true, false)
 	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
 
 	recs1 := test.GenerateFranzRecords(1, 3)
 	test.Produce(t, cfg.Servers, cfg.Topics[0], recs1)
-	lastPosition := testSourceIntegrationRead(t, cfgMap, nil, recs1, true)
+	underTest, lastPosition := testSourceIntegrationRead(t, cfgMap, nil, recs1, true)
+	err := underTest.Teardown(ctx)
+	is.NoErr(err)
 
 	// only first record was acked, produce more records and expect to resume
 	// from last acked record
@@ -63,6 +74,65 @@ func TestSource_Integration_RestartPartial(t *testing.T) {
 	testSourceIntegrationRead(t, cfgMap, lastPosition, wantRecs, false)
 }
 
+func TestSource_Integration_CommitOnTeardown(t *testing.T) {
+	t.Parallel()
+
+	is := is.New(t)
+	ctx := context.Background()
+
+	cfgMap := test.SourceConfigMap(t, false, false)
+	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
+
+	recs1 := test.GenerateFranzRecords(1, 3)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], recs1)
+
+	// When the source is torn down, all acks should be flushed
+	// (i.e., all Kafka messages should be committed)
+	underTest, posSDK := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
+	err := underTest.Teardown(ctx)
+	is.NoErr(err)
+
+	pos, err := source.ParseSDKPosition(posSDK)
+	is.NoErr(err)
+
+	offsets := test.ListCommittedOffsets(t, cfg.Servers, pos.GroupID, cfg.Topics[0])
+	// sanity check, our test utils should create topics with only 1 partition
+	is.Equal(1, len(offsets))
+	is.Equal(int64(3), offsets[0].At)
+}
+
+func TestSource_Integration_CommitPeriodically(t *testing.T) {
+	t.Parallel()
+
+	is := is.New(t)
+	ctx := context.Background()
+
+	cfgMap := test.SourceConfigMap(t, false, false)
+	cfgMap["commitOffsetsDelay"] = "1s"
+	cfg := test.ParseConfigMap[source.Config](t, cfgMap)
+
+	recs1 := test.GenerateFranzRecords(1, 3)
+	test.Produce(t, cfg.Servers, cfg.Topics[0], recs1)
+
+	// The source should send all collected acks every 5 seconds
+	// (i.e., the acked Kafka messages should be committed)
+	underTest, posSDK := testSourceIntegrationRead(t, cfgMap, nil, recs1, false)
+	defer func() {
+		err := underTest.Teardown(ctx)
+		is.NoErr(err)
+	}()
+
+	pos, err := source.ParseSDKPosition(posSDK)
+	is.NoErr(err)
+
+	time.Sleep(1500 * time.Millisecond)
+
+	offsets := test.ListCommittedOffsets(t, cfg.Servers, pos.GroupID, cfg.Topics[0])
+	// sanity check, our test utils should create topics with only 1 partition
+	is.Equal(1, len(offsets))
+	is.Equal(int64(3), offsets[0].At)
+}
+
 // testSourceIntegrationRead reads and acks messages in range [from,to].
 // If ackFirst is true, only the first message will be acknowledged.
 // Returns the position of the last message read.
@@ -72,15 +142,11 @@ func testSourceIntegrationRead(
 	startFrom opencdc.Position,
 	wantRecords []*kgo.Record,
 	ackFirstOnly bool,
-) opencdc.Position {
+) (sdk.Source, opencdc.Position) {
 	is := is.New(t)
 	ctx := context.Background()
 
 	underTest := NewSource()
-	defer func() {
-		err := underTest.Teardown(ctx)
-		is.NoErr(err)
-	}()
 
 	err := sdk.Util.ParseConfig(ctx, cfgMap, underTest.Config(), Connector.NewSpecification().SourceParams)
 	is.NoErr(err)
@@ -108,5 +174,5 @@ func testSourceIntegrationRead(
 		is.NoErr(err)
 	}
 
-	return positions[len(positions)-1]
+	return underTest, positions[len(positions)-1]
 }

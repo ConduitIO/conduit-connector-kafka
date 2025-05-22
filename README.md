@@ -77,6 +77,16 @@ pipelines:
           # Type: string
           # Required: no
           clientKey: ""
+          # CommitOffsetsDelay defines how often consumed offsets should be
+          # committed.
+          # Type: duration
+          # Required: no
+          commitOffsetsDelay: "5s"
+          # CommitOffsetsSize defines the maximum number of consumed offsets to
+          # be committed at a time.
+          # Type: int
+          # Required: no
+          commitOffsetsSize: "1000"
           # GroupID defines the consumer group id.
           # Type: string
           # Required: no

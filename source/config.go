@@ -17,6 +17,7 @@ package source
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/common"
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -37,6 +38,10 @@ type Config struct {
 	GroupID string `json:"groupID"`
 	// RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.
 	RetryGroupJoinErrors bool `json:"retryGroupJoinErrors" default:"true"`
+	// CommitOffsetsSize defines the maximum number of consumed offsets to be committed at a time.
+	CommitOffsetsSize int `json:"commitOffsetsSize" default:"1000" validate:"gt=-1"`
+	// CommitOffsetsDelay defines how often consumed offsets should be committed.
+	CommitOffsetsDelay time.Duration `json:"commitOffsetsDelay" default:"5s"`
 }
 
 func (c *Config) Validate(ctx context.Context) error {

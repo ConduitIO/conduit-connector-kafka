@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -67,7 +68,7 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 
 	return &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, 1000),
+		acker:                newBatchAcker(ctx, cl, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
 	}, nil
@@ -115,19 +116,44 @@ func (c *FranzConsumer) Close(ctx context.Context) error {
 type batchAcker struct {
 	client Client
 
-	batchSize     int
-	curBatchIndex int
+	batchSize  int
+	batchDelay time.Duration
 
-	records []*kgo.Record
-	m       sync.Mutex
+	curBatchIndex int
+	records       []*kgo.Record
+	// m is used to synchronize access to records and curBatchIndex
+	m sync.Mutex
 }
 
-func newBatchAcker(client Client, batchSize int) *batchAcker {
-	return &batchAcker{
+func newBatchAcker(ctx context.Context, client Client, batchSize int, batchDelay time.Duration) *batchAcker {
+	acker := &batchAcker{
 		client:        client,
 		batchSize:     batchSize,
+		batchDelay:    batchDelay,
 		curBatchIndex: 0,
 		records:       make([]*kgo.Record, 0, 10000), // prepare generous capacity
+	}
+
+	go acker.scheduleFlushing(ctx)
+
+	return acker
+}
+
+func (a *batchAcker) scheduleFlushing(ctx context.Context) {
+	ticker := time.Tick(a.batchDelay)
+
+	for {
+		select {
+		case <-ctx.Done():
+			sdk.Logger(ctx).Debug().Err(ctx.Err()).
+				Msg("batchAcker context done, exiting scheduleFlushing goroutine")
+			return
+		case <-ticker:
+			err := a.Flush(ctx)
+			if err != nil {
+				sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
+			}
+		}
 	}
 }
 
@@ -138,21 +164,24 @@ func (a *batchAcker) Records(recs ...*kgo.Record) {
 }
 
 func (a *batchAcker) Ack(ctx context.Context) error {
+	a.m.Lock()
 	a.curBatchIndex++
-	if a.curBatchIndex < a.batchSize {
+	curBatchIndex := a.curBatchIndex
+	a.m.Unlock()
+
+	if curBatchIndex < a.batchSize {
 		return nil
 	}
-	// TODO flush on timeout
 	return a.Flush(ctx)
 }
 
 func (a *batchAcker) Flush(ctx context.Context) error {
+	a.m.Lock()
+	defer a.m.Unlock()
+
 	if a.curBatchIndex == 0 {
 		return nil // nothing to flush
 	}
-
-	a.m.Lock()
-	defer a.m.Unlock()
 
 	err := a.client.CommitRecords(ctx, a.records[:a.curBatchIndex]...)
 	if err != nil {
