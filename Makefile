@@ -7,17 +7,17 @@ build:
 .PHONY: test-kafka
 test-kafka:
 	# run required docker containers, execute integration tests, stop containers after tests
-	docker compose -f test/docker-compose-kafka.yml up --quiet-pull -d --wait
+	docker compose -f test/compose-kafka.yaml up --quiet-pull -d --wait
 	go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
-		docker compose -f test/docker-compose-kafka.yml down; \
+		docker compose -f test/compose-kafka.yaml down; \
 		exit $$ret
 
 .PHONY: test-redpanda
 test-redpanda:
 	# run required docker containers, execute integration tests, stop containers after tests
-	docker compose -f test/docker-compose-redpanda.yml up --quiet-pull -d --wait
+	docker compose -f test/compose-redpanda.yaml up --quiet-pull -d --wait
 	go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
-		docker compose -f test/docker-compose-redpanda.yml down; \
+		docker compose -f test/compose-redpanda.yaml down; \
 		exit $$ret
 
 .PHONY: test
