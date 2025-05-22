@@ -28,11 +28,6 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-var (
-	ackBatchSize = 1000
-	ackBatchTime = 5 * time.Second
-)
-
 type FranzConsumer struct {
 	client Client
 	acker  *batchAcker
@@ -71,34 +66,12 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
 
-	consumer := &FranzConsumer{
+	return &FranzConsumer{
 		client:               cl,
-		acker:                newBatchAcker(cl, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
+		acker:                newBatchAcker(ctx, cl, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
-	}
-
-	go consumer.scheduleFlushing(ctx)
-
-	return consumer, nil
-}
-
-func (c *FranzConsumer) scheduleFlushing(ctx context.Context) {
-	ticker := time.Tick(ackBatchTime)
-
-	for {
-		select {
-		case <-ctx.Done():
-			sdk.Logger(ctx).Debug().Err(ctx.Err()).
-				Msg("FranzConsumer context done, exiting scheduleFlushing goroutine")
-			return
-		case <-ticker:
-			err := c.acker.Flush(ctx)
-			if err != nil {
-				sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
-			}
-		}
-	}
+	}, nil
 }
 
 func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
@@ -152,13 +125,35 @@ type batchAcker struct {
 	m sync.Mutex
 }
 
-func newBatchAcker(client Client, batchSize int, batchDelay time.Duration) *batchAcker {
-	return &batchAcker{
+func newBatchAcker(ctx context.Context, client Client, batchSize int, batchDelay time.Duration) *batchAcker {
+	acker := &batchAcker{
 		client:        client,
 		batchSize:     batchSize,
 		batchDelay:    batchDelay,
 		curBatchIndex: 0,
 		records:       make([]*kgo.Record, 0, 10000), // prepare generous capacity
+	}
+
+	go acker.scheduleFlushing(ctx)
+
+	return acker
+}
+
+func (a *batchAcker) scheduleFlushing(ctx context.Context) {
+	ticker := time.Tick(a.batchDelay)
+
+	for {
+		select {
+		case <-ctx.Done():
+			sdk.Logger(ctx).Debug().Err(ctx.Err()).
+				Msg("batchAcker context done, exiting scheduleFlushing goroutine")
+			return
+		case <-ticker:
+			err := a.Flush(ctx)
+			if err != nil {
+				sdk.Logger(ctx).Warn().Err(err).Msg("failed to flush acks")
+			}
+		}
 	}
 }
 
