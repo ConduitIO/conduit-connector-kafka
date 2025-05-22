@@ -1,6 +1,6 @@
 services:
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.1.4
+    image: docker.redpanda.com/redpandadata/redpanda:v25.1.4
     command:
       - redpanda start
       - --smp 1
