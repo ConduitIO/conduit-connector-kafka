@@ -37,7 +37,7 @@ specification:
       the destination (defaults to 0, no batching)
     - `sdk.batch.delay`: maximum delay before an incomplete batch is written to the
       destination (defaults to 0, no limit)
-  version: v0.12.2
+  version: v0.12.3
   author: Meroxa, Inc.
   source:
     parameters:
