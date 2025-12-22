@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/matryer/is v1.4.1
 	github.com/rs/zerolog v1.34.0
-	github.com/twmb/franz-go v1.20.5
+	github.com/twmb/franz-go v1.20.6
 	github.com/twmb/franz-go/pkg/kadm v1.17.1
 	go.uber.org/mock v0.6.0
 )
@@ -114,7 +114,7 @@ require (
 	github.com/karamaru-alpha/copyloopvar v1.2.1 // indirect
 	github.com/kisielk/errcheck v1.9.0 // indirect
 	github.com/kkHAIKE/contextcheck v1.1.6 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/kulti/thelper v0.6.3 // indirect
 	github.com/kunwardeep/paralleltest v1.0.10 // indirect
 	github.com/lasiar/canonicalheader v1.1.2 // indirect
