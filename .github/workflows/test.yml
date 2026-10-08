@@ -19,6 +19,9 @@ jobs:
       - name: Test with Kafka
         run: make test-kafka GOTEST_FLAGS="-v -count=1"
 
+  # Integration and acceptance tests against Redpanda (test/compose-redpanda.yaml,
+  # image pinned by digest). This job is what lets one connector serve both
+  # brokers without a separate Redpanda connector.
   test-redpanda:
     runs-on: ubuntu-latest
     steps:
