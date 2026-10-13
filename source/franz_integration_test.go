@@ -15,12 +15,15 @@
 package source
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/conduitio/conduit-connector-kafka/test"
 	"github.com/matryer/is"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 func TestFranzConsumer_Consume_FromBeginning(t *testing.T) {
@@ -70,21 +73,46 @@ func TestFranzConsumer_Consume_LastOffset(t *testing.T) {
 		is.NoErr(err)
 	}()
 
-	ctxTimeout, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-	defer cancel()
-	got, err := c.Consume(ctxTimeout)
-	is.Equal(err, context.DeadlineExceeded)
-	is.Equal(got, nil)
+	// The consumer joins the group and resolves its "end" offset asynchronously.
+	// Records produced before that happens fall before the resolved offset and
+	// are never delivered, so producing a fixed 200ms after creating the
+	// consumer is a race (observed on slower brokers/CI). Produce marker records
+	// until the consumer delivers one: from then on its position is established
+	// and everything produced afterwards must be delivered.
+	marker := []byte("marker")
+	deadline := time.Now().Add(15 * time.Second)
+	for positioned := false; !positioned; {
+		is.True(time.Now().Before(deadline)) // consumer never received a marker record
+		test.Produce(t, cfg.Servers, cfg.Topics[0], []*kgo.Record{{Key: marker, Value: marker}})
+
+		ctxTimeout, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		got, err := c.Consume(ctxTimeout)
+		cancel()
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			// not positioned yet, produce another marker
+		case err != nil:
+			is.NoErr(err)
+		default:
+			// pre-existing records (1-6) must never be delivered
+			is.Equal(got.Key, marker)
+			positioned = true
+		}
+	}
 
 	records = test.GenerateFranzRecords(7, 9)
 	test.Produce(t, cfg.Servers, cfg.Topics[0], records)
 
-	for i := 0; i < len(records); i++ {
-		ctx, cancel := context.WithTimeout(ctx, time.Second)
-		defer cancel()
+	for i := 0; i < len(records); {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		got, err := c.Consume(ctx)
+		cancel()
 		is.NoErr(err)
+		if bytes.Equal(got.Key, marker) {
+			continue // leftover marker produced while waiting for the position
+		}
 		is.Equal(got.Key, records[i].Key)
+		i++
 	}
 }
 
