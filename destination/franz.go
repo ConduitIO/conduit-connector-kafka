@@ -129,20 +129,11 @@ func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (
 		return 0, fmt.Errorf("failed to wait for all records to be produced: %w", err)
 	}
 
-	return produceOutcome(results[:produced], prepareErrIndex, prepareErr)
-}
-
-// produceOutcome turns per-record delivery results (in record order, one slot
-// per record handed to the client) and an optional prepare error into the
-// (n, err) pair Produce returns.
-//
-// Invariant 1: n means "records[:n] are durably written" and the SDK acks
-// exactly that prefix. n is therefore the index of the first failed record in
-// record order, never a position in completion order. A delivery failure at or
-// before the prepare failure wins, because it has the smaller index; a prepare
-// failure at index k is only reported when records[:k] were all delivered.
-func produceOutcome(results []error, prepareErrIndex int, prepareErr error) (int, error) {
-	for i, err := range results {
+	// Invariant 1: the returned count n means "records[:n] are durably
+	// written" and the SDK acks exactly that prefix. n must therefore be the
+	// index of the first failed record in record order, never a position in
+	// completion order.
+	for i, err := range results[:produced] {
 		if err != nil {
 			return i, fmt.Errorf("failed to produce record %v: %w", i, err)
 		}
@@ -154,7 +145,7 @@ func produceOutcome(results []error, prepareErrIndex int, prepareErr error) (int
 		return prepareErrIndex, prepareErr
 	}
 
-	return len(results), nil
+	return produced, nil
 }
 
 func (p *FranzProducer) prepareRecord(r opencdc.Record) (*kgo.Record, error) {
