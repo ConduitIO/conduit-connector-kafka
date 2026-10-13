@@ -56,9 +56,12 @@ func (c ConfigSASL) SASL() sasl.Mechanism {
 	return m
 }
 
+// mechanismPlain is the SASL mechanism name for username/password auth.
+const mechanismPlain = "PLAIN"
+
 func (c ConfigSASL) sasl() (sasl.Mechanism, error) {
 	switch c.Mechanism {
-	case "PLAIN":
+	case mechanismPlain:
 		return plain.Auth{
 			User: c.Username,
 			Pass: c.Password,

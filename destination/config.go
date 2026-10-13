@@ -67,13 +67,20 @@ func (c *Config) WithKafkaConnectKeyFormat() {
 	c.useKafkaConnectKeyFormat = true
 }
 
+// Values of the acks setting.
+const (
+	acksNone = "none"
+	acksOne  = "one"
+	acksAll  = "all"
+)
+
 func (c *Config) RequiredAcks() kgo.Acks {
 	switch c.Acks {
-	case "none":
+	case acksNone:
 		return kgo.NoAck()
-	case "one":
+	case acksOne:
 		return kgo.LeaderAck()
-	case "all":
+	case acksAll:
 		return kgo.AllISRAcks()
 	default:
 		// it shouldn't be possible to get here because of the config validation

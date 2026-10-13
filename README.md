@@ -50,6 +50,7 @@ pipelines:
     connectors:
       - id: example
         plugin: "kafka"
+        type: source
         settings:
           # Servers is a list of Kafka bootstrap servers, which will be used to
           # discover all the servers in a cluster.
@@ -185,6 +186,7 @@ pipelines:
     connectors:
       - id: example
         plugin: "kafka"
+        type: destination
         settings:
           # Servers is a list of Kafka bootstrap servers, which will be used to
           # discover all the servers in a cluster.
