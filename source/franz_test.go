@@ -138,3 +138,58 @@ func Test_FranzConsumer_Consume_RetryGroupJoinError(t *testing.T) {
 	_, err := c.Consume(ctx)
 	is.True(errors.Is(err, sdk.ErrBackoffRetry))
 }
+
+// Test_FranzConsumer_Consume_MixedFetchErrorDoesNotDropRecords: one poll can
+// return fetches that carry records next to a group-session error (franz-go
+// merges every ready fetch into one result). Returning ErrBackoffRetry at the
+// first error dropped those records: franz-go had already advanced past them,
+// so a later ack committed an offset beyond them and they were never delivered.
+func Test_FranzConsumer_Consume_MixedFetchErrorDoesNotDropRecords(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	rec := func(offset int64) *kgo.Record {
+		return &kgo.Record{Topic: "test", Partition: 0, Offset: offset, Value: []byte{byte(offset)}, Timestamp: time.Now()}
+	}
+	mixed := kgo.Fetches{
+		{Topics: []kgo.FetchTopic{{Topic: "test", Partitions: []kgo.FetchPartition{{Partition: 0, Records: []*kgo.Record{rec(5), rec(6)}}}}}},
+		{Topics: []kgo.FetchTopic{{Topic: "", Partitions: []kgo.FetchPartition{{Partition: -1, Err: errors.New("unable to join group session: boom")}}}}},
+	}
+	next := kgo.Fetches{
+		{Topics: []kgo.FetchTopic{{Topic: "test", Partitions: []kgo.FetchPartition{{Partition: 0, Records: []*kgo.Record{rec(7)}}}}}},
+	}
+
+	cl := NewMockClient(gomock.NewController(t))
+	gomock.InOrder(
+		cl.EXPECT().PollFetches(gomock.Any()).Return(mixed),
+		cl.EXPECT().PollFetches(gomock.Any()).Return(next).AnyTimes(),
+	)
+	var committed []int64
+	cl.EXPECT().CommitRecords(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, rs ...*kgo.Record) error {
+			for _, r := range rs {
+				committed = append(committed, r.Offset)
+			}
+			return nil
+		}).AnyTimes()
+
+	c := &FranzConsumer{
+		client:               cl,
+		acker:                newBatchAcker(ctx, cl, 1, time.Hour),
+		iter:                 &kgo.FetchesRecordIter{},
+		retryGroupJoinErrors: true,
+	}
+
+	var got []int64
+	for i := 0; i < 5 && len(got) < 3; i++ {
+		r, err := c.Consume(ctx)
+		if errors.Is(err, sdk.ErrBackoffRetry) {
+			continue // the caller retries
+		}
+		is.NoErr(err)
+		got = append(got, r.Offset)
+		is.NoErr(c.Ack(ctx))
+	}
+	is.Equal(got, []int64{5, 6, 7}) // offsets 5 and 6 were dropped
+	is.Equal(committed, []int64{5, 6, 7})
+}

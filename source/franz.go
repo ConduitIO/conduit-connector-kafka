@@ -81,8 +81,18 @@ func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
 			var errGroupSession *kgo.ErrGroupSession
 			if c.retryGroupJoinErrors &&
 				(errors.As(err, &errGroupSession) || strings.Contains(err.Error(), "unable to join group session")) {
-				sdk.Logger(ctx).Warn().Err(err).Msgf("group session error, retrying")
-				return nil, sdk.ErrBackoffRetry
+				if len(fetches.Records()) == 0 {
+					sdk.Logger(ctx).Warn().Err(err).Msgf("group session error, retrying")
+					return nil, sdk.ErrBackoffRetry
+				}
+				// Invariant 3: this poll also carries records, and franz-go has
+				// already advanced past them. Returning here would drop them,
+				// and a later ack would commit an offset beyond them. Deliver
+				// the records; a persistent error shows up again on the next poll.
+				sdk.Logger(ctx).Warn().Err(err).Msgf("group session error alongside records, delivering records first")
+				c.iter = fetches.RecordIter()
+				c.acker.Records(fetches.Records()...)
+				break
 			}
 
 			return nil, err
