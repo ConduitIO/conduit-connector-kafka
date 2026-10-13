@@ -37,7 +37,7 @@ specification:
       the destination (defaults to 0, no batching)
     - `sdk.batch.delay`: maximum delay before an incomplete batch is written to the
       destination (defaults to 0, no limit)
-  version: v0.12.5
+  version: v0.13.0
   author: Meroxa, Inc.
   source:
     parameters:
@@ -338,7 +338,7 @@ specification:
       - name: sdk.record.format
         description: |-
           The format of the output record. See the Conduit documentation for a full
-          list of supported formats (https://conduit.io/docs/using/connectors/configuration-parameters/output-format).
+          list of supported formats (https://conduitdata.io/docs/using/connectors/configuration-parameters/output-format).
         type: string
         default: opencdc/json
         validations: []
