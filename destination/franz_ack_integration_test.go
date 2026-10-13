@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,8 +35,8 @@ import (
 // must never fall inside that prefix, whichever order the broker completes
 // the per-record promises in.
 //
-// Record 0 goes to a topic whose broker-side max.message.bytes it exceeds, so
-// the broker rejects it. Records 1..9 go to a healthy topic and are
+// The record at badIndex goes to a topic whose broker-side max.message.bytes it exceeds, so
+// the broker rejects it. The other records go to a healthy topic and are
 // written. The rejection arrives after the healthy records have completed in
 // at least some runs, which put the failed record's error last in
 // completion order.
@@ -76,10 +77,11 @@ func TestFranzProducer_Produce_FailedRecordNotAcked(t *testing.T) {
 
 	big := make([]byte, 200*1024)
 	_, _ = rand.Read(big)
+	const badIndex = 4 // mid-batch: records before and after it are healthy
 	recs := make([]opencdc.Record, 10)
 	for i := range recs {
 		topic, payload := goodTopic, []byte(fmt.Sprintf("record-%d", i))
-		if i == 0 {
+		if i == badIndex {
 			topic, payload = badTopic, big
 		}
 		recs[i] = opencdc.Record{
@@ -91,15 +93,20 @@ func TestFranzProducer_Produce_FailedRecordNotAcked(t *testing.T) {
 		}
 	}
 
-	// Whether the broker rejects record 0 before or after it acknowledges the
-	// others is a race, so repeat: before the fix roughly a third of the
-	// attempts reported n=9 here.
+	// The broker rejects record 4 independently of how it acknowledges the
+	// others, and promises complete in broker order, so repeat: before the fix
+	// roughly a third of attempts returned n=9 (the completion position of the
+	// error) instead of 4.
 	for attempt := 0; attempt < 30; attempt++ {
 		n, err := p.Produce(ctx, recs)
-		is.True(err != nil)
-		// record 0 failed, so no record may be reported as written
-		if n != 0 {
-			t.Fatalf("attempt %d: Produce returned n=%d (err=%v), but record 0 failed; it would be acked upstream", attempt, n, err)
+		if err == nil {
+			t.Fatalf("attempt %d: expected an error", attempt)
+		}
+		if n != badIndex {
+			t.Fatalf("attempt %d: Produce returned n=%d (err=%v), want exactly %d: only records[:%d] may be acked", attempt, n, err, badIndex, badIndex)
+		}
+		if !strings.Contains(err.Error(), fmt.Sprintf("failed to produce record %d:", badIndex)) {
+			t.Fatalf("attempt %d: error does not name record %d: %v", attempt, badIndex, err)
 		}
 	}
 }
