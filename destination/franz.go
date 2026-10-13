@@ -92,8 +92,13 @@ func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (
 	}
 
 	var (
-		wg              csync.WaitGroup
-		results         = make([]error, 0, len(records))
+		wg csync.WaitGroup
+		// results[i] is the delivery outcome of records[i]. Each promise
+		// writes only its own slot, so there is no shared append, and the
+		// slice stays in record order regardless of the order in which the
+		// broker completes the promises.
+		results         = make([]error, len(records))
+		produced        int // number of records handed to the client
 		rec             *kgo.Record
 		prepareErr      error
 		prepareErrIndex = -1
@@ -108,11 +113,12 @@ func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (
 		}
 
 		wg.Add(1)
+		produced++
 		p.client.Produce(
 			ctx,
 			rec,
 			func(_ *kgo.Record, err error) {
-				results = append(results, err)
+				results[i] = err
 				wg.Done()
 			},
 		)
@@ -123,7 +129,11 @@ func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (
 		return 0, fmt.Errorf("failed to wait for all records to be produced: %w", err)
 	}
 
-	for i, err := range results {
+	// Invariant 1: the returned count n means "records[:n] are durably
+	// written" and the SDK acks exactly that prefix. n must therefore be the
+	// index of the first failed record in record order, never a position in
+	// completion order.
+	for i, err := range results[:produced] {
 		if err != nil {
 			return i, fmt.Errorf("failed to produce record %v: %w", i, err)
 		}
@@ -135,7 +145,7 @@ func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (
 		return prepareErrIndex, prepareErr
 	}
 
-	return len(results), nil
+	return produced, nil
 }
 
 func (p *FranzProducer) prepareRecord(r opencdc.Record) (*kgo.Record, error) {
