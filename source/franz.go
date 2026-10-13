@@ -78,6 +78,15 @@ func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
 	for c.iter.Done() {
 		fetches := c.client.PollFetches(ctx)
 		if err := fetches.Err(); err != nil {
+			// fetches.Err() reports only the first error. Log every one so a
+			// non-group error that rides along with a group-session error is
+			// not swallowed by the retry path below.
+			for _, fe := range fetches.Errors() {
+				sdk.Logger(ctx).Warn().Err(fe.Err).
+					Str("topic", fe.Topic).
+					Int32("partition", fe.Partition).
+					Msg("fetch error")
+			}
 			var errGroupSession *kgo.ErrGroupSession
 			if c.retryGroupJoinErrors &&
 				(errors.As(err, &errGroupSession) || strings.Contains(err.Error(), "unable to join group session")) {
