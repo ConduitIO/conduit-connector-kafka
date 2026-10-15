@@ -1,4 +1,8 @@
 version: "2"
+run:
+  # lint the kill -9 chaos test (test/chaos) too
+  build-tags:
+    - chaos
 linters:
   default: none
   enable:

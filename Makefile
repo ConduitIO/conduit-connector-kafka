@@ -44,6 +44,22 @@ test-redpanda:
 .PHONY: test
 test: test-kafka test-redpanda
 
+# The kill -9 chaos test (test/chaos, build tag "chaos"): SIGKILLs a
+# Kafka-to-Kafka pipeline and checks invariants 1 to 3 on recovery.
+.PHONY: test-chaos-kafka
+test-chaos-kafka:
+	docker compose -p $(COMPOSE_PROJECT)-chaos-kafka -f test/compose-kafka.yaml up --quiet-pull -d --wait
+	go test $(GOTEST_FLAGS) -tags chaos -race -count=1 -timeout 30m ./test/chaos/; ret=$$?; \
+		docker compose -p $(COMPOSE_PROJECT)-chaos-kafka -f test/compose-kafka.yaml down -v; \
+		exit $$ret
+
+.PHONY: test-chaos-redpanda
+test-chaos-redpanda:
+	docker compose -p $(COMPOSE_PROJECT)-chaos-redpanda -f test/compose-redpanda.yaml up --quiet-pull -d --wait
+	go test $(GOTEST_FLAGS) -tags chaos -race -count=1 -timeout 30m ./test/chaos/; ret=$$?; \
+		docker compose -p $(COMPOSE_PROJECT)-chaos-redpanda -f test/compose-redpanda.yaml down -v; \
+		exit $$ret
+
 .PHONY: generate
 generate:
 	go generate ./...

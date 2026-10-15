@@ -1,0 +1,32 @@
+name: chaos
+
+# The kill -9 chaos test (test/chaos): SIGKILLs a Kafka-to-Kafka pipeline built
+# from this connector and checks data integrity invariants 1 to 3 on recovery,
+# on both brokers. It takes about five minutes per broker, most of it waiting
+# for the killed instance's consumer group session to expire.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  schedule:
+    - cron: "40 4 * * *"
+
+jobs:
+  chaos:
+    strategy:
+      fail-fast: false
+      matrix:
+        broker: [ kafka, redpanda ]
+    name: chaos (${{ matrix.broker }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: SIGKILL and resume
+        run: make test-chaos-${{ matrix.broker }} GOTEST_FLAGS="-v"

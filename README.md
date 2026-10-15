@@ -433,4 +433,15 @@ leaves its consumer group membership alive, and the hook closes the killed
 source's client without committing, which releases its partitions (see
 `acceptance_v2_test.go`).
 
+`make test-chaos-kafka` and `make test-chaos-redpanda` run the kill -9 test in
+`test/chaos` (build tag `chaos`). It copies 20000 records from one topic to
+another through this connector's source and destination in a child process,
+kills the child with SIGKILL four times while it copies, and checks after each
+kill that every committed source offset is already in the destination
+(no early ack) and that committed offsets never move back. After the last run
+it checks that every record arrived, that duplicates stay within the
+redelivery bound, that per-key order holds, and that a graceful stop commits
+everything. Each restart waits for the killed instance's consumer group
+session to expire, so the test takes about five minutes.
+
 ![scarf pixel](https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0)
