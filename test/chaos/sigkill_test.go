@@ -190,9 +190,10 @@ func checkKeyOrder(t *testing.T, outRecs map[int32][]*kgo.Record) {
 // ---- child process control ----
 
 type child struct {
-	cmd   *exec.Cmd
-	lines chan string
-	done  chan error
+	cmd    *exec.Cmd
+	lines  chan string
+	done   chan error
+	exited chan struct{} // closed when the process is gone and its output read
 }
 
 func startChild(t *testing.T, cfg childConfig) *child {
@@ -215,7 +216,7 @@ func startChild(t *testing.T, cfg childConfig) *child {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	c := &child{cmd: cmd, lines: make(chan string, 1024), done: make(chan error, 1)}
+	c := &child{cmd: cmd, lines: make(chan string, 1024), done: make(chan error, 1), exited: make(chan struct{})}
 	go func() {
 		sc := bufio.NewScanner(stdout)
 		for sc.Scan() {
@@ -224,10 +225,17 @@ func startChild(t *testing.T, cfg childConfig) *child {
 			default: // the parent only needs the latest lines
 			}
 		}
-		c.done <- cmd.Wait()
+		err := cmd.Wait() // returns after the child's stderr is fully copied
+		close(c.exited)
+		c.done <- err
 		close(c.lines)
 	}()
-	t.Cleanup(func() { _ = cmd.Process.Kill() })
+	// Kill and wait, so no stderr line of the child reaches t.Logf after the
+	// test has ended.
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		<-c.exited
+	})
 	return c
 }
 
