@@ -45,7 +45,7 @@ func TestFranzProducer_Produce_FailedRecordNotAcked(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	servers := []string{"localhost:9092"}
+	servers := test.ServerList()
 	suffix := uuid.NewString()
 	badTopic, goodTopic := "bad-"+suffix, "good-"+suffix
 
@@ -65,7 +65,7 @@ func TestFranzProducer_Produce_FailedRecordNotAcked(t *testing.T) {
 	})
 
 	cfg := test.ParseConfigMap[Config](t, map[string]string{
-		"servers":    "localhost:9092",
+		"servers":    test.Servers(),
 		"topic":      `{{ index .Metadata "t" }}`,
 		"batchBytes": "1000012",
 		"acks":       "all",

@@ -63,9 +63,28 @@ func getRandomTopicName(t T) string {
 	return t.Name()[lastSlash+1:] + uuid.NewString()
 }
 
+// ServersEnv names the environment variable that holds the comma-separated
+// bootstrap servers of the test broker. The Makefile sets it from KAFKA_PORT.
+const ServersEnv = "KAFKA_TEST_SERVERS"
+
+// Servers returns the bootstrap servers of the test broker as a
+// comma-separated list: the value of ServersEnv, or localhost:9092 when it is
+// not set.
+func Servers() string {
+	if s := os.Getenv(ServersEnv); s != "" {
+		return s
+	}
+	return "localhost:9092"
+}
+
+// ServerList returns Servers split on commas.
+func ServerList() []string {
+	return strings.Split(Servers(), ",")
+}
+
 func ConfigMap() map[string]string {
 	return map[string]string{
-		"servers": "localhost:9092",
+		"servers": Servers(),
 	}
 }
 

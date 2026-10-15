@@ -6,7 +6,7 @@ services:
       - --smp 1
       - --overprovisioned
       - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:${KAFKA_PORT:-9092}
       - --pandaproxy-addr 0.0.0.0:8082
       - --advertise-pandaproxy-addr localhost:8082
     healthcheck:
@@ -18,5 +18,7 @@ services:
       retries: 15
       start_period: 5s
     ports:
-      - 9092:9092
-      - 29092:29092
+      # Only the client listener is published. KAFKA_PORT picks the host port
+      # (the Makefile defaults it to 9092); the advertised address above must
+      # name the same port, so the two are set from one variable.
+      - "127.0.0.1:${KAFKA_PORT:-9092}:9092"
