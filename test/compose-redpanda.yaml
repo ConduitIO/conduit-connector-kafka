@@ -9,6 +9,14 @@ services:
       - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
       - --pandaproxy-addr 0.0.0.0:8082
       - --advertise-pandaproxy-addr localhost:8082
+    healthcheck:
+      # Without this, `docker compose up --wait` returns as soon as the container
+      # is running and tests race the broker's startup.
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
+      interval: 2s
+      timeout: 10s
+      retries: 15
+      start_period: 5s
     ports:
       - 9092:9092
       - 29092:29092
