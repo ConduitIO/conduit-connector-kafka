@@ -34,6 +34,8 @@ type Source struct {
 
 	consumer source.Consumer
 	config   source.Config
+
+	nonUTF8Headers nonUTF8HeaderTracker
 }
 
 func NewSource() sdk.Source {
@@ -102,6 +104,10 @@ func (s *Source) Read(ctx context.Context) (opencdc.Record, error) {
 	for _, h := range rec.Headers {
 		metadata[MetadataKafkaHeaderPrefix+h.Key] = string(h.Value)
 	}
+	// Invariant 6: the entries above are emitted unchanged, never escaped or
+	// replaced, including ones that are not valid UTF-8. Those are reported
+	// here (issue #319); see nonUTF8HeaderTracker.
+	s.nonUTF8Headers.observe(ctx, rec, metadata)
 
 	return sdk.Util.Source.NewRecordCreate(
 		source.Position{
@@ -121,6 +127,7 @@ func (s *Source) Ack(ctx context.Context, _ opencdc.Position) error {
 }
 
 func (s *Source) Teardown(ctx context.Context) error {
+	s.nonUTF8Headers.logTotal(ctx)
 	if s.consumer != nil {
 		err := s.consumer.Close(ctx)
 		if err != nil {
