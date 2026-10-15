@@ -80,8 +80,15 @@ func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {
 		if err := fetches.Err(); err != nil {
 			// fetches.Err() reports only the first error. Log every one so a
 			// non-group error that rides along with a group-session error is
-			// not swallowed by the retry path below.
+			// not swallowed by the retry path below. The errors franz-go
+			// injects when the poll context ends or the client is closed are
+			// how every shutdown ends a poll, so they are not logged.
 			for _, fe := range fetches.Errors() {
+				if errors.Is(fe.Err, context.Canceled) ||
+					errors.Is(fe.Err, context.DeadlineExceeded) ||
+					errors.Is(fe.Err, kgo.ErrClientClosed) {
+					continue
+				}
 				sdk.Logger(ctx).Warn().Err(fe.Err).
 					Str("topic", fe.Topic).
 					Int32("partition", fe.Partition).

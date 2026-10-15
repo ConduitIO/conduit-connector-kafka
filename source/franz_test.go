@@ -166,3 +166,37 @@ func Test_FranzConsumer_Consume_LogsEveryFetchError(t *testing.T) {
 	is.True(strings.Contains(buf.String(), "authorization failed: second")) // not swallowed
 	is.True(strings.Contains(buf.String(), `"partition":3`))
 }
+
+func Test_FranzConsumer_Consume_ShutdownErrorsNotLogged(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"context canceled", context.Canceled},
+		{"deadline exceeded", context.DeadlineExceeded},
+		{"client closed", kgo.ErrClientClosed},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			var buf bytes.Buffer
+			ctx := zerolog.New(&buf).WithContext(context.Background())
+
+			cl := NewMockClient(gomock.NewController(t))
+			// the shape franz-go injects: no topic, one partition
+			cl.EXPECT().PollFetches(gomock.Any()).Return(kgo.Fetches{
+				{Topics: []kgo.FetchTopic{{Topic: "", Partitions: []kgo.FetchPartition{{Partition: 0, Err: tc.err}}}}},
+			})
+
+			c := &FranzConsumer{
+				client:               cl,
+				acker:                newBatchAcker(ctx, cl, 1000, time.Second),
+				iter:                 &kgo.FetchesRecordIter{},
+				retryGroupJoinErrors: true,
+			}
+
+			_, err := c.Consume(ctx)
+			is.True(errors.Is(err, tc.err)) // returned unchanged
+			is.True(!strings.Contains(buf.String(), "fetch error"))
+		})
+	}
+}
