@@ -97,6 +97,27 @@ specification:
       The default `opencdc/json` format base64-encodes raw payloads, which adds
       about a third. The acceptance suite writes 1 MiB records with `batchBytes`
       and the topic's `max.message.bytes` set to 4 MiB.
+
+    ### Acceptance suite claims and waivers
+
+    The acceptance suite v2 run (revision 2.0.0) claims per-key ordering for the
+    source, a redelivery bound of 1000 records after a restart, and a
+    non-idempotent destination. Three points were decided by the maintainer
+    (DeVaris Brown, 2026-10-15):
+
+    - **`max_redelivery` waived at 1000.** The suite's default bound is 10; the
+      source's bound is `commitOffsetsSize` (default 1000), and both the suite's
+      restart case and the kill -9 test check it. Certifying at a
+      `commitOffsetsSize` of 10 or less would certify a configuration users do
+      not run.
+    - **Destination per-key ordering is not claimed**, although the suite's
+      ordering case passes, because of the exception above: a record the broker
+      rejects after it was enqueued is stored after later records of its batch
+      when the batch is replayed.
+    - **The suite's process-death hook is accepted.** The suite kills a source
+      in-process, which leaves its consumer group membership alive; the hook
+      closes the killed source's client without committing, as the end of the
+      process would. A real process kill is covered by the kill -9 test.
   version: v0.13.0
   author: Meroxa, Inc.
   source:

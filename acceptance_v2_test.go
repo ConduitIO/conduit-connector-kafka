@@ -100,6 +100,9 @@ func TestAcceptanceV2(t *testing.T) {
 						// 10, which needs a maintainer waiver.
 						MaxRedelivery: 1000,
 					},
+					// Waiver approved by DeVaris Brown on 2026-10-15
+					// (ConduitIO/conduit-connector-kafka#324); the
+					// registry entry carries the approval.
 					Waivers: []string{"max_redelivery"},
 					Destination: sdk.DestinationCapabilities{
 						// Replaying a record produces it again: the
@@ -279,6 +282,9 @@ func withAdmin(t *testing.T, fn func(*kadm.Client)) {
 // SRC-03 reports a gap. When a real process dies its connections close, the
 // broker drops the member after session.timeout.ms and the group reassigns its
 // partitions.
+//
+// The hook was accepted by DeVaris Brown on 2026-10-15
+// (ConduitIO/conduit-connector-kafka#324).
 //
 // release closes the killed source's franz-go client and nothing else. It does
 // not call the source's Teardown or flush its acks: with auto-commit disabled

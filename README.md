@@ -97,7 +97,28 @@ hold.
   and in the topic's `max.message.bytes`, after the output format is applied.
   The default `opencdc/json` format base64-encodes raw payloads, which adds
   about a third. The acceptance suite writes 1 MiB records with `batchBytes`
-  and the topic's `max.message.bytes` set to 4 MiB.<!-- /readmegen:description -->
+  and the topic's `max.message.bytes` set to 4 MiB.
+
+### Acceptance suite claims and waivers
+
+The acceptance suite v2 run (revision 2.0.0) claims per-key ordering for the
+source, a redelivery bound of 1000 records after a restart, and a
+non-idempotent destination. Three points were decided by the maintainer
+(DeVaris Brown, 2026-10-15):
+
+- **`max_redelivery` waived at 1000.** The suite's default bound is 10; the
+  source's bound is `commitOffsetsSize` (default 1000), and both the suite's
+  restart case and the kill -9 test check it. Certifying at a
+  `commitOffsetsSize` of 10 or less would certify a configuration users do
+  not run.
+- **Destination per-key ordering is not claimed**, although the suite's
+  ordering case passes, because of the exception above: a record the broker
+  rejects after it was enqueued is stored after later records of its batch
+  when the batch is replayed.
+- **The suite's process-death hook is accepted.** The suite kills a source
+  in-process, which leaves its consumer group membership alive; the hook
+  closes the killed source's client without committing, as the end of the
+  process would. A real process kill is covered by the kill -9 test.<!-- /readmegen:description -->
 
 ## Source Configuration Parameters
 
@@ -397,7 +418,8 @@ scripts/check-acceptance-report.sh acceptance-report-kafka.json
 CI does this for both brokers and uploads the reports as artifacts. The
 connector claims source ordering per key, at most 1000 re-delivered records
 after a restart (above the suite's default of 10, so the report lists a
-`max_redelivery` waiver request), and a non-idempotent destination. It uses
+`max_redelivery` waiver, approved; see "Acceptance suite claims and
+waivers" above), and a non-idempotent destination. It uses
 the suite's process-death hook: the suite kills a source in-process, which
 leaves its consumer group membership alive, and the hook closes the killed
 source's client the way the end of its process would (see
