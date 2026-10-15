@@ -24,7 +24,8 @@ ACCEPTANCE_REPORT_DIR ?=
 .PHONY: test-kafka
 test-kafka:
 	# run required docker containers, execute integration tests, stop containers after tests
-	docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml up --quiet-pull -d --wait
+	docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml up --quiet-pull -d --wait || \
+		{ docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml down -v; exit 1; }
 	$(if $(ACCEPTANCE_REPORT_DIR),rm -f $(ACCEPTANCE_REPORT_DIR)/acceptance-report-kafka.json;) \
 	$(if $(ACCEPTANCE_REPORT_DIR),CONDUIT_ACCEPTANCE_REPORT=$(ACCEPTANCE_REPORT_DIR)/acceptance-report-kafka.json) \
 		go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
@@ -34,7 +35,8 @@ test-kafka:
 .PHONY: test-redpanda
 test-redpanda:
 	# run required docker containers, execute integration tests, stop containers after tests
-	docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml up --quiet-pull -d --wait
+	docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml up --quiet-pull -d --wait || \
+		{ docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml down -v; exit 1; }
 	$(if $(ACCEPTANCE_REPORT_DIR),rm -f $(ACCEPTANCE_REPORT_DIR)/acceptance-report-redpanda.json;) \
 	$(if $(ACCEPTANCE_REPORT_DIR),CONDUIT_ACCEPTANCE_REPORT=$(ACCEPTANCE_REPORT_DIR)/acceptance-report-redpanda.json) \
 		go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
