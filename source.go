@@ -37,7 +37,12 @@ type Source struct {
 }
 
 func NewSource() sdk.Source {
-	return sdk.SourceWithMiddleware(&Source{
+	return sdk.SourceWithMiddleware(newSource())
+}
+
+// newSource returns the source without middleware, so tests can reach it.
+func newSource() *Source {
+	return &Source{
 		config: source.Config{
 			DefaultSourceMiddleware: sdk.DefaultSourceMiddleware{
 				SourceWithSchemaExtraction: sdk.SourceWithSchemaExtraction{
@@ -46,7 +51,7 @@ func NewSource() sdk.Source {
 				},
 			},
 		},
-	})
+	}
 }
 
 // Config returns the currently active configuration of the source.

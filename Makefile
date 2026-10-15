@@ -16,11 +16,18 @@ export KAFKA_TEST_SERVERS ?= localhost:$(KAFKA_PORT)
 # directory. "down -v" also removes the broker's anonymous volume.
 COMPOSE_PROJECT ?= conduit-connector-kafka
 
+# ACCEPTANCE_REPORT_DIR, when set, makes TestAcceptanceV2 write its report to
+# $(ACCEPTANCE_REPORT_DIR)/acceptance-report-<broker>.json. Check it with
+# scripts/check-acceptance-report.sh.
+ACCEPTANCE_REPORT_DIR ?=
+
 .PHONY: test-kafka
 test-kafka:
 	# run required docker containers, execute integration tests, stop containers after tests
 	docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml up --quiet-pull -d --wait
-	go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
+	$(if $(ACCEPTANCE_REPORT_DIR),rm -f $(ACCEPTANCE_REPORT_DIR)/acceptance-report-kafka.json;) \
+	$(if $(ACCEPTANCE_REPORT_DIR),CONDUIT_ACCEPTANCE_REPORT=$(ACCEPTANCE_REPORT_DIR)/acceptance-report-kafka.json) \
+		go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
 		docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml down -v; \
 		exit $$ret
 
@@ -28,7 +35,9 @@ test-kafka:
 test-redpanda:
 	# run required docker containers, execute integration tests, stop containers after tests
 	docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml up --quiet-pull -d --wait
-	go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
+	$(if $(ACCEPTANCE_REPORT_DIR),rm -f $(ACCEPTANCE_REPORT_DIR)/acceptance-report-redpanda.json;) \
+	$(if $(ACCEPTANCE_REPORT_DIR),CONDUIT_ACCEPTANCE_REPORT=$(ACCEPTANCE_REPORT_DIR)/acceptance-report-redpanda.json) \
+		go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
 		docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml down -v; \
 		exit $$ret
 

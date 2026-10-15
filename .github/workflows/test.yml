@@ -17,7 +17,21 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Test with Kafka
-        run: make test-kafka GOTEST_FLAGS="-v -count=1"
+        run: make test-kafka GOTEST_FLAGS="-v -count=1" ACCEPTANCE_REPORT_DIR="$RUNNER_TEMP"
+
+      # The acceptance suite v2 report is the certification evidence. A
+      # missing, unfinished, incomplete or failing report fails the job.
+      - name: Check acceptance suite v2 report
+        if: ${{ !cancelled() }}
+        run: scripts/check-acceptance-report.sh "$RUNNER_TEMP/acceptance-report-kafka.json"
+
+      - name: Upload acceptance suite v2 report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: acceptance-report-kafka
+          path: ${{ runner.temp }}/acceptance-report-kafka.json
+          if-no-files-found: error
 
   # Integration and acceptance tests against Redpanda (test/compose-redpanda.yaml,
   # image pinned by digest). This job is what lets one connector serve both
@@ -33,4 +47,18 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Test with Redpanda
-        run: make test-redpanda GOTEST_FLAGS="-v -count=1"
+        run: make test-redpanda GOTEST_FLAGS="-v -count=1" ACCEPTANCE_REPORT_DIR="$RUNNER_TEMP"
+
+      # The acceptance suite v2 report is the certification evidence. A
+      # missing, unfinished, incomplete or failing report fails the job.
+      - name: Check acceptance suite v2 report
+        if: ${{ !cancelled() }}
+        run: scripts/check-acceptance-report.sh "$RUNNER_TEMP/acceptance-report-redpanda.json"
+
+      - name: Upload acceptance suite v2 report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: acceptance-report-redpanda
+          path: ${{ runner.temp }}/acceptance-report-redpanda.json
+          if-no-files-found: error

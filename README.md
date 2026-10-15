@@ -307,6 +307,64 @@ pipelines:
 ```
 <!-- /readmegen:destination.parameters.yaml -->
 
+## Delivery semantics
+
+These are the guarantees the acceptance suite v2 run in CI checks (see
+[Testing](#testing)), with the conditions under which they hold.
+
+### Source
+
+- **At-least-once.** The source commits a record's offset to its consumer group
+  only after Conduit acknowledged the record. It never commits an offset it
+  has not been acked for.
+- **Commits are batched**, so a restart after a crash re-delivers records:
+  offsets are committed after every `commitOffsetsSize` acks (default 1000),
+  every `commitOffsetsDelay` (default 5s), and when the pipeline stops
+  gracefully. After a crash (kill -9, power loss) the source re-delivers at
+  most the records acked since the last commit, fewer than `commitOffsetsSize`
+  when commits succeed. Setting `commitOffsetsSize` to 1 commits on every ack
+  and lowers throughput.
+- **Ordering:** records of one partition are delivered in offset order, so
+  records with the same key (which Kafka keeps in one partition) arrive in the
+  order they were written. Re-delivery after a restart repeats a suffix of each
+  partition, in order. There is no order between partitions.
+- **Resume uses the consumer group**, not the offset in the Conduit position.
+  If the group's committed offsets are gone (the group was deleted, or the
+  pipeline was stopped longer than the broker's `offsets.retention.minutes`,
+  7 days by default), the source starts where `readFromBeginning` says: from
+  the beginning of the topic (re-delivery), or from the end, which **skips the
+  records written while the pipeline was stopped**. Use
+  `readFromBeginning: true` where skipping is not acceptable.
+- **Restart after a crash can pause.** The crashed instance stays a member of
+  the consumer group until the broker's session timeout expires (45s by
+  default), and the partitions it held are not consumed until then.
+
+### Destination
+
+- **At-least-once.** A record is acknowledged to Conduit only after the broker
+  confirmed it. With `acks: all` (the default) that means the in-sync replicas
+  have it. `acks: one` acknowledges after the leader alone has it, and a leader
+  failure can lose acknowledged records; `acks: none` acknowledges without any
+  confirmation. Only `acks: all` keeps the at-least-once guarantee.
+- **Not idempotent.** A record that is replayed after a crash is written again.
+  The idempotent producer (on with `acks: all`) removes duplicates from its own
+  retries of a produce request, not from a record sent twice.
+- **Ordering:** records with the same key go to the same partition (key hash)
+  in the order Conduit wrote them, as long as the partition count of the topic
+  does not change. One exception: if the broker rejects a record after it was
+  enqueued (for example `MESSAGE_TOO_LARGE`), the later records of the same
+  batch may already be written. Conduit is told the batch failed from that
+  record on, and when the records are replayed the rejected record is stored
+  after them, together with duplicates of them.
+- **Writes can wait for an unreachable broker without a bound** when
+  `deliveryTimeout` is 0 (the default). Cancelling the pipeline ends the wait
+  and nacks the records; nothing unconfirmed is acknowledged.
+- **Large records:** a record must fit in `batchBytes` (default 1000012 bytes)
+  and in the topic's `max.message.bytes`, after the output format is applied.
+  The default `opencdc/json` format base64-encodes raw payloads, which adds
+  about a third. The acceptance suite writes 1 MiB records with `batchBytes`
+  and the topic's `max.message.bytes` set to 4 MiB.
+
 ## How to build?
 
 Run `make build` to build the connector.
@@ -319,5 +377,28 @@ docker containers for you.
 
 Tests will run twice, once against an Apache Kafka instance and a second time
 against a [Redpanda](https://github.com/redpanda-data/redpanda) instance.
+
+The broker is published on `127.0.0.1:9092` under the compose project
+`conduit-connector-kafka-<broker>`. To run next to another broker, pick a
+different port: `make test-kafka KAFKA_PORT=19092`. Tests find the broker
+through `KAFKA_TEST_SERVERS`, which the Makefile sets.
+
+`TestAcceptanceV2` runs the SDK's [acceptance suite
+v2](https://github.com/ConduitIO/conduit-connector-sdk/blob/main/docs/acceptance-tests-v2.md).
+To get its report, pass a directory, then check the report:
+
+```sh
+make test-kafka ACCEPTANCE_REPORT_DIR=$PWD
+scripts/check-acceptance-report.sh acceptance-report-kafka.json
+```
+
+CI does this for both brokers and uploads the reports as artifacts. The
+connector claims source ordering per key, at most 1000 re-delivered records
+after a restart (above the suite's default of 10, so the report lists a
+`max_redelivery` waiver request), and a non-idempotent destination. It uses
+the suite's process-death hook: the suite kills a source in-process, which
+leaves its consumer group membership alive, and the hook closes the killed
+source's client the way the end of its process would (see
+`acceptance_v2_test.go`).
 
 ![scarf pixel](https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0)
