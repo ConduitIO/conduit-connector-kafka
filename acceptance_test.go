@@ -28,12 +28,12 @@ import (
 
 func TestAcceptance(t *testing.T) {
 	srcCfg := map[string]string{
-		"servers": "localhost:9092",
+		"servers": test.Servers(),
 		// source params
 		"readFromBeginning": "true",
 	}
 	destCfg := map[string]string{
-		"servers": "localhost:9092",
+		"servers": test.Servers(),
 		// destination params
 		"batchBytes":  "1000012",
 		"acks":        "all",

@@ -4,20 +4,32 @@ VERSION=$(shell git describe --tags --dirty --always)
 build:
 	go build -ldflags "-X 'github.com/conduitio/conduit-connector-kafka.version=${VERSION}'" -o conduit-connector-kafka cmd/connector/main.go
 
+# KAFKA_PORT is the host port the test broker is published on. Tests reach it
+# through KAFKA_TEST_SERVERS (test.Servers). Override both to run next to
+# another broker, for example: make test-kafka KAFKA_PORT=19092.
+KAFKA_PORT ?= 9092
+export KAFKA_PORT
+export KAFKA_TEST_SERVERS ?= localhost:$(KAFKA_PORT)
+
+# COMPOSE_PROJECT names the compose project, so the test stack never shares
+# containers, networks or volumes with another project that has a test/
+# directory. "down -v" also removes the broker's anonymous volume.
+COMPOSE_PROJECT ?= conduit-connector-kafka
+
 .PHONY: test-kafka
 test-kafka:
 	# run required docker containers, execute integration tests, stop containers after tests
-	docker compose -f test/compose-kafka.yaml up --quiet-pull -d --wait
+	docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml up --quiet-pull -d --wait
 	go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
-		docker compose -f test/compose-kafka.yaml down; \
+		docker compose -p $(COMPOSE_PROJECT)-kafka -f test/compose-kafka.yaml down -v; \
 		exit $$ret
 
 .PHONY: test-redpanda
 test-redpanda:
 	# run required docker containers, execute integration tests, stop containers after tests
-	docker compose -f test/compose-redpanda.yaml up --quiet-pull -d --wait
+	docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml up --quiet-pull -d --wait
 	go test $(GOTEST_FLAGS) -race ./...; ret=$$?; \
-		docker compose -f test/compose-redpanda.yaml down; \
+		docker compose -p $(COMPOSE_PROJECT)-redpanda -f test/compose-redpanda.yaml down -v; \
 		exit $$ret
 
 .PHONY: test
