@@ -15,10 +15,12 @@
 package source
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +30,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
 	"go.uber.org/mock/gomock"
@@ -137,4 +140,63 @@ func Test_FranzConsumer_Consume_RetryGroupJoinError(t *testing.T) {
 
 	_, err := c.Consume(ctx)
 	is.True(errors.Is(err, sdk.ErrBackoffRetry))
+}
+
+func Test_FranzConsumer_Consume_LogsEveryFetchError(t *testing.T) {
+	is := is.New(t)
+	var buf bytes.Buffer
+	ctx := zerolog.New(&buf).WithContext(context.Background())
+
+	cl := NewMockClient(gomock.NewController(t))
+	cl.EXPECT().PollFetches(gomock.Any()).Return(kgo.Fetches{
+		{Topics: []kgo.FetchTopic{{Topic: "", Partitions: []kgo.FetchPartition{{Partition: -1, Err: errors.New("unable to join group session: boom")}}}}},
+		{Topics: []kgo.FetchTopic{{Topic: "orders", Partitions: []kgo.FetchPartition{{Partition: 3, Err: errors.New("authorization failed: second")}}}}},
+	})
+
+	c := &FranzConsumer{
+		client:               cl,
+		acker:                newBatchAcker(ctx, cl, 1000, time.Second),
+		iter:                 &kgo.FetchesRecordIter{},
+		retryGroupJoinErrors: true,
+	}
+
+	_, err := c.Consume(ctx)
+	is.True(errors.Is(err, sdk.ErrBackoffRetry)) // group-error path unchanged
+	is.True(strings.Contains(buf.String(), "boom"))
+	is.True(strings.Contains(buf.String(), "authorization failed: second")) // not swallowed
+	is.True(strings.Contains(buf.String(), `"partition":3`))
+}
+
+func Test_FranzConsumer_Consume_ShutdownErrorsNotLogged(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"context canceled", context.Canceled},
+		{"deadline exceeded", context.DeadlineExceeded},
+		{"client closed", kgo.ErrClientClosed},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			var buf bytes.Buffer
+			ctx := zerolog.New(&buf).WithContext(context.Background())
+
+			cl := NewMockClient(gomock.NewController(t))
+			// the shape franz-go injects: no topic, one partition
+			cl.EXPECT().PollFetches(gomock.Any()).Return(kgo.Fetches{
+				{Topics: []kgo.FetchTopic{{Topic: "", Partitions: []kgo.FetchPartition{{Partition: 0, Err: tc.err}}}}},
+			})
+
+			c := &FranzConsumer{
+				client:               cl,
+				acker:                newBatchAcker(ctx, cl, 1000, time.Second),
+				iter:                 &kgo.FetchesRecordIter{},
+				retryGroupJoinErrors: true,
+			}
+
+			_, err := c.Consume(ctx)
+			is.True(errors.Is(err, tc.err)) // returned unchanged
+			is.True(!strings.Contains(buf.String(), "fetch error"))
+		})
+	}
 }
