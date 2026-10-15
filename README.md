@@ -96,29 +96,37 @@ hold.
 - **Large records:** a record must fit in `batchBytes` (default 1000012 bytes)
   and in the topic's `max.message.bytes`, after the output format is applied.
   The default `opencdc/json` format base64-encodes raw payloads, which adds
-  about a third. The acceptance suite writes 1 MiB records with `batchBytes`
-  and the topic's `max.message.bytes` set to 4 MiB.
+  about a third, so with the defaults the largest raw payload is about
+  730 KiB (roughly 750000 bytes, less the record's key and metadata). Larger
+  records need a higher `batchBytes` and a higher `max.message.bytes` on the
+  topic (and on the broker, if its `message.max.bytes` is lower). The
+  acceptance suite's 1 MiB records run with both set to 4 MiB.
 
-### Acceptance suite claims and waivers
+### Acceptance suite claims
 
 The acceptance suite v2 run (revision 2.0.0) claims per-key ordering for the
 source, a redelivery bound of 1000 records after a restart, and a
-non-idempotent destination. Three points were decided by the maintainer
-(DeVaris Brown, 2026-10-15):
+non-idempotent destination.
 
-- **`max_redelivery` waived at 1000.** The suite's default bound is 10; the
-  source's bound is `commitOffsetsSize` (default 1000), and both the suite's
-  restart case and the kill -9 test check it. Certifying at a
-  `commitOffsetsSize` of 10 or less would certify a configuration users do
-  not run.
-- **Destination per-key ordering is not claimed**, although the suite's
-  ordering case passes, because of the exception above: a record the broker
-  rejects after it was enqueued is stored after later records of its batch
-  when the batch is replayed.
-- **The suite's process-death hook is accepted.** The suite kills a source
-  in-process, which leaves its consumer group membership alive; the hook
-  closes the killed source's client without committing, as the end of the
-  process would. A real process kill is covered by the kill -9 test.<!-- /readmegen:description -->
+- **Redelivery bound.** The suite's default bound is 10. The source's bound,
+  read from the code, is `commitOffsetsSize`: offsets are committed
+  synchronously once that many acks have accumulated, so at most
+  `commitOffsetsSize`-1 acked records are uncommitted when the process dies.
+  The suite's restart case and the kill -9 test did not exceed it, which
+  shows it is not violated in those runs; it is not a measured maximum. The
+  bound of 1000 holds only for `commitOffsetsSize` up to 1000 (the default).
+  A larger value raises the bound with it, and such a configuration is
+  outside what the certification covers.
+- **Destination per-key ordering is not claimed**, and the suite's ordering
+  case for the destination is skipped, because of the exception above: a
+  record the broker rejects after it was enqueued is stored after later
+  records of its batch when the batch is replayed.
+- **Killing a source in-process.** The suite kills a source inside the test
+  process, which leaves its consumer group membership alive. The test closes
+  the killed source's client without committing, which releases its
+  partitions. A real process death sends no LeaveGroup: the broker drops the
+  member only when its session times out (see "Restart after a crash can
+  pause" above). The kill -9 test covers a real process death.<!-- /readmegen:description -->
 
 ## Source Configuration Parameters
 
@@ -418,11 +426,11 @@ scripts/check-acceptance-report.sh acceptance-report-kafka.json
 CI does this for both brokers and uploads the reports as artifacts. The
 connector claims source ordering per key, at most 1000 re-delivered records
 after a restart (above the suite's default of 10, so the report lists a
-`max_redelivery` waiver, approved; see "Acceptance suite claims and
-waivers" above), and a non-idempotent destination. It uses
+`max_redelivery` waiver; see "Acceptance suite claims" above), and a
+non-idempotent destination. It uses
 the suite's process-death hook: the suite kills a source in-process, which
 leaves its consumer group membership alive, and the hook closes the killed
-source's client the way the end of its process would (see
+source's client without committing, which releases its partitions (see
 `acceptance_v2_test.go`).
 
 ![scarf pixel](https://static.scarf.sh/a.png?x-pxid=713ea3ba-66e0-4130-bdd0-d7db4b8706a0)

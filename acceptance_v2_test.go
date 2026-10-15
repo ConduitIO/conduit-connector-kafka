@@ -94,23 +94,28 @@ func TestAcceptanceV2(t *testing.T) {
 						OrdersByKey: true,
 						// Not ExactResume: offsets are committed in batches
 						// of commitOffsetsSize acks (default 1000) or every
-						// commitOffsetsDelay (default 5s), so after a crash
-						// up to commitOffsetsSize-1 acked records are
-						// delivered again. The bound is above the default of
-						// 10, which needs a maintainer waiver.
+						// commitOffsetsDelay (default 5s). The bound is read
+						// from the code (batchAcker.Ack and Flush in
+						// source/franz.go): Ack commits synchronously once
+						// commitOffsetsSize acks accumulated, so at most
+						// commitOffsetsSize-1 acked records are uncommitted
+						// at a crash. It holds for commitOffsetsSize <= 1000
+						// only. SRC-03 checks the bound is not exceeded; it
+						// does not measure it. Above the suite default of 10,
+						// so it needs a maintainer waiver.
 						MaxRedelivery: 1000,
 					},
-					// Waiver approved by DeVaris Brown on 2026-10-15
-					// (ConduitIO/conduit-connector-kafka#324); the
-					// registry entry carries the approval.
+					// Waiver approved in
+					// ConduitIO/conduit-connector-kafka#324; the registry
+					// entry carries the approval.
 					Waivers: []string{"max_redelivery"},
 					Destination: sdk.DestinationCapabilities{
 						// Replaying a record produces it again: the
 						// idempotent producer deduplicates retries of one
 						// produce request, not a record sent twice.
 						Idempotence: sdk.IdempotenceNo,
-						// OrdersByKey is not claimed although DST-06
-						// passes: a record the broker rejects after it was
+						// OrdersByKey is not claimed, so DST-06 is skipped:
+						// a record the broker rejects after it was
 						// enqueued is nacked together with the later records
 						// of its batch, which were written, so the replay
 						// stores it after them (see the README, delivery
@@ -283,14 +288,16 @@ func withAdmin(t *testing.T, fn func(*kadm.Client)) {
 // broker drops the member after session.timeout.ms and the group reassigns its
 // partitions.
 //
-// The hook was accepted by DeVaris Brown on 2026-10-15
-// (ConduitIO/conduit-connector-kafka#324).
+// Using the hook was approved in ConduitIO/conduit-connector-kafka#324.
 //
 // release closes the killed source's franz-go client and nothing else. It does
 // not call the source's Teardown or flush its acks: with auto-commit disabled
 // (the source always disables it when it uses a group), franz-go's Close leaves
 // the group without committing an offset, so offsets stay where the killed
-// source left them. Using the hook is recorded in the report as the exception
+// source left them. This is not exactly a process death: Close sends a
+// LeaveGroup, so the partitions are released at once, while a dead process
+// sends nothing and the broker waits for the session timeout. The offsets, which
+// is what the cases check, are the same either way. Using the hook is recorded in the report as the exception
 // "process_death_hook"; the kill -9 chaos test covers a real process death.
 type killedSources struct {
 	mu   sync.Mutex
