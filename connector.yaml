@@ -11,8 +11,9 @@ specification:
     the position: instead, we're saving the consumer group ID, since that's all
     which is needed for Kafka to find the offsets for our consumer.
 
-    A source is getting associated with a consumer group ID the first time the
-    `Read()` method is called.
+    A source is associated with a consumer group ID when it is first opened. Set
+    `groupID` to choose it; otherwise a random one is generated and kept in the
+    position.
 
     ## Destination
 
@@ -37,6 +38,65 @@ specification:
       the destination (defaults to 0, no batching)
     - `sdk.batch.delay`: maximum delay before an incomplete batch is written to the
       destination (defaults to 0, no limit)
+
+    ## Delivery semantics
+
+    These are the guarantees that the connector's CI checks with the SDK
+    acceptance suite v2 and a kill -9 test, and the conditions under which they
+    hold.
+
+    ### Source guarantees
+
+    - **At-least-once.** The source commits a record's offset to its consumer group
+      only after Conduit acknowledged the record. It never commits an offset it
+      has not been acked for.
+    - **Commits are batched**, so a restart after a crash re-delivers records:
+      offsets are committed after every `commitOffsetsSize` acks (default 1000),
+      every `commitOffsetsDelay` (default 5s), and when the pipeline stops
+      gracefully. After a crash (kill -9, power loss) the source re-delivers at
+      most the records acked since the last commit, fewer than `commitOffsetsSize`
+      when commits succeed. Setting `commitOffsetsSize` to 1 commits on every ack
+      and lowers throughput.
+    - **Ordering:** records of one partition are delivered in offset order, so
+      records with the same key (which Kafka keeps in one partition) arrive in the
+      order they were written. Re-delivery after a restart repeats a suffix of each
+      partition, in order. There is no order between partitions.
+    - **Resume uses the consumer group**, not the offset in the Conduit position.
+      If the group's committed offsets are gone (the group was deleted, or the
+      pipeline was stopped longer than the broker's `offsets.retention.minutes`,
+      7 days by default), the source starts where `readFromBeginning` says: from
+      the beginning of the topic (re-delivery), or from the end, which **skips the
+      records written while the pipeline was stopped**. Use
+      `readFromBeginning: true` where skipping is not acceptable.
+    - **Restart after a crash can pause.** The crashed instance stays a member of
+      the consumer group until the broker's session timeout expires (45s by
+      default), and the partitions it held are not consumed until then.
+
+    ### Destination guarantees
+
+    - **At-least-once.** A record is acknowledged to Conduit only after the broker
+      confirmed it. With `acks: all` (the default) that means the in-sync replicas
+      have it. `acks: one` acknowledges after the leader alone has it, and a leader
+      failure can lose acknowledged records; `acks: none` acknowledges without any
+      confirmation. Only `acks: all` keeps the at-least-once guarantee.
+    - **Not idempotent.** A record that is replayed after a crash is written again.
+      The idempotent producer (on with `acks: all`) removes duplicates from its own
+      retries of a produce request, not from a record sent twice.
+    - **Ordering:** records with the same key go to the same partition (key hash)
+      in the order Conduit wrote them, as long as the partition count of the topic
+      does not change. One exception: if the broker rejects a record after it was
+      enqueued (for example `MESSAGE_TOO_LARGE`), the later records of the same
+      batch may already be written. Conduit is told the batch failed from that
+      record on, and when the records are replayed the rejected record is stored
+      after them, together with duplicates of them.
+    - **Writes can wait for an unreachable broker without a bound** when
+      `deliveryTimeout` is 0 (the default). Cancelling the pipeline ends the wait
+      and nacks the records; nothing unconfirmed is acknowledged.
+    - **Large records:** a record must fit in `batchBytes` (default 1000012 bytes)
+      and in the topic's `max.message.bytes`, after the output format is applied.
+      The default `opencdc/json` format base64-encodes raw payloads, which adds
+      about a third. The acceptance suite writes 1 MiB records with `batchBytes`
+      and the topic's `max.message.bytes` set to 4 MiB.
   version: v0.13.0
   author: Meroxa, Inc.
   source:
