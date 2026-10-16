@@ -15,6 +15,23 @@ specification:
     `groupID` to choose it; otherwise a random one is generated and kept in the
     position.
 
+    ### Headers
+
+    Each Kafka header is emitted as a metadata entry `kafka.header.<key>` holding
+    the header value. Metadata is a string map, so a key that repeats in one
+    record keeps its last value.
+
+    A header whose key or value is not valid UTF-8 is emitted unchanged, but a
+    record carrying it cannot be marshalled as an OpenCDC protobuf record: it
+    fails wherever records cross a protobuf boundary (a standalone connector or
+    processor, the API), and JSON encoders replace the invalid bytes with U+FFFD.
+    The source logs `KAFKA_LEGACY_HEADER_NOT_UTF8` at WARN once per header key,
+    with the key as base64 in `header_key_b64` (the value is never logged), and
+    reports the count as `kafka_source_legacy_header_not_utf8_total` in the logs
+    and at teardown. A future version will omit such entries by default, after
+    the deprecation period
+    ([#319](https://github.com/ConduitIO/conduit-connector-kafka/issues/319)).
+
     ## Destination
 
     The destination connector writes records to Kafka.
