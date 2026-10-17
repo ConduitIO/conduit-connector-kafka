@@ -35,6 +35,11 @@ var (
 	maxTopicLength = 249
 )
 
+// defaultRecordFormat is the SDK's default sdk.record.format. Mirror mode
+// bypasses the format, so a value other than this is rejected (see the mirror
+// design, "Key and value rules").
+const defaultRecordFormat = "opencdc/json"
+
 type Config struct {
 	sdk.DefaultDestinationMiddleware
 	common.Config
@@ -56,6 +61,22 @@ type Config struct {
 	// sent to a partition. This mirrors Kafka's max.message.bytes.
 	BatchBytes int32 `json:"batchBytes" default:"1000012"`
 
+	// Mirror enables Kafka-to-Kafka mirror mode: it writes the record's key,
+	// value, headers, timestamp and partition to Kafka verbatim from the mirror
+	// metadata the source emits when its emitMirrorMetadata option is on. It
+	// requires acks=all, rejects deliveryTimeout > 0 and a user-set
+	// sdk.record.format, and disables topic auto-creation. See the kafka mirror
+	// passthrough design in ConduitIO/conduit.
+	Mirror bool `json:"mirror"`
+	// AllowLossyHeaders, valid only with mirror, writes headers rebuilt from
+	// kafka.header.<k> entries when kafka.headers is absent (repeated keys
+	// collapsed, order undefined). Without it, mirror mode fails a record whose
+	// kafka.headers is missing.
+	AllowLossyHeaders bool `json:"allowLossyHeaders"`
+	// ProduceTimeout is a connector-side bound on a Write in mirror mode,
+	// because deliveryTimeout must stay unset there. Minimum 30s, maximum 1h.
+	ProduceTimeout time.Duration `json:"produceTimeout" default:"2m"`
+
 	// useKafkaConnectKeyFormat defines if the produced key in a kafka message
 	// should be in the kafka connect format (i.e. JSON with schema).
 	useKafkaConnectKeyFormat bool
@@ -72,6 +93,12 @@ const (
 	acksNone = "none"
 	acksOne  = "one"
 	acksAll  = "all"
+)
+
+// Produce timeout bounds for mirror mode (see the mirror design, Decision 3).
+const (
+	minProduceTimeout = 30 * time.Second
+	maxProduceTimeout = time.Hour
 )
 
 func (c *Config) RequiredAcks() kgo.Acks {
@@ -127,7 +154,53 @@ func (c *Config) Validate(ctx context.Context) error {
 		}
 	}
 
+	multierr = append(multierr, c.validateMirror()...)
+
 	return errors.Join(multierr...)
+}
+
+// validateMirror checks the rules the mirror mode couples to the options it
+// replaces (see the mirror design). All errors name the option to change.
+func (c *Config) validateMirror() []error {
+	if !c.Mirror {
+		if c.AllowLossyHeaders {
+			return []error{fmt.Errorf("allowLossyHeaders requires mirror=true")}
+		}
+		return nil
+	}
+
+	var errs []error
+	if c.Acks != acksAll {
+		errs = append(errs, fmt.Errorf(
+			"%w: mirror requires acks=all (idempotent writes); got %q",
+			ErrCodeMirrorAcks, c.Acks,
+		))
+	}
+	if c.DeliveryTimeout > 0 {
+		errs = append(errs, fmt.Errorf(
+			"%w: mirror rejects deliveryTimeout > 0 because franz-go measures it from the record timestamp; use produceTimeout",
+			ErrCodeDeliveryTimeoutWithTS,
+		))
+	}
+	if c.RecordFormat != nil && *c.RecordFormat != defaultRecordFormat {
+		errs = append(errs, fmt.Errorf(
+			"%w: mirror bypasses sdk.record.format; unset it or set it to %q",
+			ErrCodeMirrorFormatSet, defaultRecordFormat,
+		))
+	}
+	if c.RecordFormatOptions != "" {
+		errs = append(errs, fmt.Errorf(
+			"%w: mirror bypasses sdk.record.format.options; unset it",
+			ErrCodeMirrorFormatSet,
+		))
+	}
+	if c.ProduceTimeout < minProduceTimeout || c.ProduceTimeout > maxProduceTimeout {
+		errs = append(errs, fmt.Errorf(
+			"%w: produceTimeout must be between %s and %s; got %s",
+			ErrCodeProduceTimeoutOutOfRange, minProduceTimeout, maxProduceTimeout, c.ProduceTimeout,
+		))
+	}
+	return errs
 }
 
 // ParseTopic returns either a static topic or a function that determines the

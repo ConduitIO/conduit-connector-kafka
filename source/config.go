@@ -42,6 +42,15 @@ type Config struct {
 	CommitOffsetsSize int `json:"commitOffsetsSize" default:"1000" validate:"gt=-1"`
 	// CommitOffsetsDelay defines how often consumed offsets should be committed.
 	CommitOffsetsDelay time.Duration `json:"commitOffsetsDelay" default:"5s"`
+	// EmitMirrorMetadata, when true, additionally emits lossless mirror
+	// metadata on every record: kafka.partition, kafka.partitions, kafka.offset,
+	// kafka.timestamp, kafka.timestamp.type, kafka.headers, kafka.key.null and
+	// kafka.value.null. It is off by default because metadata is carried to
+	// every destination, and destinations that serialize it write different
+	// bytes for pipelines that never asked for mirroring. Enable it together
+	// with the destination's mirror option to preserve header, partition and
+	// timestamp across a Kafka-to-Kafka copy.
+	EmitMirrorMetadata bool `json:"emitMirrorMetadata"`
 }
 
 func (c *Config) Validate(ctx context.Context) error {

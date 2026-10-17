@@ -143,6 +143,72 @@ specification:
       partitions. A real process death sends no LeaveGroup: the broker drops the
       member only when its session times out (see "Restart after a crash can
       pause" above). The kill -9 test covers a real process death.
+
+    ## Mirroring (Kafka→Kafka)
+
+    To copy a topic faithfully, preserving key, value, headers, timestamp and
+    partition, set `emitMirrorMetadata: true` on the source and `mirror: true` on
+    the destination:
+
+    ```yaml
+    version: 2.2
+    pipelines:
+      - id: mirror
+        status: running
+        connectors:
+          - id: source
+            plugin: "kafka"
+            type: source
+            settings:
+              servers: "localhost:9092"
+              topics: "orders"
+              readFromBeginning: "true"
+              emitMirrorMetadata: "true"
+          - id: destination
+            plugin: "kafka"
+            type: destination
+            settings:
+              servers: "localhost:9092"
+              topic: "orders.mirror"
+              mirror: "true"
+    ```
+
+    `mirror` writes each record to the destination partition named by the source
+    partition, so a consumer of the copy sees the same per-partition order as the
+    source. Rules and caveats:
+
+    - The destination topic must already exist (mirror mode does not auto-create
+      it) and have at least as many partitions as the source topic; otherwise the
+      first record fails with `KAFKA_PARTITION_COUNT_MISMATCH`, and a record whose
+      partition is missing fails with `KAFKA_PARTITION_OUT_OF_RANGE`. A
+      destination with more partitions is allowed: the extra partitions stay
+      empty, and key-hash locality is not preserved.
+    - `mirror` requires `acks: all` and rejects `deliveryTimeout` and a user-set
+      `sdk.record.format`; it writes the record value bytes verbatim, bypassing
+      the output format.
+    - Per-partition order is preserved until the first produce error after a
+      record is enqueued (for example the broker rejects it); after that the
+      partition may hold later records before an earlier one, and the connector
+      logs a WARN with `kafka_destination_post_enqueue_errors_total`. The remedy
+      is to re-seed the affected partition.
+    - A mirror pipeline must keep the default error policy (a DLQ with
+      `window-size: 0` or a nack threshold above 0 turns a configuration error
+      into silent record loss).
+    - Timestamp topic-config checks are not yet enforced: a destination topic
+      with `message.timestamp.type=LogAppendTime`, a short `retention.ms`, or
+      `message.timestamp.before/after.max.ms` bounds may rewrite, expire or
+      reject preserved timestamps. The connector preserves the timestamp but
+      does not yet fail on these topic configurations.
+
+    ## Redpanda
+
+    The kafka connector is the Redpanda profile: the retired labs `redpanda`
+    connector is replaced by this connector pointed at a Redpanda cluster
+    (`servers` set to the Redpanda Kafka API address). CI runs the integration,
+    acceptance-v2 and kill -9 tests against both Apache Kafka and Redpanda. Mirror
+    mode works on both brokers; Redpanda does not return or enforce the
+    `message.timestamp.before/after.max.ms` bounds, so only the timestamp type and
+    retention rules can differ from Apache Kafka.
   version: v0.13.0
   author: Meroxa, Inc.
   source:
@@ -197,6 +263,19 @@ specification:
         validations:
           - type: greater-than
             value: "-1"
+      - name: emitMirrorMetadata
+        description: |-
+          EmitMirrorMetadata, when true, additionally emits lossless mirror
+          metadata on every record: kafka.partition, kafka.partitions, kafka.offset,
+          kafka.timestamp, kafka.timestamp.type, kafka.headers, kafka.key.null and
+          kafka.value.null. It is off by default because metadata is carried to
+          every destination, and destinations that serialize it write different
+          bytes for pipelines that never asked for mirroring. Enable it together
+          with the destination's mirror option to preserve header, partition and
+          timestamp across a Kafka-to-Kafka copy.
+        type: bool
+        default: ""
+        validations: []
       - name: groupID
         description: GroupID defines the consumer group id.
         type: string
@@ -330,6 +409,15 @@ specification:
         validations:
           - type: inclusion
             value: none,one,all
+      - name: allowLossyHeaders
+        description: |-
+          AllowLossyHeaders, valid only with mirror, writes headers rebuilt from
+          kafka.header.<k> entries when kafka.headers is absent (repeated keys
+          collapsed, order undefined). Without it, mirror mode fails a record whose
+          kafka.headers is missing.
+        type: bool
+        default: ""
+        validations: []
       - name: batchBytes
         description: |-
           BatchBytes limits the maximum size of a request in bytes before being
@@ -378,6 +466,24 @@ specification:
           server and any host name in that certificate.
         type: bool
         default: ""
+        validations: []
+      - name: mirror
+        description: |-
+          Mirror enables Kafka-to-Kafka mirror mode: it writes the record's key,
+          value, headers, timestamp and partition to Kafka verbatim from the mirror
+          metadata the source emits when its emitMirrorMetadata option is on. It
+          requires acks=all, rejects deliveryTimeout > 0 and a user-set
+          sdk.record.format, and disables topic auto-creation. See the kafka mirror
+          passthrough design in ConduitIO/conduit.
+        type: bool
+        default: ""
+        validations: []
+      - name: produceTimeout
+        description: |-
+          ProduceTimeout is a connector-side bound on a Write in mirror mode,
+          because deliveryTimeout must stay unset there. Minimum 30s, maximum 1h.
+        type: duration
+        default: 2m
         validations: []
       - name: saslMechanism
         description: |-

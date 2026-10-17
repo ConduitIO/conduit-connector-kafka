@@ -82,3 +82,18 @@ func (mr *MockConsumerMockRecorder) Consume(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Consume", reflect.TypeOf((*MockConsumer)(nil).Consume), arg0)
 }
+
+// PartitionCount mocks base method.
+func (m *MockConsumer) PartitionCount(arg0 context.Context, arg1 string) (int32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PartitionCount", arg0, arg1)
+	ret0, _ := ret[0].(int32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PartitionCount indicates an expected call of PartitionCount.
+func (mr *MockConsumerMockRecorder) PartitionCount(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PartitionCount", reflect.TypeOf((*MockConsumer)(nil).PartitionCount), arg0, arg1)
+}

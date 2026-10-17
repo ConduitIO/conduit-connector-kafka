@@ -17,6 +17,8 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/conduitio/conduit-commons/lang"
 	"github.com/conduitio/conduit-commons/opencdc"
@@ -36,6 +38,12 @@ type Source struct {
 	config   source.Config
 
 	nonUTF8Headers nonUTF8HeaderTracker
+	// mirrorHeaderTracker counts kafka.header.<k> entries omitted when
+	// emitMirrorMetadata is on (see emitLegacyHeaders).
+	mirrorHeaderTracker mirrorHeaderOmittedTracker
+	// partitionCounts caches the partition count per topic for
+	// kafka.partitions. Read is serialized, so it needs no lock.
+	partitionCounts map[string]int32
 }
 
 func NewSource() sdk.Source {
@@ -101,13 +109,23 @@ func (s *Source) Read(ctx context.Context) (opencdc.Record, error) {
 	metadata := opencdc.Metadata{}
 	metadata.SetCollection(rec.Topic)
 	metadata.SetCreatedAt(rec.Timestamp)
-	for _, h := range rec.Headers {
-		metadata[MetadataKafkaHeaderPrefix+h.Key] = string(h.Value)
+
+	if s.config.EmitMirrorMetadata {
+		// Omit the legacy kafka.header.<k> entry for every header whose key or
+		// value is not valid UTF-8 (the raw bytes stay in kafka.headers), then
+		// emit the lossless mirror metadata. See the kafka mirror passthrough
+		// design in ConduitIO/conduit.
+		s.emitLegacyHeaders(ctx, metadata, rec)
+		source.BuildMirrorMetadata(rec, s.partitionsFor(ctx, rec.Topic, rec.Partition), metadata)
+	} else {
+		for _, h := range rec.Headers {
+			metadata[MetadataKafkaHeaderPrefix+h.Key] = string(h.Value)
+		}
+		// Invariant 6: the entries above are emitted unchanged, never escaped
+		// or replaced, including ones that are not valid UTF-8. Those are
+		// reported here (issue #319); see nonUTF8HeaderTracker.
+		s.nonUTF8Headers.observe(ctx, rec, metadata)
 	}
-	// Invariant 6: the entries above are emitted unchanged, never escaped or
-	// replaced, including ones that are not valid UTF-8. Those are reported
-	// here (issue #319); see nonUTF8HeaderTracker.
-	s.nonUTF8Headers.observe(ctx, rec, metadata)
 
 	return sdk.Util.Source.NewRecordCreate(
 		source.Position{
@@ -124,6 +142,51 @@ func (s *Source) Read(ctx context.Context) (opencdc.Record, error) {
 
 func (s *Source) Ack(ctx context.Context, _ opencdc.Position) error {
 	return s.consumer.Ack(ctx)
+}
+
+// emitLegacyHeaders writes the kafka.header.<k> entries, omitting a header
+// whose key or value is not valid UTF-8 (so the record can cross a protobuf
+// hop; the raw bytes stay in kafka.headers). It is used only when
+// emitMirrorMetadata is on, per the mirror design's Decision 5.
+func (s *Source) emitLegacyHeaders(ctx context.Context, metadata opencdc.Metadata, rec *source.Record) {
+	for _, h := range rec.Headers {
+		// Last value wins, matching the default view: a repeated key is judged
+		// on the value that would have won, so an omitted later value is never
+		// replaced by an earlier one.
+		metadata[MetadataKafkaHeaderPrefix+h.Key] = string(h.Value)
+	}
+	for key, value := range metadata {
+		if !strings.HasPrefix(key, MetadataKafkaHeaderPrefix) {
+			continue
+		}
+		headerKey := strings.TrimPrefix(key, MetadataKafkaHeaderPrefix)
+		if utf8.ValidString(headerKey) && utf8.ValidString(value) {
+			continue
+		}
+		delete(metadata, key)
+		s.mirrorHeaderTracker.record(ctx, rec, headerKey, utf8.ValidString(headerKey))
+	}
+}
+
+// partitionsFor returns the cached partition count for topic, refreshing it
+// from the broker when it is unknown or when partition no longer fits the
+// cached count. On failure it returns 0, which omits kafka.partitions (the
+// destination checks the partition count itself).
+func (s *Source) partitionsFor(ctx context.Context, topic string, partition int32) int32 {
+	if s.partitionCounts == nil {
+		s.partitionCounts = make(map[string]int32)
+	}
+	if cached, ok := s.partitionCounts[topic]; ok && partition < cached {
+		return cached
+	}
+	n, err := s.consumer.PartitionCount(ctx, topic)
+	if err != nil {
+		sdk.Logger(ctx).Warn().Err(err).Str("topic", topic).
+			Msg("failed to read partition count for kafka.partitions")
+		return 0
+	}
+	s.partitionCounts[topic] = n
+	return n
 }
 
 func (s *Source) Teardown(ctx context.Context) error {

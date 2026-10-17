@@ -36,6 +36,15 @@ const (
 	// connector metrics API yet, so it is reported as a structured log field
 	// with this name (see the kafka mirror passthrough design in ConduitIO/conduit).
 	MetricLegacyHeaderNotUTF8 = "kafka_source_legacy_header_not_utf8_total"
+
+	// CodeMirrorLegacyHeaderOmitted is the stable code of the warning logged
+	// when emitMirrorMetadata omits a kafka.header.<k> entry because the header
+	// key or value is not valid UTF-8. The raw bytes stay in kafka.headers.
+	CodeMirrorLegacyHeaderOmitted = "KAFKA_LEGACY_HEADER_OMITTED"
+
+	// MetricMirrorLegacyHeaderOmitted names the count of entries omitted when
+	// emitMirrorMetadata is on, reported as a structured log field.
+	MetricMirrorLegacyHeaderOmitted = "kafka_source_legacy_header_omitted_total"
 )
 
 // maxWarnedHeaderKeys bounds the keys warned about individually, so a topic
@@ -146,4 +155,47 @@ func (t *nonUTF8HeaderTracker) logTotal(ctx context.Context) {
 		Uint64(MetricLegacyHeaderNotUTF8, total).
 		Int("header_keys_warned", keys).
 		Msg("kafka.header.<key> metadata entries that are not valid UTF-8 were emitted during this run")
+}
+
+// mirrorHeaderOmittedTracker counts kafka.header.<k> entries the source omits
+// when emitMirrorMetadata is on, and warns once per header key. It is a
+// separate type from nonUTF8HeaderTracker because the metric and the message
+// differ: here the entry is omitted (the raw bytes stay in kafka.headers), not
+// emitted unchanged.
+type mirrorHeaderOmittedTracker struct {
+	mu     sync.Mutex
+	warned map[string]bool // by header key
+	total  uint64
+}
+
+func (t *mirrorHeaderOmittedTracker) record(ctx context.Context, rec *source.Record, key string, keyOK bool) {
+	t.mu.Lock()
+	t.total++
+	total := t.total
+	first := !t.warned[key] && len(t.warned) < maxWarnedHeaderKeys
+	if first {
+		if t.warned == nil {
+			t.warned = make(map[string]bool)
+		}
+		t.warned[key] = true
+	}
+	t.mu.Unlock()
+
+	if !first {
+		return
+	}
+	part := partValue
+	if !keyOK {
+		part = partKey
+	}
+	sdk.Logger(ctx).Warn().
+		Str("code", CodeMirrorLegacyHeaderOmitted).
+		Str("topic", rec.Topic).
+		Int32("partition", rec.Partition).
+		Int64("offset", rec.Offset).
+		Str("header_key_b64", base64.StdEncoding.EncodeToString([]byte(key))).
+		Str("invalid", part).
+		Uint64(MetricMirrorLegacyHeaderOmitted, total).
+		Msg("a Kafka header's " + part + " is not valid UTF-8, so its kafka.header.<key> entry is omitted " +
+			"while emitMirrorMetadata is on; the raw bytes stay in kafka.headers")
 }
