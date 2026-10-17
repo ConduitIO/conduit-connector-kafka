@@ -46,7 +46,7 @@ const acceptanceV2Partitions = 3
 // max.message.bytes used by the v2 suite (4 MiB, see createTopic).
 const acceptanceV2MaxBytes = 4 << 20
 
-// TestAcceptanceV2 runs acceptance suite v2 (SDK v0.16.0, revision 2.0.0)
+// TestAcceptanceV2 runs acceptance suite v2 (SDK v0.17.0, revision 2.0.1)
 // against the broker named by test.Servers (Kafka or Redpanda, see Makefile).
 func TestAcceptanceV2(t *testing.T) {
 	srcCfg := map[string]string{
