@@ -121,7 +121,7 @@ hold.
 
 ### Acceptance suite claims
 
-The acceptance suite v2 run (revision 2.0.0) claims per-key ordering for the
+The acceptance suite v2 run (revision 2.0.1) claims per-key ordering for the
 source, a redelivery bound of 1000 records after a restart, and a
 non-idempotent destination.
 

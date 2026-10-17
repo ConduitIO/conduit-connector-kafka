@@ -21,7 +21,7 @@
 set -euo pipefail
 
 report=${1:?usage: $0 <report.json> [suite revision]}
-revision=${2:-2.0.0}
+revision=${2:-2.0.1}
 
 if [ ! -s "$report" ]; then
   echo "acceptance report $report is missing or empty: the v2 suite did not run" >&2
