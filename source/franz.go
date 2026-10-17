@@ -25,6 +25,8 @@ import (
 	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -43,6 +45,33 @@ type Client interface {
 	CommitRecords(ctx context.Context, rs ...*kgo.Record) error
 	OptValue(opt any) any
 	PollFetches(ctx context.Context) kgo.Fetches
+	// PartitionCount returns the number of partitions in the topic, or an error
+	// if the metadata request fails or the topic is unknown.
+	PartitionCount(ctx context.Context, topic string) (int32, error)
+}
+
+// kgoClient adapts *kgo.Client to the Client interface by adding the
+// PartitionCount helper, which the franz-go client does not expose directly.
+type kgoClient struct {
+	*kgo.Client
+}
+
+// PartitionCount reads topic metadata and returns the partition count.
+func (c *kgoClient) PartitionCount(ctx context.Context, topic string) (int32, error) {
+	meta, err := kadm.NewClient(c.Client).Metadata(ctx, topic)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read metadata for topic %q: %w", topic, err)
+	}
+	td, ok := meta.Topics[topic]
+	if !ok || td.Err != nil {
+		if td.Err == nil {
+			td.Err = kerr.UnknownTopicOrPartition
+		}
+		return 0, fmt.Errorf("failed to read metadata for topic %q: %w", topic, td.Err)
+	}
+	// Kafka partition IDs are int32, so a topic cannot have more partitions
+	// than fit in an int32.
+	return int32(len(td.Partitions)), nil //nolint:gosec // partition count fits int32 by protocol
 }
 
 var _ Consumer = (*FranzConsumer)(nil)
@@ -65,13 +94,19 @@ func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
+	client := &kgoClient{Client: cl}
 
 	return &FranzConsumer{
-		client:               cl,
-		acker:                newBatchAcker(ctx, cl, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
+		client:               client,
+		acker:                newBatchAcker(ctx, client, cfg.CommitOffsetsSize, cfg.CommitOffsetsDelay),
 		iter:                 &kgo.FetchesRecordIter{}, // empty iterator is done
 		retryGroupJoinErrors: cfg.RetryGroupJoinErrors,
 	}, nil
+}
+
+// PartitionCount returns the number of partitions in the topic.
+func (c *FranzConsumer) PartitionCount(ctx context.Context, topic string) (int32, error) {
+	return c.client.PartitionCount(ctx, topic)
 }
 
 func (c *FranzConsumer) Consume(ctx context.Context) (*Record, error) {

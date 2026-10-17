@@ -16,8 +16,10 @@ package destination
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/conduitio/conduit-commons/opencdc"
 	"github.com/matryer/is"
@@ -109,4 +111,78 @@ func TestConfig_ParseTopic_DoesErrorOnTopicNotFound(t *testing.T) {
 	is.True(strings.Contains(err.Error(), "topic not found on record")) // expected topic not found error
 
 	is.Equal(topic, "")
+}
+
+func TestConfig_ValidateMirror(t *testing.T) {
+	base := func() Config {
+		return Config{
+			Topic:          "topic",
+			Acks:           "all",
+			ProduceTimeout: 2 * time.Minute,
+		}
+	}
+	withFormat := func(f string) *string { return &f }
+
+	testCases := []struct {
+		name    string
+		mutate  func(*Config)
+		wantErr error
+	}{
+		{"valid", func(*Config) {}, nil},
+		{
+			"acks not all",
+			func(c *Config) { c.Acks = "one" },
+			ErrCodeMirrorAcks,
+		},
+		{
+			"deliveryTimeout set",
+			func(c *Config) { c.DeliveryTimeout = time.Second },
+			ErrCodeDeliveryTimeoutWithTS,
+		},
+		{
+			"record format set",
+			func(c *Config) { c.RecordFormat = withFormat("template") },
+			ErrCodeMirrorFormatSet,
+		},
+		{
+			"record format options set",
+			func(c *Config) { c.RecordFormatOptions = "{{ .Payload.After }}" },
+			ErrCodeMirrorFormatSet,
+		},
+		{
+			"produceTimeout below minimum",
+			func(c *Config) { c.ProduceTimeout = 29 * time.Second },
+			ErrCodeProduceTimeoutOutOfRange,
+		},
+		{
+			"produceTimeout zero",
+			func(c *Config) { c.ProduceTimeout = 0 },
+			ErrCodeProduceTimeoutOutOfRange,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			cfg := base()
+			cfg.Mirror = true
+			tc.mutate(&cfg)
+
+			err := cfg.Validate(context.Background())
+			if tc.wantErr == nil {
+				is.NoErr(err)
+				return
+			}
+			is.True(err != nil)
+			is.True(errors.Is(err, tc.wantErr))
+		})
+	}
+}
+
+func TestConfig_Validate_AllowLossyHeadersRequiresMirror(t *testing.T) {
+	is := is.New(t)
+	cfg := Config{Topic: "topic", AllowLossyHeaders: true}
+	err := cfg.Validate(context.Background())
+	is.True(err != nil)
+	is.True(strings.Contains(err.Error(), "allowLossyHeaders requires mirror=true"))
 }

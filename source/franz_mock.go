@@ -158,6 +158,45 @@ func (c *MockClientOptValueCall) DoAndReturn(f func(any) any) *MockClientOptValu
 	return c
 }
 
+// PartitionCount mocks base method.
+func (m *MockClient) PartitionCount(ctx context.Context, topic string) (int32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PartitionCount", ctx, topic)
+	ret0, _ := ret[0].(int32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PartitionCount indicates an expected call of PartitionCount.
+func (mr *MockClientMockRecorder) PartitionCount(ctx, topic any) *MockClientPartitionCountCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PartitionCount", reflect.TypeOf((*MockClient)(nil).PartitionCount), ctx, topic)
+	return &MockClientPartitionCountCall{Call: call}
+}
+
+// MockClientPartitionCountCall wrap *gomock.Call
+type MockClientPartitionCountCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockClientPartitionCountCall) Return(arg0 int32, arg1 error) *MockClientPartitionCountCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockClientPartitionCountCall) Do(f func(context.Context, string) (int32, error)) *MockClientPartitionCountCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockClientPartitionCountCall) DoAndReturn(f func(context.Context, string) (int32, error)) *MockClientPartitionCountCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // PollFetches mocks base method.
 func (m *MockClient) PollFetches(ctx context.Context) kgo.Fetches {
 	m.ctrl.T.Helper()

@@ -31,6 +31,9 @@ type Consumer interface {
 	Ack(context.Context) error
 	// Close this consumer and the associated resources.
 	Close(context.Context) error
+	// PartitionCount returns the number of partitions in the topic, used for
+	// the kafka.partitions mirror metadata.
+	PartitionCount(context.Context, string) (int32, error)
 }
 
 type Record kgo.Record
