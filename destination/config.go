@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"text/template/parse"
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
@@ -228,6 +229,15 @@ func (c *Config) ParseTopic() (topic string, f TopicFn, err error) {
 		return "", nil, fmt.Errorf("topic is neither a valid static Kafka topic nor a valid Go template: %w", err)
 	}
 
+	// Fast path: the default topic (and any {{ index .Metadata "key" }} route)
+	// is a single map read. Executing a text/template per record for that costs
+	// roughly as much as the whole record→message conversion (see
+	// BenchmarkPrepareRecordTemplate), so resolve it directly and keep the
+	// general template execution for templates that actually need it.
+	if key, ok := simpleMetadataIndex(c.Topic); ok {
+		return "", metadataTopicFn(key), nil
+	}
+
 	// The topic is a valid template, return TopicFn.
 	var sb strings.Builder
 	return "", func(r opencdc.Record) (string, error) {
@@ -246,3 +256,74 @@ func (c *Config) ParseTopic() (topic string, f TopicFn, err error) {
 		return topic, nil
 	}, nil
 }
+
+// metadataTopicFn returns a TopicFn that reads the topic straight from the
+// record metadata, mirroring what {{ index .Metadata "key" }} renders to (a
+// missing or empty key yields an empty topic and therefore an error).
+func metadataTopicFn(key string) TopicFn {
+	return func(r opencdc.Record) (string, error) {
+		topic := r.Metadata[key]
+		if topic == "" {
+			return "", fmt.Errorf("topic not found on record: metadata key %q is not set or empty", key)
+		}
+		return topic, nil
+	}
+}
+
+// simpleMetadataIndex reports whether src is exactly one template action of the
+// form {{ index .Metadata "key" }} or {{ index $.Metadata "key" }}, and returns
+// the constant key. Such a template is just a map read, so the fast path above
+// avoids per-record text/template execution. Any other shape returns ok=false
+// and is handled by the general template execution path.
+func simpleMetadataIndex(src string) (string, bool) {
+	// Only the index builtin is needed to parse the simple shape; parse.Parse
+	// reports an error for any other function, which falls through to the
+	// general path.
+	trees, err := parse.Parse("topic", src, "{{", "}}", map[string]any{"index": builtinIndex})
+	if err != nil {
+		return "", false
+	}
+	tree := trees["topic"]
+	if tree == nil || len(tree.Root.Nodes) != 1 {
+		return "", false
+	}
+
+	action, ok := tree.Root.Nodes[0].(*parse.ActionNode)
+	if !ok || len(action.Pipe.Decl) != 0 || len(action.Pipe.Cmds) != 1 {
+		return "", false
+	}
+
+	cmd := action.Pipe.Cmds[0]
+	if len(cmd.Args) != 3 {
+		return "", false
+	}
+	id, ok := cmd.Args[0].(*parse.IdentifierNode)
+	if !ok || id.Ident != "index" {
+		return "", false
+	}
+
+	// The indexed value must be .Metadata (or the equivalent $.Metadata), so
+	// the template is a metadata lookup rather than some other expression.
+	switch obj := cmd.Args[1].(type) {
+	case *parse.FieldNode:
+		if len(obj.Ident) != 1 || obj.Ident[0] != "Metadata" {
+			return "", false
+		}
+	case *parse.VariableNode:
+		if len(obj.Ident) != 2 || obj.Ident[0] != "$" || obj.Ident[1] != "Metadata" {
+			return "", false
+		}
+	default:
+		return "", false
+	}
+
+	key, ok := cmd.Args[2].(*parse.StringNode)
+	if !ok {
+		return "", false
+	}
+	return key.Text, true
+}
+
+// builtinIndex is a placeholder for the index builtin, needed only so
+// parse.Parse recognizes the "index" identifier in the simple shape check.
+func builtinIndex() {}
