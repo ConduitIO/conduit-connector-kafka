@@ -113,6 +113,59 @@ func TestConfig_ParseTopic_DoesErrorOnTopicNotFound(t *testing.T) {
 	is.Equal(topic, "")
 }
 
+func TestConfig_ParseTopic_SimpleMetadataIndexFastPath(t *testing.T) {
+	// The default topic template must resolve through the fast path to the same
+	// value the text/template execution would have produced, and must fail the
+	// same way when the metadata key is missing.
+	is := is.New(t)
+
+	cfg := Config{Topic: `{{ index .Metadata "opencdc.collection" }}`}
+	topic, getTopic, err := cfg.ParseTopic()
+	is.NoErr(err)
+	is.Equal(topic, "")
+
+	rec := opencdc.Record{
+		Metadata: map[string]string{"opencdc.collection": "testtopic"},
+	}
+	topic, err = getTopic(rec)
+	is.NoErr(err)
+	is.Equal(topic, "testtopic")
+
+	// A missing key must error the same way as the template path.
+	_, err = getTopic(opencdc.Record{Metadata: map[string]string{}})
+	is.True(err != nil)
+	is.True(strings.Contains(err.Error(), "topic not found on record"))
+}
+
+func TestSimpleMetadataIndex(t *testing.T) {
+	testCases := []struct {
+		name string
+		src  string
+		key  string
+		ok   bool
+	}{
+		{name: "default collection", src: `{{ index .Metadata "opencdc.collection" }}`, key: "opencdc.collection", ok: true},
+		{name: "no spaces", src: `{{index .Metadata "x"}}`, key: "x", ok: true},
+		{name: "dollar root", src: `{{ index $.Metadata "x" }}`, key: "x", ok: true},
+		{name: "escaped key", src: `{{ index .Metadata "a\nb" }}`, key: "a\nb", ok: true},
+		{name: "field access is not an index", src: `{{ .Metadata.foo }}`, ok: false},
+		{name: "surrounding text", src: `topic-{{ index .Metadata "x" }}`, ok: false},
+		{name: "two actions", src: `{{ index .Metadata "a" }}-{{ index .Metadata "b" }}`, ok: false},
+		{name: "missing key arg", src: `{{ index .Metadata }}`, ok: false},
+		{name: "non-metadata object", src: `{{ index .Payload "x" }}`, ok: false},
+		{name: "non-constant key", src: `{{ index .Metadata (print "x") }}`, ok: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			key, ok := simpleMetadataIndex(tc.src)
+			if ok != tc.ok || (ok && key != tc.key) {
+				t.Fatalf("simpleMetadataIndex(%q) = (%q, %v), want (%q, %v)", tc.src, key, ok, tc.key, tc.ok)
+			}
+		})
+	}
+}
+
 func TestConfig_ValidateMirror(t *testing.T) {
 	base := func() Config {
 		return Config{
