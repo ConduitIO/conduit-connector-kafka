@@ -15,10 +15,12 @@
 package destination
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
+	"regexp"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"sync"
@@ -207,6 +209,77 @@ func TestFranzProducer_Produce_CtxCancelMidBatch(t *testing.T) {
 	is.Equal(n, 0)
 }
 
+var goroutineHeader = regexp.MustCompile(`(?m)^goroutine (\d+) \[`)
+
+// goroutineDump returns the stack of every live goroutine keyed by id.
+func goroutineDump() map[string]string {
+	var buf bytes.Buffer
+	_ = pprof.Lookup("goroutine").WriteTo(&buf, 2)
+	out := map[string]string{}
+	for _, block := range strings.Split(buf.String(), "\n\n") {
+		if m := goroutineHeader.FindStringSubmatch(block); m != nil {
+			out[m[1]] = block
+		}
+	}
+	return out
+}
+
+func goroutineIDs() map[string]struct{} {
+	ids := map[string]struct{}{}
+	for id := range goroutineDump() {
+		ids[id] = struct{}{}
+	}
+	return ids
+}
+
+// leakedSince polls until no goroutine started after the `before` snapshot is
+// left, or the deadline passes, and returns the remaining stacks. It counts
+// only goroutines that run connector or franz-go client code. Goroutines of
+// the kfake test broker are excluded on purpose: when a cluster is closed
+// while a control function is asleep, kfake's own run loop can stay blocked
+// in continueSleptControl forever. That is a test-broker artifact, not
+// something the producer owns. Goroutines of other tests in the binary are
+// excluded by the snapshot, so the check does not depend on a global count.
+func leakedSince(before map[string]struct{}, deadline time.Duration) []string {
+	var leaked []string
+	end := time.Now().Add(deadline)
+	for {
+		leaked = nil
+		for id, stack := range goroutineDump() {
+			if _, ok := before[id]; ok {
+				continue
+			}
+			if strings.Contains(stack, "kfake.") || strings.Contains(stack, "pprof.writeGoroutine") {
+				continue
+			}
+			if strings.Contains(stack, "franz-go/pkg/kgo.") || strings.Contains(stack, "destination.(*FranzProducer)") {
+				leaked = append(leaked, stack)
+			}
+		}
+		if len(leaked) == 0 || time.Now().After(end) {
+			return leaked
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// TestLeakedSince_DetectsLeakedClient proves the leak check can fail: an open
+// franz-go client is reported, and gone once it is closed.
+func TestLeakedSince_DetectsLeakedClient(t *testing.T) {
+	is := is.New(t)
+	before := goroutineIDs()
+
+	c, err := kfake.NewCluster(kfake.NumBrokers(1), kfake.SeedTopics(1, lingerTestTopic))
+	is.NoErr(err)
+	defer c.Close()
+	cl, err := kgo.NewClient(kgo.SeedBrokers(c.ListenAddrs()...))
+	is.NoErr(err)
+
+	is.True(len(leakedSince(before, 200*time.Millisecond)) > 0)
+	cl.Close()
+	is.Equal(leakedSince(before, 5*time.Second), []string(nil))
+}
+
 // holdProduces makes the kfake cluster sit on every Produce request until the
 // returned release func is called (also run at cleanup, before the cluster
 // closes), so the unlingering Flush has records in flight that never resolve.
@@ -278,7 +351,7 @@ func TestFranzProducer_Mirror_FlushConcurrency(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
-			baseline := runtime.NumGoroutine()
+			before := goroutineIDs()
 
 			func() {
 				c, err := kfake.NewCluster(kfake.NumBrokers(1), kfake.SeedTopics(3, lingerTestTopic), kfake.SleepOutOfOrder())
@@ -311,12 +384,10 @@ func TestFranzProducer_Mirror_FlushConcurrency(t *testing.T) {
 				tc.check(t, p, err, elapsed)
 			}()
 
-			// Teardown must not leak the Flush goroutine or its helpers.
-			deadline := time.Now().Add(5 * time.Second)
-			for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
-				time.Sleep(20 * time.Millisecond)
-			}
-			is.True(runtime.NumGoroutine() <= baseline)
+			// Teardown must not leak the Flush goroutine, a franz-go goroutine
+			// or a produce promise. Only goroutines started since the subtest
+			// began count, and kfake's own are excluded (see leakedSince).
+			is.Equal(leakedSince(before, 5*time.Second), []string(nil))
 		})
 	}
 }
