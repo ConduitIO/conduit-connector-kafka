@@ -13,6 +13,7 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
+	github.com/twmb/franz-go/pkg/kfake v0.0.0-20261020001454-39ebb4656165
 	go.uber.org/mock v0.6.0
 	google.golang.org/protobuf v1.36.12
 )

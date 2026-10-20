@@ -194,6 +194,10 @@ func (p *FranzProducer) Produce(ctx context.Context, records []opencdc.Record) (
 		)
 	}
 
+	// Everything is enqueued: stop lingering so the batch is sent now instead
+	// of after ProducerLinger (see unlinger).
+	p.unlinger(ctx)
+
 	err := wg.Wait(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to wait for all records to be produced: %w", err)
@@ -256,6 +260,14 @@ func (p *FranzProducer) produceMirror(ctx context.Context, records []opencdc.Rec
 		})
 	}
 
+	// Stop lingering so the batch is sent now instead of after ProducerLinger.
+	// Flush returns once every buffered record is resolved or flushCtx ends;
+	// the wait below stays the sole judge of success, timeout and close, so
+	// the produceTimeout and poison semantics are unchanged.
+	flushCtx, stopFlush := context.WithCancel(ctx)
+	defer stopFlush()
+	go p.unlinger(flushCtx)
+
 	waitErr := p.wait(ctx, &wg)
 	if waitErr != nil {
 		// The wait ended without every promise resolving. Poison and close so
@@ -285,6 +297,19 @@ func (p *FranzProducer) produceMirror(ctx context.Context, records []opencdc.Rec
 		return n, fmt.Errorf("failed to produce record %d: %w", n, results[n])
 	}
 	return len(results), nil
+}
+
+// unlinger makes the client send everything enqueued so far without waiting
+// out ProducerLinger (franz-go defaults it to 10ms since v1.20). Without it a
+// batched Write costs a full linger however small the batch, which caps
+// throughput at batch/linger. Flush, unlike ProduceSync, also covers a topic
+// whose metadata is not loaded yet (the first Write) and does not stop
+// ctx-aware waiting in the caller. It only changes when records are sent, not
+// which records, in what order, or how they are acked: the per-record
+// promises remain the only source of delivery outcome (Invariant 1), so its
+// error is deliberately ignored; ctx ending is reported by the caller's wait.
+func (p *FranzProducer) unlinger(ctx context.Context) {
+	_ = p.client.Flush(ctx)
 }
 
 // wait blocks until every callback has run, produceTimeout expires, the caller
