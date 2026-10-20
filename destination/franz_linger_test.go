@@ -16,9 +16,12 @@ package destination
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/matryer/is"
 	"github.com/twmb/franz-go/pkg/kfake"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kmsg"
 )
 
 // testLinger is far above any plausible batch latency on kfake, so a Write
@@ -201,6 +205,120 @@ func TestFranzProducer_Produce_CtxCancelMidBatch(t *testing.T) {
 	n, err := p.Produce(ctx, lingerRecords(10, false))
 	is.True(err != nil)
 	is.Equal(n, 0)
+}
+
+// holdProduces makes the kfake cluster sit on every Produce request until the
+// returned release func is called (also run at cleanup, before the cluster
+// closes), so the unlingering Flush has records in flight that never resolve.
+func holdProduces(t *testing.T, c *kfake.Cluster) func() {
+	t.Helper()
+	release := make(chan struct{})
+	var once sync.Once
+	rel := func() { once.Do(func() { close(release) }) }
+	c.ControlKey(int16(kmsg.Produce), func(kmsg.Request) (kmsg.Response, error, bool) {
+		c.KeepControl()
+		c.SleepControl(func() { <-release })
+		return nil, nil, false
+	})
+	t.Cleanup(rel)
+	return rel
+}
+
+// TestFranzProducer_Mirror_FlushConcurrency covers the Flush that runs next
+// to the bounded wait in mirror mode while the broker never answers: every
+// way the wait can end must nack the whole batch (n == 0), never ack, and
+// leave no goroutine behind.
+func TestFranzProducer_Mirror_FlushConcurrency(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(p *FranzProducer) (context.Context, context.CancelFunc, func())
+		check func(t *testing.T, p *FranzProducer, err error, elapsed time.Duration)
+	}{
+		{
+			name: "produceTimeout expires while Flush runs",
+			setup: func(p *FranzProducer) (context.Context, context.CancelFunc, func()) {
+				p.produceTimeout = 200 * time.Millisecond
+				ctx, cancel := context.WithCancel(context.Background())
+				return ctx, cancel, func() {}
+			},
+			check: func(t *testing.T, p *FranzProducer, err error, _ time.Duration) {
+				is := is.New(t)
+				is.True(errors.Is(err, ErrCodeProduceTimeout))
+				is.True(p.poisoned.Load())
+			},
+		},
+		{
+			name: "ctx deadline mid-flight",
+			setup: func(*FranzProducer) (context.Context, context.CancelFunc, func()) {
+				ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+				return ctx, cancel, func() {}
+			},
+			check: func(t *testing.T, _ *FranzProducer, err error, elapsed time.Duration) {
+				is := is.New(t)
+				is.True(errors.Is(err, context.DeadlineExceeded))
+				is.True(elapsed < 5*time.Second)
+			},
+		},
+		{
+			name: "concurrent Close mid-flight",
+			setup: func(p *FranzProducer) (context.Context, context.CancelFunc, func()) {
+				ctx, cancel := context.WithCancel(context.Background())
+				return ctx, cancel, func() {
+					time.Sleep(200 * time.Millisecond)
+					_ = p.Close(context.Background())
+				}
+			},
+			check: func(t *testing.T, _ *FranzProducer, err error, _ time.Duration) {
+				is := is.New(t)
+				is.True(strings.Contains(err.Error(), "producer closed"))
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			baseline := runtime.NumGoroutine()
+
+			func() {
+				c, err := kfake.NewCluster(kfake.NumBrokers(1), kfake.SeedTopics(3, lingerTestTopic), kfake.SleepOutOfOrder())
+				is.NoErr(err)
+				defer c.Close()
+				cl, err := kgo.NewClient(
+					kgo.SeedBrokers(c.ListenAddrs()...),
+					kgo.DefaultProduceTopic(lingerTestTopic),
+					kgo.ProducerLinger(testLinger),
+					kgo.RecordPartitioner(kgo.ManualPartitioner()),
+				)
+				is.NoErr(err)
+				p := &FranzProducer{
+					client: cl, keyEncoder: bytesEncoder{}, defaultTopic: lingerTestTopic, mirror: true,
+					produceTimeout: 30 * time.Second, partitions: map[string]int32{}, closed: make(chan struct{}),
+				}
+				release := holdProduces(t, c)
+				defer release()
+				defer func() { _ = p.Close(context.Background()) }()
+
+				ctx, cancel, during := tc.setup(p)
+				defer cancel()
+				go during()
+
+				start := time.Now()
+				n, err := p.Produce(ctx, lingerRecords(10, true))
+				elapsed := time.Since(start)
+				is.Equal(n, 0) // nothing was confirmed, nothing may be acked
+				is.True(err != nil)
+				tc.check(t, p, err, elapsed)
+			}()
+
+			// Teardown must not leak the Flush goroutine or its helpers.
+			deadline := time.Now().Add(5 * time.Second)
+			for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
+				time.Sleep(20 * time.Millisecond)
+			}
+			is.True(runtime.NumGoroutine() <= baseline)
+		})
+	}
 }
 
 // BenchmarkProduceBatch is an indicative micro-benchmark (in-process kfake,
