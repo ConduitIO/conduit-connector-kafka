@@ -209,7 +209,7 @@ specification:
     mode works on both brokers; Redpanda does not return or enforce the
     `message.timestamp.before/after.max.ms` bounds, so only the timestamp type and
     retention rules can differ from Apache Kafka.
-  version: v0.14.2
+  version: v0.14.3
   author: Meroxa, Inc.
   source:
     parameters:
@@ -302,6 +302,17 @@ specification:
         description: RetryGroupJoinErrors determines whether the connector will continually retry on group join errors.
         type: bool
         default: "true"
+        validations: []
+      - name: saslAllowPlaintext
+        description: |-
+          AllowPlaintext lets SASL authenticate over a connection that is not
+          protected by TLS (tls.enabled is false). This exposes the SASL
+          credentials, and with PLAIN the password itself, to anyone who can
+          observe the network path to the brokers. By default the connector
+          refuses to start in that configuration. Only set this for a trusted
+          network, such as a local development cluster.
+        type: bool
+        default: ""
         validations: []
       - name: saslMechanism
         description: |-
@@ -484,6 +495,17 @@ specification:
           because deliveryTimeout must stay unset there. Minimum 30s, maximum 1h.
         type: duration
         default: 2m
+        validations: []
+      - name: saslAllowPlaintext
+        description: |-
+          AllowPlaintext lets SASL authenticate over a connection that is not
+          protected by TLS (tls.enabled is false). This exposes the SASL
+          credentials, and with PLAIN the password itself, to anyone who can
+          observe the network path to the brokers. By default the connector
+          refuses to start in that configuration. Only set this for a trusted
+          network, such as a local development cluster.
+        type: bool
+        default: ""
         validations: []
       - name: saslMechanism
         description: |-

@@ -15,6 +15,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"time"
 
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 )
 
 func TestConfig_Validate(t *testing.T) {
@@ -53,6 +55,18 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		wantErr: ErrSASLInvalidAuth,
+	}, {
+		name: "SASL PLAIN without TLS",
+		cfg: Config{
+			ConfigSASL: ConfigSASL{Mechanism: "PLAIN", Username: "u", Password: "p"},
+		},
+		wantErr: ErrSASLRequiresTLS,
+	}, {
+		name: "SASL SCRAM without TLS",
+		cfg: Config{
+			ConfigSASL: ConfigSASL{Mechanism: "SCRAM-SHA-512", Username: "u", Password: "p"},
+		},
+		wantErr: ErrSASLRequiresTLS,
 	}, {
 		name: "invalid Client cert",
 		cfg: Config{
@@ -107,4 +121,61 @@ func TestConfig_TryDial(t *testing.T) {
 
 	is.Equal(opErr.Op, "dial")
 	is.Equal(opErr.Net, "tcp")
+}
+
+func TestConfig_Validate_SASLTransport(t *testing.T) {
+	sasl := ConfigSASL{Mechanism: "PLAIN", Username: "u", Password: "super-secret"}
+
+	t.Run("refused without TLS, coded error", func(t *testing.T) {
+		is := is.New(t)
+		err := Config{ConfigSASL: sasl}.Validate(context.Background())
+		is.True(errors.Is(err, ErrSASLRequiresTLS))
+
+		var coded *CodedError
+		is.True(errors.As(err, &coded))
+		is.Equal(coded.Code, CodeSASLRequiresTLS)
+		is.Equal(coded.ConfigPath, "tls.enabled")
+		is.True(strings.Contains(coded.Fix, "saslAllowPlaintext"))
+		// the error must never carry the credentials
+		is.True(!strings.Contains(err.Error(), "super-secret"))
+	})
+
+	t.Run("allowed with TLS", func(t *testing.T) {
+		is := is.New(t)
+		err := Config{ConfigSASL: sasl, ConfigTLS: ConfigTLS{TLSEnabled: true}}.Validate(context.Background())
+		is.NoErr(err)
+	})
+
+	t.Run("no mechanism, no TLS is fine", func(t *testing.T) {
+		is := is.New(t)
+		is.NoErr(Config{}.Validate(context.Background()))
+	})
+
+	t.Run("opt-out accepted and warns", func(t *testing.T) {
+		is := is.New(t)
+		var buf bytes.Buffer
+		logger := zerolog.New(&buf)
+		ctx := logger.WithContext(context.Background())
+
+		cfg := Config{ConfigSASL: sasl}
+		cfg.AllowPlaintext = true
+		is.NoErr(cfg.Validate(ctx))
+
+		out := buf.String()
+		is.True(strings.Contains(out, `"level":"warn"`))
+		is.True(strings.Contains(out, CodeSASLRequiresTLS))
+		is.True(!strings.Contains(out, "super-secret"))
+	})
+
+	t.Run("opt-out with TLS does not warn", func(t *testing.T) {
+		is := is.New(t)
+		var buf bytes.Buffer
+		logger := zerolog.New(&buf)
+		ctx := logger.WithContext(context.Background())
+
+		cfg := Config{ConfigSASL: sasl, ConfigTLS: ConfigTLS{TLSEnabled: true}}
+		cfg.AllowPlaintext = true
+		is.NoErr(cfg.Validate(ctx))
+		is.Equal(buf.Len(), 0)
+	})
 }
