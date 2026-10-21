@@ -239,3 +239,23 @@ func TestConfig_Validate_AllowLossyHeadersRequiresMirror(t *testing.T) {
 	is.True(err != nil)
 	is.True(strings.Contains(err.Error(), "allowLossyHeaders requires mirror=true"))
 }
+
+// TestConfig_ParseTopic_EmptyTopicErrorDoesNotContainTheKey: errors reach the
+// DLQ, the API and CLI output, so the record key is reported as a hash only.
+func TestConfig_ParseTopic_EmptyTopicErrorDoesNotContainTheKey(t *testing.T) {
+	is := is.New(t)
+
+	cfg := Config{Topic: `{{ if index .Metadata "missing" }}x{{ end }}`} // renders empty
+	_, getTopic, err := cfg.ParseTopic()
+	is.NoErr(err)
+
+	_, err = getTopic(opencdc.Record{Key: opencdc.RawData("customer-SECRET-4711")})
+	is.True(err != nil)
+	is.True(strings.Contains(err.Error(), "topic not found on record"))
+	is.True(strings.Contains(err.Error(), keyHash([]byte("customer-SECRET-4711"))))
+	is.True(!strings.Contains(err.Error(), "SECRET"))
+
+	// a record without a key must not panic
+	_, err = getTopic(opencdc.Record{})
+	is.True(err != nil)
+}

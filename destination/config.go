@@ -247,9 +247,13 @@ func (c *Config) ParseTopic() (topic string, f TopicFn, err error) {
 		}
 		topic := sb.String()
 		if topic == "" {
+			var key []byte
+			if r.Key != nil {
+				key = r.Key.Bytes()
+			}
 			return "", fmt.Errorf(
-				"topic not found on record %s using template %s",
-				string(r.Key.Bytes()), c.Topic,
+				"topic not found on record (key hash %s) using template %s",
+				keyHash(key), c.Topic,
 			)
 		}
 
