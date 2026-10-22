@@ -294,6 +294,15 @@ pipelines:
           # Type: bool
           # Required: no
           retryGroupJoinErrors: "true"
+          # AllowPlaintext lets SASL authenticate over a connection that is not
+          # protected by TLS (tls.enabled is false). This exposes the SASL
+          # credentials, and with PLAIN the password itself, to anyone who can
+          # observe the network path to the brokers. By default the connector
+          # refuses to start in that configuration. Only set this for a trusted
+          # network, such as a local development cluster.
+          # Type: bool
+          # Required: no
+          saslAllowPlaintext: "false"
           # Mechanism configures the connector to use SASL authentication. If
           # empty, no authentication will be performed.
           # Type: string
@@ -443,6 +452,15 @@ pipelines:
           # Type: duration
           # Required: no
           produceTimeout: "2m"
+          # AllowPlaintext lets SASL authenticate over a connection that is not
+          # protected by TLS (tls.enabled is false). This exposes the SASL
+          # credentials, and with PLAIN the password itself, to anyone who can
+          # observe the network path to the brokers. By default the connector
+          # refuses to start in that configuration. Only set this for a trusted
+          # network, such as a local development cluster.
+          # Type: bool
+          # Required: no
+          saslAllowPlaintext: "false"
           # Mechanism configures the connector to use SASL authentication. If
           # empty, no authentication will be performed.
           # Type: string

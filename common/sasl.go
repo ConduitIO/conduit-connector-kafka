@@ -34,6 +34,13 @@ type ConfigSASL struct {
 	Username string `json:"saslUsername"`
 	// Password sets up the password used with SASL authentication.
 	Password string `json:"saslPassword"`
+	// AllowPlaintext lets SASL authenticate over a connection that is not
+	// protected by TLS (tls.enabled is false). This exposes the SASL
+	// credentials, and with PLAIN the password itself, to anyone who can
+	// observe the network path to the brokers. By default the connector
+	// refuses to start in that configuration. Only set this for a trusted
+	// network, such as a local development cluster.
+	AllowPlaintext bool `json:"saslAllowPlaintext"`
 }
 
 // Validate executes manual validations beyond what is defined in struct tags.

@@ -17,6 +17,7 @@ package common
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	sdk "github.com/conduitio/conduit-connector-sdk"
@@ -53,7 +54,36 @@ func (c Config) Validate(ctx context.Context) error {
 		multierr = append(multierr, err)
 	}
 
+	if err := c.validateSASLTransport(ctx); err != nil {
+		multierr = append(multierr, err)
+	}
+
 	return errors.Join(multierr...)
+}
+
+// validateSASLTransport refuses SASL authentication over a connection that is
+// not protected by TLS, unless the user opted out explicitly.
+func (c Config) validateSASLTransport(ctx context.Context) error {
+	if c.Mechanism == "" || c.TLSEnabled {
+		return nil
+	}
+	if !c.AllowPlaintext {
+		return &CodedError{
+			Code:       CodeSASLRequiresTLS,
+			ConfigPath: "tls.enabled",
+			Message: fmt.Sprintf(
+				"saslMechanism %s is configured but TLS is disabled, so credentials would be sent unencrypted",
+				c.Mechanism,
+			),
+			Fix: "set tls.enabled to true, or set saslAllowPlaintext to true to accept that the SASL credentials are exposed on the network",
+			err: ErrSASLRequiresTLS,
+		}
+	}
+	sdk.Logger(ctx).Warn().
+		Str("code", CodeSASLRequiresTLS).
+		Str("saslMechanism", c.Mechanism).
+		Msg("saslAllowPlaintext is enabled: SASL credentials are sent over a connection without TLS and are exposed to anyone who can observe the network")
+	return nil
 }
 
 // TryDial tries to establish a connection to brokers and returns nil if it
