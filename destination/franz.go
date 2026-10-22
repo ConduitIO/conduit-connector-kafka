@@ -97,7 +97,8 @@ func NewFranzProducer(ctx context.Context, cfg Config) (*FranzProducer, error) {
 		return nil, fmt.Errorf("failed to parse topic: %w", err)
 	}
 
-	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
+	// Host dialer (if any) is read from ctx and installed on the client.
+	opts := cfg.FranzClientOpts(ctx, sdk.Logger(ctx))
 	opts = append(opts, []kgo.Opt{
 		kgo.RecordDeliveryTimeout(cfg.DeliveryTimeout),
 		kgo.RequiredAcks(cfg.RequiredAcks()),
