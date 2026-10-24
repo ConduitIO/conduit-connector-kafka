@@ -15,8 +15,13 @@
 package common
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
+	"time"
 
+	"github.com/conduitio/conduit-commons/dialer"
 	"github.com/rs/zerolog"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -28,8 +33,18 @@ func (c Config) WithFranzClientOpts(opts ...kgo.Opt) Config {
 	return c
 }
 
+// dialTimeout is franz-go's default dial timeout. It is applied to the host
+// dialer path so a host-supplied dialer sees the same bound as the default one.
+const dialTimeout = 10 * time.Second
+
 // FranzClientOpts returns the kafka client options derived from the common config.
-func (c Config) FranzClientOpts(logger *zerolog.Logger) []kgo.Opt {
+//
+// If the host put a dialer on ctx (see [dialer.WithDialContext]), every broker
+// connection the returned client opens uses it: the seed brokers, brokers
+// discovered later through metadata, and reconnects after a connection is lost.
+// The dialer is captured here, when the client options are built, so it stays in
+// effect after ctx ends. Without a host dialer the franz-go default is kept.
+func (c Config) FranzClientOpts(ctx context.Context, logger *zerolog.Logger) []kgo.Opt {
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(c.Servers...),
 		kgo.ClientID(c.ClientID),
@@ -41,10 +56,54 @@ func (c Config) FranzClientOpts(logger *zerolog.Logger) []kgo.Opt {
 	if sasl := c.SASL(); sasl != nil {
 		opts = append(opts, kgo.SASL(sasl))
 	}
-	if tls := c.TLS(); tls != nil {
-		opts = append(opts, kgo.DialTLSConfig(tls))
+	tlsCfg := c.TLS()
+	if dial, ok := dialer.FromContext(ctx); ok {
+		// Host dialer: installed on every client built from these options.
+		// kgo rejects Dialer combined with DialTLSConfig, so TLS is layered
+		// over the host's raw connection here instead.
+		opts = append(opts, kgo.Dialer(tlsDialer(dial, tlsCfg)))
+	} else if tlsCfg != nil {
+		opts = append(opts, kgo.DialTLSConfig(tlsCfg))
 	}
 	return opts
+}
+
+// tlsDialer returns a kgo dial function that opens the raw connection with
+// dial and, if tlsCfg is not nil, runs a TLS handshake over it. It mirrors what
+// kgo does for DialTLSConfig: the config is cloned per dial, ServerName
+// defaults to the host part of the broker address, and the dial is bounded by
+// kgo's default 10s timeout.
+func tlsDialer(dial dialer.DialContextFunc, tlsCfg *tls.Config) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		ctx, cancel := context.WithTimeout(ctx, dialTimeout)
+		defer cancel()
+
+		var cfg *tls.Config
+		if tlsCfg != nil {
+			cfg = tlsCfg.Clone()
+			if cfg.ServerName == "" {
+				host, _, err := net.SplitHostPort(address)
+				if err != nil {
+					return nil, fmt.Errorf("unable to split host:port for dialing: %w", err)
+				}
+				cfg.ServerName = host
+			}
+		}
+
+		conn, err := dial(ctx, network, address)
+		if err != nil {
+			return nil, err
+		}
+		if cfg == nil {
+			return conn, nil
+		}
+		tlsConn := tls.Client(conn, cfg)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		return tlsConn, nil
+	}
 }
 
 type franzLogger struct {

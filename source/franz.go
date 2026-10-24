@@ -77,7 +77,8 @@ func (c *kgoClient) PartitionCount(ctx context.Context, topic string) (int32, er
 var _ Consumer = (*FranzConsumer)(nil)
 
 func NewFranzConsumer(ctx context.Context, cfg Config) (*FranzConsumer, error) {
-	opts := cfg.FranzClientOpts(sdk.Logger(ctx))
+	// Host dialer (if any) is read from ctx and installed on the client.
+	opts := cfg.FranzClientOpts(ctx, sdk.Logger(ctx))
 	opts = append(opts, []kgo.Opt{
 		kgo.ConsumerGroup(cfg.GroupID),
 		kgo.ConsumeTopics(cfg.Topics...),

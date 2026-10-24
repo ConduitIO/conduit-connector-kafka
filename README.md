@@ -209,7 +209,16 @@ connector is replaced by this connector pointed at a Redpanda cluster
 acceptance-v2 and kill -9 tests against both Apache Kafka and Redpanda. Mirror
 mode works on both brokers; Redpanda does not return or enforce the
 `message.timestamp.before/after.max.ms` bounds, so only the timestamp type and
-retention rules can differ from Apache Kafka.<!-- /readmegen:description -->
+retention rules can differ from Apache Kafka.
+
+## Host-supplied dialer
+
+If the host that runs the connector puts a dialer on the context
+(`dialer.WithDialContext` from `conduit-commons`), the connector opens every
+broker connection through it: the seed brokers, brokers discovered from
+metadata, reconnects, and the admin and metadata requests. When TLS is
+enabled, the handshake runs over the connection the host dialer returns.
+Without a host dialer the connector dials directly, as before.<!-- /readmegen:description -->
 
 ## Source Configuration Parameters
 
