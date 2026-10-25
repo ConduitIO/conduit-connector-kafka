@@ -89,7 +89,8 @@ func (c Config) validateSASLTransport(ctx context.Context) error {
 // TryDial tries to establish a connection to brokers and returns nil if it
 // succeeds to connect to at least one broker.
 func (c Config) TryDial(ctx context.Context) error {
-	opts := c.FranzClientOpts(sdk.Logger(ctx))
+	// Host dialer (if any) is read from ctx and installed on the client.
+	opts := c.FranzClientOpts(ctx, sdk.Logger(ctx))
 	cl, err := kgo.NewClient(opts...)
 	if err != nil {
 		return err
