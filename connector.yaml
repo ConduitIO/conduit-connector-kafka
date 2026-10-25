@@ -218,7 +218,7 @@ specification:
     metadata, reconnects, and the admin and metadata requests. When TLS is
     enabled, the handshake runs over the connection the host dialer returns.
     Without a host dialer the connector dials directly, as before.
-  version: v0.15.0
+  version: v0.16.0
   author: Meroxa, Inc.
   source:
     parameters:
