@@ -5,7 +5,7 @@ go 1.26.9
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/conduitio/conduit-commons v0.13.0
-	github.com/conduitio/conduit-connector-sdk v0.17.2
+	github.com/conduitio/conduit-connector-sdk v0.18.1
 	github.com/goccy/go-json v0.11.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -24,7 +24,7 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/bufbuild/protocompile v0.14.2-0.20260127163740-a85d2ef77713 // indirect
-	github.com/conduitio/conduit-connector-protocol v0.11.1 // indirect
+	github.com/conduitio/conduit-connector-protocol v0.12.0 // indirect
 	github.com/conduitio/evolviconf v0.1.1 // indirect
 	github.com/conduitio/evolviconf/evolviyaml v0.1.0 // indirect
 	github.com/conduitio/yaml/v3 v3.3.0 // indirect
@@ -36,7 +36,7 @@ require (
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/iskorotkov/avro/v2 v2.34.0 // indirect
-	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/jpillora/backoff v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
