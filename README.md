@@ -330,14 +330,15 @@ pipelines:
           # Type: bool
           # Required: no
           tls.enabled: "false"
-          # Maximum delay before an incomplete batch is read from the source.
+          # Maximum delay before an incomplete batch is read from the source. 0
+          # returns what is already queued without waiting.
           # Type: duration
           # Required: no
           sdk.batch.delay: "0"
           # Maximum size of batch before it gets read from the source.
           # Type: int
           # Required: no
-          sdk.batch.size: "0"
+          sdk.batch.size: "100"
           # Specifies whether to use a schema context name. If set to false, no
           # schema context name will be used, and schemas will be saved with the
           # subject name specified in the connector (not safe because of name
