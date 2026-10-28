@@ -149,6 +149,8 @@ func testSourceIntegrationRead(
 
 	underTest := NewSource()
 
+	// Hygiene: since SDK v0.18.1 ParseConfig no longer writes defaults back
+	// into the map; under v0.18.0 the copy was required when the same map is parsed twice.
 	err := sdk.Util.ParseConfig(ctx, maps.Clone(cfgMap), underTest.Config(), Connector.NewSpecification().SourceParams)
 	is.NoErr(err)
 
