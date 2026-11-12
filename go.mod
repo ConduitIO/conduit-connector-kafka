@@ -11,10 +11,10 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/matryer/is v1.4.1
 	github.com/rs/zerolog v1.35.1
-	github.com/twmb/franz-go v1.22.2
-	github.com/twmb/franz-go/pkg/kadm v1.19.0
+	github.com/twmb/franz-go v1.22.3
+	github.com/twmb/franz-go/pkg/kadm v1.20.0
 	github.com/twmb/franz-go/pkg/kfake v0.0.0-20261013022759-7b6cac30a57a
-	github.com/twmb/franz-go/pkg/kmsg v1.15.0
+	github.com/twmb/franz-go/pkg/kmsg v1.15.1
 	go.uber.org/mock v0.6.0
 	google.golang.org/protobuf v1.36.12
 )
